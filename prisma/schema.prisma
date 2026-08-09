@@ -186,6 +186,7 @@ model CommissionProgram {
   allProductsCommission Float?
   productCommissions   String   @default("[]")
   employeeIds          String   @default("[]")
+  active               Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

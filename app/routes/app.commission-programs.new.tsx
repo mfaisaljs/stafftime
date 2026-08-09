@@ -109,6 +109,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         allProductsCommission,
         productCommissions: JSON.stringify(productCommissions),
         employeeIds: JSON.stringify(employeeIds),
+        active: true,
       },
     });
 

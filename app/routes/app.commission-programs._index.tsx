@@ -1,263 +1,254 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Link, useLoaderData, useRouteError, useSearchParams } from "react-router";
+import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { Link, useFetcher, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { FileText, Plus } from "lucide-react";
+import { Tag, Type, User, Users, ToggleRight } from "lucide-react";
 import { authenticate } from "../shopify.server";
-import { getAdminShop } from "../services/admin.server";
 import prisma from "../db.server";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
-  const shop = await getAdminShop(session);
-  const programs = await prisma.commissionProgram.findMany({
-    where: { shopId: shop.id },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return {
-    programs: programs.map((program) => ({
-      id: program.id,
-      name: program.name,
-      commissionType: program.commissionType,
-      productScope: program.productScope,
-      staffCount: parseJsonArray(program.employeeIds).length,
-      productCount:
-        program.productScope === "all"
-          ? null
-          : parseJsonArray(program.productCommissions).length,
-    })),
-  };
+type ProgramRow = {
+  id: string;
+  name: string;
+  commissionType: string;
+  productScope: string;
+  productCommissions: string;
+  employeeIds: string;
+  active: boolean;
 };
 
-export default function CommissionProgramsIndex() {
-  const { programs } = useLoaderData<typeof loader>();
-  const [searchParams] = useSearchParams();
-  const created = searchParams.get("created") === "1";
-
-  return (
-    <s-page heading="Commission Program">
-      <div className="commission-page">
-        {created && (
-          <s-banner tone="success" heading="Commission program created." />
-        )}
-
-        <div className="commission-header">
-          <Link className="button-link" to="/app/commission-programs/new">
-            <s-button variant="primary">
-              <span className="button-content">
-                <Plus aria-hidden="true" size={14} />
-                Create Program
-              </span>
-            </s-button>
-          </Link>
-        </div>
-
-        <div className="commission-banner">
-          <div className="banner-title">
-            <span aria-hidden="true">ⓘ</span>
-            <strong>Assign commission programs in Shopify POS</strong>
-            <button type="button" aria-label="Dismiss banner">
-              ×
-            </button>
-          </div>
-          <p>
-            You can assign commission program to your staff during order or after order
-            in Shopify POS.
-          </p>
-          <div className="banner-action">
-            <s-button variant="secondary">Learn More</s-button>
-          </div>
-        </div>
-
-        {programs.length === 0 ? (
-          <section className="empty-card">
-            <div className="empty-illustration" aria-hidden="true">
-              <FileText size={72} />
-              <span />
-            </div>
-            <strong>Create your first commission program</strong>
-            <p>Start managing commission programs for your staff members.</p>
-            <Link className="button-link" to="/app/commission-programs/new">
-              <s-button variant="primary">
-                <span className="button-content">
-                  <Plus aria-hidden="true" size={13} />
-                  Create Program
-                </span>
-              </s-button>
-            </Link>
-          </section>
-        ) : (
-          <section className="programs-card">
-            <div className="programs-header">
-              <strong>Commission Programs</strong>
-              <span>{programs.length} program{programs.length === 1 ? "" : "s"}</span>
-            </div>
-            <div className="programs-list">
-              {programs.map((program) => (
-                <div className="program-row" key={program.id}>
-                  <div>
-                    <strong>{program.name}</strong>
-                    <span>
-                      {program.commissionType === "percentage"
-                        ? "Percentage"
-                        : "Fixed Amount"}{" "}
-                      · {program.staffCount} staff ·{" "}
-                      {program.productScope === "all"
-                        ? "All products"
-                        : `${program.productCount ?? 0} products`}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-
-      <style>{COMMISSION_STYLES}</style>
-    </s-page>
-  );
-}
-
-function parseJsonArray(value: string) {
+function parseJsonArray(raw: string): unknown[] {
   try {
-    const parsed = JSON.parse(value) as unknown;
+    const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-export function ErrorBoundary() {
-  return boundary.error(useRouteError());
+function parseIds(raw: string): string[] {
+  return parseJsonArray(raw).filter((v): v is string => typeof v === "string");
+}
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = await prisma.shop.findUnique({ where: { domain: session.shop } });
+  if (!shop) return { programs: [] as ProgramRow[] };
+
+  const programs = await prisma.commissionProgram.findMany({
+    where: { shopId: shop.id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      commissionType: true,
+      productScope: true,
+      productCommissions: true,
+      employeeIds: true,
+      active: true,
+    },
+  });
+
+  return { programs };
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = await prisma.shop.findUnique({ where: { domain: session.shop } });
+  if (!shop) return { ok: false };
+
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") || "");
+  if (intent !== "toggleActive") return { ok: false };
+
+  const id = String(formData.get("id") || "");
+  const active = String(formData.get("active") || "") === "true";
+  if (!id) return { ok: false };
+
+  await prisma.commissionProgram.updateMany({
+    where: { id, shopId: shop.id },
+    data: { active },
+  });
+
+  return { ok: true };
+};
+
+export default function CommissionProgramsIndex() {
+  const { programs } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher();
+
+  return (
+    <s-page heading="Commission Programs">
+      <Link to="/app/commission-programs/new" style={{ textDecoration: "none" }}>
+        <s-button slot="primary-action" variant="primary">
+          Create Commission Program
+        </s-button>
+      </Link>
+
+      {programs.length === 0 ? (
+        <s-section>
+          <s-box padding="base" borderWidth="base" borderRadius="base" background="base">
+            <div style={{ display: "grid", gap: 8 }}>
+              <s-heading>No commission programs yet</s-heading>
+              <s-paragraph color="subdued">
+                Create your first program to start tracking product-based commissions for staff.
+              </s-paragraph>
+              <div>
+                <Link to="/app/commission-programs/new" style={{ textDecoration: "none" }}>
+                  <s-button variant="primary">Create Commission Program</s-button>
+                </Link>
+              </div>
+            </div>
+          </s-box>
+        </s-section>
+      ) : (
+        <s-section padding="none">
+          <s-box padding="none" borderWidth="base" borderRadius="base" background="base" overflow="hidden">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "100px minmax(160px, 1.4fr) 150px 130px 110px",
+                gap: 12,
+                alignItems: "center",
+                padding: "12px 16px",
+                background: "var(--p-color-bg-surface-secondary)",
+                borderBottom: "1px solid var(--p-color-border)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--p-color-text)",
+              }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <ToggleRight size={15} />
+                Status
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Users size={15} />
+                Program Name
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Type size={15} />
+                Commission Type
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Tag size={15} />
+                Products
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <User size={15} />
+                Staff
+              </span>
+            </div>
+
+            {programs.map((program) => {
+              const productCount =
+                program.productScope === "all"
+                  ? null
+                  : parseJsonArray(program.productCommissions).length;
+              const staffCount = parseIds(program.employeeIds).length;
+              const typeLabel =
+                program.commissionType === "percentage" ? "Percentage" : "Fixed";
+              const pending =
+                fetcher.state !== "idle" &&
+                String(fetcher.formData?.get("id") || "") === program.id;
+
+              return (
+                <div
+                  key={program.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "100px minmax(160px, 1.4fr) 150px 130px 110px",
+                    gap: 12,
+                    alignItems: "center",
+                    padding: "14px 16px",
+                    borderBottom: "1px solid var(--p-color-border)",
+                    background: "var(--p-color-bg-surface)",
+                  }}
+                >
+                  <div>
+                    <fetcher.Form method="post">
+                      <input type="hidden" name="intent" value="toggleActive" />
+                      <input type="hidden" name="id" value={program.id} />
+                      <input
+                        type="hidden"
+                        name="active"
+                        value={program.active ? "false" : "true"}
+                      />
+                      <button
+                        type="submit"
+                        disabled={pending}
+                        aria-label={program.active ? "Deactivate program" : "Activate program"}
+                        style={{
+                          width: 44,
+                          height: 24,
+                          borderRadius: 999,
+                          border: "none",
+                          padding: 2,
+                          cursor: pending ? "wait" : "pointer",
+                          background: program.active ? "#008060" : "#8c9196",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: program.active ? "flex-end" : "flex-start",
+                          transition: "background 120ms ease",
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            background: "#fff",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                          }}
+                        />
+                      </button>
+                    </fetcher.Form>
+                  </div>
+
+                  <div style={{ fontWeight: 650, color: "var(--p-color-text)" }}>
+                    {program.name}
+                  </div>
+
+                  <div>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "2px 10px",
+                        borderRadius: 999,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: "#e0f0ff",
+                        color: "#00527c",
+                      }}
+                    >
+                      {typeLabel}
+                    </span>
+                  </div>
+
+                  <div style={{ color: "var(--p-color-text)" }}>
+                    {productCount == null
+                      ? "All Products"
+                      : `${productCount} Product${productCount === 1 ? "" : "s"}`}
+                  </div>
+
+                  <div style={{ color: "var(--p-color-text)" }}>
+                    {staffCount} Staff
+                  </div>
+                </div>
+              );
+            })}
+          </s-box>
+        </s-section>
+      )}
+
+      <s-section>
+        <s-paragraph color="subdued">
+          For more guidance, visit our Knowledge Base
+        </s-paragraph>
+      </s-section>
+    </s-page>
+  );
 }
 
 export const headers: HeadersFunction = (headersArgs) => {
   return boundary.headers(headersArgs);
 };
-
-const COMMISSION_STYLES = `
-  .commission-page {
-    display: grid;
-    gap: 22px;
-  }
-
-  .commission-header {
-    align-items: center;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .button-content {
-    align-items: center;
-    display: inline-flex;
-    gap: 6px;
-  }
-
-  .button-link {
-    display: inline-flex;
-    text-decoration: none;
-  }
-
-  .commission-banner {
-    background: #fff;
-    border: 1px solid #d9d9d9;
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
-  }
-
-  .banner-title {
-    align-items: center;
-    background: #8ed0fb;
-    display: flex;
-    gap: 8px;
-    padding: 9px 12px;
-  }
-
-  .banner-title button {
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    font-size: 18px;
-    margin-left: auto;
-  }
-
-  .commission-banner p {
-    color: #616161;
-    margin: 14px 12px 10px;
-  }
-
-  .banner-action {
-    padding: 0 12px 14px;
-  }
-
-  .empty-card,
-  .programs-card {
-    background: #fff;
-    border: 1px solid #d9d9d9;
-    border-radius: 8px;
-  }
-
-  .empty-card {
-    align-items: center;
-    display: grid;
-    gap: 8px;
-    justify-items: center;
-    min-height: 330px;
-    padding: 48px 24px;
-    text-align: center;
-  }
-
-  .empty-card p {
-    color: #616161;
-    margin: 0 0 8px;
-  }
-
-  .empty-illustration {
-    color: #d8d8d8;
-    display: grid;
-    margin-bottom: 10px;
-    place-items: center;
-    position: relative;
-  }
-
-  .empty-illustration span {
-    background: #f5b63b;
-    border-radius: 2px;
-    height: 20px;
-    left: 20px;
-    position: absolute;
-    top: 14px;
-    width: 20px;
-  }
-
-  .programs-header {
-    align-items: center;
-    border-bottom: 1px solid #ececec;
-    display: flex;
-    justify-content: space-between;
-    padding: 14px 16px;
-  }
-
-  .programs-header span,
-  .program-row span {
-    color: #616161;
-  }
-
-  .program-row {
-    border-bottom: 1px solid #ececec;
-    display: grid;
-    gap: 4px;
-    padding: 14px 16px;
-  }
-
-  .program-row:last-child {
-    border-bottom: 0;
-  }
-
-  .program-row strong,
-  .program-row span {
-    display: block;
-  }
-`;

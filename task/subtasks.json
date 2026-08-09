@@ -754,6 +754,28 @@
         "prisma/schema.prisma",
         "prisma/migrations/20260809221900_commission_programs/migration.sql"
       ]
+    },
+    {
+      "id": "ST048",
+      "taskId": "T017",
+      "title": "Commission Programs list table",
+      "description": "Show saved commission programs in a Status / Program Name / Commission Type / Products / Staff table with active toggles.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST047"],
+      "acceptanceCriteria": [
+        "Commission Programs index shows a table with Status, Program Name, Commission Type, Products, and Staff columns",
+        "Status column uses a green on/off toggle that persists active state",
+        "Commission Type shows a Fixed or Percentage pill badge",
+        "Products and Staff columns show counts (or All Products when scope is all)"
+      ],
+      "files": [
+        "app/routes/app.commission-programs._index.tsx",
+        "app/routes/app.commission-programs.new.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809222400_commission_program_active/migration.sql"
+      ],
+      "lastUpdated": "2026-08-09T22:25:00.000Z"
     }
   ]
 }

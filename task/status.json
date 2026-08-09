@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T22:23:30.000Z",
+  "lastUpdated": "2026-08-09T22:25:00.000Z",
   "notes": [
+    "ST048 complete: Commission Programs index shows Status/Name/Type/Products/Staff table with active toggles.",
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
     "Fixed: POS timer server sync, dashboard auto-refresh every 10s, open entry query, shop domain normalization.",

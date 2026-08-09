@@ -171,7 +171,8 @@
       "priority": "high",
       "phase": "mvp",
       "progressPercent": 92,
-      "dependencies": ["T003", "T016"]
+      "dependencies": ["T003", "T016"],
+      "lastUpdated": "2026-08-09T22:25:00.000Z"
     }
   ]
 }
