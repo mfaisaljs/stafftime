@@ -3,7 +3,7 @@
 
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
 name = "StaffTime"
-application_url = "https://example.com"
+application_url = "https://comrade-trailside-reliably.ngrok-free.dev"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "read_locations,read_orders"
 
 [auth]
 redirect_urls = [
-  "https://example.com/auth/callback",
-  "https://example.com/auth/shopify/callback",
-  "https://example.com/api/auth/callback",
+  "https://comrade-trailside-reliably.ngrok-free.dev/auth/callback",
+  "https://comrade-trailside-reliably.ngrok-free.dev/auth/shopify/callback",
+  "https://comrade-trailside-reliably.ngrok-free.dev/api/auth/callback",
 ]
 
 [webhooks]
@@ -30,4 +30,3 @@ api_version = "2026-10"
 [build]
 automatically_update_urls_on_dev = true
 dev_store_url = "spaceraceplayground.myshopify.com"
-include_config_on_deploy = true
