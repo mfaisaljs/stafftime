@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T12:00:00.000Z",
+  "lastUpdated": "2026-08-09T16:35:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -159,18 +159,18 @@
       "id": "ST015",
       "taskId": "T002",
       "title": "Seed demo employees and shifts",
-      "description": "Bootstrap sample team on first admin visit.",
+      "description": "Bootstrap sample team on first admin or POS visit.",
       "status": "completed",
       "priority": "medium",
       "dependencies": ["ST005"],
       "acceptanceCriteria": ["John and Sarah demo accounts created with PINs"],
-      "files": ["app/services/admin.server.ts"]
+      "files": ["app/services/admin.server.ts", "app/services/workforce.server.ts"]
     },
     {
       "id": "ST016",
       "taskId": "T015",
       "title": "Write README setup guide",
-      "description": "Document local dev, POS testing, and roadmap.",
+      "description": "Document local dev, POS testing, localhost vs ngrok, and roadmap.",
       "status": "completed",
       "priority": "high",
       "dependencies": ["ST007", "ST008"],
@@ -220,6 +220,127 @@
       "dependencies": ["ST007"],
       "acceptanceCriteria": ["Clock events queue when offline and sync later"],
       "files": ["extensions/workforce-clock/src/offline-queue.ts"]
+    },
+    {
+      "id": "ST021",
+      "taskId": "T016",
+      "title": "Fix dev environment config",
+      "description": "Add shopify.web.toml, shopify.app.local.toml, localhost and ngrok dev workflows.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST001"],
+      "acceptanceCriteria": ["Dev starts without webhook localhost errors", "Admin embed loads via localhost or ngrok"],
+      "files": ["shopify.app.toml", "shopify.app.local.toml", "shopify.web.toml", "package.json"]
+    },
+    {
+      "id": "ST022",
+      "taskId": "T016",
+      "title": "Deploy app version to dev store",
+      "description": "Release POS extension and app config to spaceraceplayground.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST006", "ST021"],
+      "acceptanceCriteria": ["shopify app deploy succeeds", "stafftime-3 released"],
+      "files": ["shopify.app.toml"]
+    },
+    {
+      "id": "ST023",
+      "taskId": "T016",
+      "title": "Fix POS shift timer drift",
+      "description": "Sync timer to server clock using clockInAtMs and serverTime.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST007"],
+      "acceptanceCriteria": ["Timer starts near 0h 0m 0s after clock-in on Android POS"],
+      "files": ["extensions/workforce-clock/src/Modal.tsx", "app/services/workforce.server.ts", "app/utils/pos-api.server.ts"]
+    },
+    {
+      "id": "ST024",
+      "taskId": "T016",
+      "title": "Fix dashboard live staff display",
+      "description": "Auto-refresh dashboard, include all open entries, normalize shop domain.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST011"],
+      "acceptanceCriteria": ["Clocked-in employee appears on dashboard within 10 seconds"],
+      "files": ["app/routes/app._index.tsx", "app/routes/app.attendance.tsx", "app/services/workforce.server.ts"]
+    },
+    {
+      "id": "ST025",
+      "taskId": "T016",
+      "title": "Enforce unique PIN per shop",
+      "description": "Reject duplicate PINs on create and block ambiguous PIN login on POS.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST008"],
+      "acceptanceCriteria": ["Duplicate PIN shows error in Admin and POS", "QR remains unique identifier"],
+      "files": ["app/services/workforce.server.ts", "app/routes/app.employees.tsx", "app/routes/api.pos.verify.tsx"]
+    },
+    {
+      "id": "ST026",
+      "taskId": "T017",
+      "title": "Add employee edit and change PIN",
+      "description": "Allow managers to update employee details and reassign PINs.",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": ["ST025"],
+      "acceptanceCriteria": ["Manager can edit employee and change PIN with uniqueness check"],
+      "files": ["app/routes/app.employees.tsx", "app/services/workforce.server.ts"]
+    },
+    {
+      "id": "ST027",
+      "taskId": "T009",
+      "title": "Add missed punch request form",
+      "description": "Allow managers or employees to submit missed clock-in/out requests from Admin.",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": ["ST013"],
+      "acceptanceCriteria": ["Manager can create missed punch request and approve it"],
+      "files": ["app/routes/app.missed-punches.tsx"]
+    },
+    {
+      "id": "ST028",
+      "taskId": "T016",
+      "title": "Android POS end-to-end QA",
+      "description": "Validate smart grid tile, PIN clock in/out, breaks, and dashboard sync on Android POS.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST022", "ST023", "ST024", "ST025"],
+      "acceptanceCriteria": ["Tile visible on smart grid", "Clock in updates dashboard", "Unique PIN enforced"],
+      "files": ["extensions/workforce-clock/src/Modal.tsx", "app/routes/app._index.tsx", "app/services/pos-workflow.test.ts", "task/QA-POS-ANDROID.md"]
+    },
+    {
+      "id": "ST029",
+      "taskId": "T015",
+      "title": "Set up production hosting",
+      "description": "Replace ngrok with persistent hosting (Fly.io, Railway, or Shopify-compatible deploy).",
+      "status": "pending",
+      "priority": "critical",
+      "dependencies": ["ST022"],
+      "acceptanceCriteria": ["application_url points to stable HTTPS host", "POS and Admin use same backend"],
+      "files": ["shopify.app.toml", "Dockerfile"]
+    },
+    {
+      "id": "ST030",
+      "taskId": "T015",
+      "title": "App Store listing prep",
+      "description": "Screenshots, pricing plans, privacy policy, and Built for Shopify checklist.",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": ["ST028", "ST029"],
+      "acceptanceCriteria": ["Listing draft ready", "App passes shopify-app-store-review skill checks"],
+      "files": ["README.md", "shopify.app.toml"]
+    },
+    {
+      "id": "ST031",
+      "taskId": "T017",
+      "title": "Display employee QR codes in Admin",
+      "description": "Show printable QR code per employee for POS QR clock-in mode.",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": ["ST026"],
+      "acceptanceCriteria": ["Each employee has visible QR code in Admin"],
+      "files": ["app/routes/app.employees.tsx"]
     }
   ]
 }

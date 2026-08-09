@@ -76,6 +76,28 @@ On first admin visit, StaffTime seeds demo employees:
 
 Use these PINs in the POS **StaffTime** smart grid tile.
 
+### Android POS testing
+
+Physical POS devices cannot reach `localhost`. Use a tunnel:
+
+```bash
+# Terminal 1 — forward to the port in shopify.web.toml (3458)
+ngrok http 3458
+
+# Terminal 2 — dev with tunnel (update URL in package.json dev:pos if ngrok subdomain changed)
+npm run dev:pos
+```
+
+Add the **StaffTime** tile manually: **Settings → Point of sale → Smart grid → Apps → StaffTime**.
+
+Full QA checklist: [`task/QA-POS-ANDROID.md`](task/QA-POS-ANDROID.md).
+
+Run automated POS workflow tests:
+
+```bash
+npm run qa:pos
+```
+
 ## POS extension
 
 The workforce clock extension lives in `extensions/workforce-clock/`:
