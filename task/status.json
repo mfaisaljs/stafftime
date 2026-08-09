@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T20:53:30.000Z",
+  "lastUpdated": "2026-08-09T20:57:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -74,6 +74,8 @@
     "Updated: Schedule toolbar Polaris dropdowns now use compact wrappers so controls stay inline.",
     "Updated: Schedule create/edit shift dialog now uses Shopify Polaris s-modal with native modal actions.",
     "Updated: Schedule shift hover actions are centered on a solid overlay that hides shift details behind the controls.",
+    "Updated: Schedule shift hover action icons and buttons are larger for better visibility.",
+    "Updated: Schedule shift hover action buttons now use white backgrounds with a red delete icon.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

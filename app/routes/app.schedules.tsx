@@ -704,13 +704,13 @@ function MonthlySchedule({
                         aria-label="Edit shift"
                         onClick={() => onEditShift(shift.id)}
                       >
-                        <Edit3 aria-hidden="true" size={14} />
+                        <Edit3 aria-hidden="true" size={18} />
                       </button>
                       <fetcher.Form method="post">
                         <input type="hidden" name="intent" value="deleteShift" />
                         <input type="hidden" name="shiftId" value={shift.id} />
                         <button type="submit" aria-label="Delete shift">
-                          <Trash2 aria-hidden="true" size={14} />
+                          <Trash2 aria-hidden="true" size={18} />
                         </button>
                       </fetcher.Form>
                     </div>
@@ -795,13 +795,13 @@ function ScheduleCell({
           </button>
           <div className="shift-actions">
             <button type="button" aria-label="Edit shift" onClick={() => onEditShift(shift.id)}>
-              <Edit3 aria-hidden="true" size={14} />
+              <Edit3 aria-hidden="true" size={18} />
             </button>
             <fetcher.Form method="post">
               <input type="hidden" name="intent" value="deleteShift" />
               <input type="hidden" name="shiftId" value={shift.id} />
               <button type="submit" aria-label="Delete shift">
-                <Trash2 aria-hidden="true" size={14} />
+                <Trash2 aria-hidden="true" size={18} />
               </button>
             </fetcher.Form>
           </div>
@@ -1638,15 +1638,19 @@ const SCHEDULE_STYLES = `
 
   .shift-actions button {
     align-items: center;
-    background: rgba(255, 255, 255, 0.16);
+    background: #fff;
     border: 0;
     border-radius: 4px;
-    color: #fff;
+    color: #202223;
     cursor: pointer;
     display: inline-flex;
-    height: 24px;
+    height: 28px;
     justify-content: center;
-    width: 24px;
+    width: 28px;
+  }
+
+  .shift-actions form button {
+    color: #d72c0d;
   }
 
   .totals-cell {
