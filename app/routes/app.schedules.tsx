@@ -359,17 +359,43 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         )
       : [date];
 
-    await prisma.shift.createMany({
-      data: createDates.map((dateKey) => ({
-        shopId: shop.id,
-        locationId,
-        employeeId,
-        startsAt: dateTimeFromInputs(dateKey, startTime),
-        endsAt: dateTimeFromInputs(dateKey, endTime),
-        notes: notes || null,
-      })),
+    await prisma.$transaction(async (tx) => {
+      for (const dateKey of createDates) {
+        const dayStart = dateTimeFromInputs(dateKey, "00:00");
+        const dayEnd = endOfDay(dayStart);
+        const shiftData = {
+          locationId,
+          employeeId,
+          startsAt: dateTimeFromInputs(dateKey, startTime),
+          endsAt: dateTimeFromInputs(dateKey, endTime),
+          notes: notes || null,
+        };
+        const existingShift = await tx.shift.findFirst({
+          where: {
+            shopId: shop.id,
+            employeeId,
+            locationId,
+            startsAt: { gte: dayStart, lte: dayEnd },
+          },
+          orderBy: { startsAt: "asc" },
+        });
+
+        if (existingShift) {
+          await tx.shift.update({
+            where: { id: existingShift.id },
+            data: shiftData,
+          });
+        } else {
+          await tx.shift.create({
+            data: {
+              shopId: shop.id,
+              ...shiftData,
+            },
+          });
+        }
+      }
     });
-    return { success: "Shift created." };
+    return { success: "Shift saved." };
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Could not save schedule.",

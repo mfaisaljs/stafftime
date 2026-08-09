@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T21:32:30.000Z",
+  "lastUpdated": "2026-08-09T21:37:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -684,7 +684,8 @@
         "Customize Colors preview text switches between light and dark for selected color contrast",
         "Shift hover action overlay uses the same solid color as the schedule card",
         "Copy Week opens a Polaris modal to choose a target week and optionally clear existing target shifts",
-        "Copy Week duplicates source week shifts into the selected target week while preserving weekdays, times, staff, locations, and notes"
+        "Copy Week duplicates source week shifts into the selected target week while preserving weekdays, times, staff, locations, and notes",
+        "Creating a shift updates an existing same-day shift for the same staff and location instead of creating a duplicate"
       ],
       "files": [
         "app/routes/app.schedules.tsx",

@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T21:32:30.000Z",
+  "lastUpdated": "2026-08-09T21:37:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -84,6 +84,7 @@
     "Updated: Customize Colors preview text now switches between light and dark based on selected color contrast.",
     "Updated: Schedule shift hover overlay now inherits the schedule card color instead of forcing black.",
     "Updated: Copy Week now opens a modal and copies source-week shifts into a selected target week with optional target clearing.",
+    "Updated: Creating a shift now updates an existing same-day shift for the same staff and location instead of creating a duplicate.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
