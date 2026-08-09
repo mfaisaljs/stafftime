@@ -114,6 +114,26 @@ export async function getPayrollEntries(session: Session, days = 7) {
   });
 }
 
+export async function getPayrollEntriesForRange(
+  session: Session,
+  startDate: Date,
+  endDate: Date,
+) {
+  const shop = await getAdminShop(session);
+  return prisma.timeEntry.findMany({
+    where: {
+      shopId: shop.id,
+      clockInAt: { gte: startDate, lte: endDate },
+    },
+    include: {
+      employee: true,
+      breaks: true,
+      location: true,
+    },
+    orderBy: { clockInAt: "desc" },
+  });
+}
+
 export async function getMissedPunches(session: Session) {
   const shop = await getAdminShop(session);
   return prisma.missedPunchRequest.findMany({

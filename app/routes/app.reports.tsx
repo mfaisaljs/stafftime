@@ -1,11 +1,13 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import {
   Briefcase,
   CalendarDays,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   DollarSign,
   Download,
@@ -17,15 +19,29 @@ import {
 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { getEmployees, getPayrollEntries } from "../services/admin.server";
+import {
+  getEmployees,
+  getPayrollEntriesForRange,
+} from "../services/admin.server";
 
 type ReportTab = "overview" | "daily" | "activity";
 
+const DATE_RANGE_OPTIONS = [
+  { days: 1, label: "Today" },
+  { days: 2, label: "Yesterday" },
+  { days: 7, label: "Last 7 Days" },
+  { days: 30, label: "Last 30 Days" },
+  { days: 90, label: "Last 90 Days" },
+  { days: 365, label: "Last 365 Days" },
+];
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const url = new URL(request.url);
+  const dateRange = resolveDateRange(url.searchParams);
   const [employees, entries] = await Promise.all([
     getEmployees(session),
-    getPayrollEntries(session, 30),
+    getPayrollEntriesForRange(session, dateRange.startDate, dateRange.endDate),
   ]);
   const reportEnd = new Date();
 
@@ -77,6 +93,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       initials: initials(employee.firstName, employee.lastName),
       position: employee.position ?? "Staff",
       salary: salaryLabel(employee),
+      rate: rateLabel(employee),
       totalHours: formatDurationHms(employeeTotalSeconds),
       workingHours: formatDurationHms(employeeWorkingSeconds),
       totalEarnings: formatCurrency(employeeEarnings),
@@ -84,7 +101,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     };
   });
 
-  const days = buildDateRange(30);
+  const days = buildDateRange(dateRange.startDate, dateRange.endDate);
   const dailyRows = staffRows.map((staff) => ({
     ...staff,
     days: days.map((day) => {
@@ -117,6 +134,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return {
     days,
+    dateRange: {
+      custom: dateRange.custom,
+      days: dateRange.days,
+      label: dateRange.label,
+      start: toDateKey(dateRange.startDate),
+      end: toDateKey(dateRange.endDate),
+      value: `${toDateKey(dateRange.startDate)}--${toDateKey(dateRange.endDate)}`,
+      view: toMonthKey(dateRange.startDate),
+    },
     positions: Array.from(new Set(staffRows.map((row) => row.position))).sort(),
     staffRows,
     dailyRows,
@@ -141,12 +167,30 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function ReportsPage() {
-  const { metrics, staffRows, dailyRows, days, positions, activityRows } =
+  const {
+    metrics,
+    staffRows,
+    dailyRows,
+    days,
+    dateRange,
+    positions,
+    activityRows,
+  } =
     useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [dateOpen, setDateOpen] = useState(false);
+  const [draftRange, setDraftRange] = useState(dateRange.value);
+  const [calendarMonth, setCalendarMonth] = useState(() =>
+    dateFromKey(dateRange.start),
+  );
   const tab = reportTab(searchParams.get("tab"));
   const selectedPosition = searchParams.get("position") ?? "All Positions";
   const selectedStaffId = searchParams.get("staff") ?? "";
+
+  useEffect(() => {
+    setDraftRange(dateRange.value);
+    setCalendarMonth(dateFromKey(dateRange.start));
+  }, [dateRange.start, dateRange.value]);
 
   const positionFilteredRows =
     selectedPosition === "All Positions"
@@ -166,22 +210,150 @@ export default function ReportsPage() {
     setSearchParams(next);
   };
 
+  const applyPreset = (days: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("days", String(days));
+    next.delete("start");
+    next.delete("end");
+    setSearchParams(next);
+    setDateOpen(false);
+  };
+
+  const applyCustomRange = () => {
+    const range = parsePickerRange(draftRange);
+    if (!range) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("start", range.start);
+    next.set("end", range.end);
+    next.delete("days");
+    setSearchParams(next);
+    setDateOpen(false);
+  };
+
+  const selectCalendarDay = (value: string) => {
+    const range = parseDraftRange(draftRange);
+    if (!range.start || range.end) {
+      setDraftRange(`${value}--`);
+      return;
+    }
+
+    if (value < range.start) {
+      setDraftRange(`${value}--${range.start}`);
+      return;
+    }
+
+    setDraftRange(`${range.start}--${value}`);
+  };
+
   return (
     <s-page heading="Reports">
       <div className="reports-page">
-        <button className="date-filter" type="button">
-          <CalendarDays aria-hidden="true" size={16} />
-          Last 30 Days
-        </button>
+        <div className="dropdown-wrap date-dropdown-wrap">
+          <button
+            className="date-filter"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={dateOpen}
+            onClick={() => setDateOpen((value) => !value)}
+          >
+            <CalendarDays aria-hidden="true" size={16} />
+            {dateRange.label}
+            <ChevronDown className="chevron" aria-hidden="true" size={16} />
+          </button>
+          {dateOpen && (
+            <div className="date-picker-panel">
+              <div className="date-presets" role="menu" aria-label="Date presets">
+                {DATE_RANGE_OPTIONS.map((option) => (
+                  <button
+                    key={option.days}
+                    className={
+                      !dateRange.custom && option.days === dateRange.days
+                        ? "selected"
+                        : ""
+                    }
+                    type="button"
+                    role="menuitem"
+                    onClick={() => applyPreset(option.days)}
+                  >
+                    <span>{option.label}</span>
+                    {!dateRange.custom && option.days === dateRange.days && (
+                      <span aria-hidden="true">✓</span>
+                    )}
+                  </button>
+                ))}
+                <button
+                  className={dateRange.custom ? "selected" : ""}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => setDraftRange(dateRange.value)}
+                >
+                  <span>Custom</span>
+                  {dateRange.custom && <span aria-hidden="true">✓</span>}
+                </button>
+              </div>
+              <div className="date-calendar">
+                <div className="date-input-row" aria-label="Selected date range">
+                  <DateDisplay value={draftRange.split("--")[0] || dateRange.start} />
+                  <span aria-hidden="true" className="date-arrow">
+                    →
+                  </span>
+                  <DateDisplay value={draftRange.split("--")[1] || dateRange.end} />
+                </div>
+                <div className="dual-calendar" aria-label="Choose date range">
+                  <CalendarMonth
+                    monthDate={calendarMonth}
+                    rangeValue={draftRange}
+                    onDayClick={selectCalendarDay}
+                    previousAction={() =>
+                      setCalendarMonth(addMonths(calendarMonth, -1))
+                    }
+                  />
+                  <CalendarMonth
+                    monthDate={addMonths(calendarMonth, 1)}
+                    rangeValue={draftRange}
+                    onDayClick={selectCalendarDay}
+                    nextAction={() =>
+                      setCalendarMonth(addMonths(calendarMonth, 1))
+                    }
+                  />
+                </div>
+                <div className="date-actions">
+                  <s-button type="button" onClick={() => setDateOpen(false)}>
+                    Cancel
+                  </s-button>
+                  <s-button
+                    type="button"
+                    variant="primary"
+                    onClick={applyCustomRange}
+                  >
+                    Apply
+                  </s-button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <nav className="report-tabs" aria-label="Report tabs">
-          <ReportTabLink tab="overview" activeTab={tab}>
+          <ReportTabLink
+            tab="overview"
+            activeTab={tab}
+            searchParams={searchParams}
+          >
             Overview
           </ReportTabLink>
-          <ReportTabLink tab="daily" activeTab={tab}>
+          <ReportTabLink
+            tab="daily"
+            activeTab={tab}
+            searchParams={searchParams}
+          >
             Daily Activity Report
           </ReportTabLink>
-          <ReportTabLink tab="activity" activeTab={tab}>
+          <ReportTabLink
+            tab="activity"
+            activeTab={tab}
+            searchParams={searchParams}
+          >
             Staff Activity Log
           </ReportTabLink>
         </nav>
@@ -238,6 +410,7 @@ function OverviewReport({
     name: string;
     position: string;
     salary: string;
+    rate: string;
     totalHours: string;
     workingHours: string;
     totalEarnings: string;
@@ -383,6 +556,9 @@ function DailyActivityReport({
     initials: string;
     name: string;
     position: string;
+    rate: string;
+    totalHours: string;
+    workingHours: string;
     days: string[];
   }>;
   positions: string[];
@@ -443,17 +619,11 @@ function DailyActivityReport({
               : `Showing ${selectedPosition}`}
           </span>
         </div>
-        <div className="day-dots" aria-hidden="true">
-          <span>‹</span>
-          <span className="dots">
-            {Array.from({ length: 28 }).map((_, index) => (
-              <i key={index} />
-            ))}
-          </span>
-          <span>›</span>
-        </div>
         <div className="table-scroll">
-          <table className="report-table daily-table">
+          <table
+            className="report-table daily-table"
+            style={{ minWidth: `${Math.max(930, 500 + days.length * 84)}px` }}
+          >
             <thead>
               <tr>
                 <th>Staff Name</th>
@@ -464,6 +634,9 @@ function DailyActivityReport({
                     <small>{day.label}</small>
                   </th>
                 ))}
+                <th>Total Hours</th>
+                <th>Working Hours <span className="info-dot">?</span></th>
+                <th>Rate</th>
               </tr>
             </thead>
             <tbody>
@@ -481,11 +654,14 @@ function DailyActivityReport({
                   {row.days.map((value, index) => (
                     <td key={`${row.id}-${days[index]?.key}`}>{value}</td>
                   ))}
+                  <td className="strong-cell">{row.totalHours}</td>
+                  <td className="strong-cell">{row.workingHours}</td>
+                  <td>{row.rate}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={days.length + 2} className="empty-cell">
+                  <td colSpan={days.length + 5} className="empty-cell">
                     No daily activity found for this position.
                   </td>
                 </tr>
@@ -632,17 +808,106 @@ function MetricCard({
 function ReportTabLink({
   tab,
   activeTab,
+  searchParams,
   children,
 }: {
   tab: ReportTab;
   activeTab: ReportTab;
+  searchParams: URLSearchParams;
   children: ReactNode;
 }) {
-  const href = tab === "overview" ? "/app/reports" : `/app/reports?tab=${tab}`;
+  const next = new URLSearchParams(searchParams);
+  if (tab === "overview") {
+    next.delete("tab");
+  } else {
+    next.set("tab", tab);
+  }
+  const query = next.toString();
+  const href = query ? `/app/reports?${query}` : "/app/reports";
   return (
     <Link className={`report-tab${tab === activeTab ? " active" : ""}`} to={href}>
       {children}
     </Link>
+  );
+}
+
+function DateDisplay({ value }: { value: string }) {
+  return (
+    <div className="date-display">
+      <CalendarDays aria-hidden="true" size={18} />
+      <span>{formatNumericDate(value)}</span>
+    </div>
+  );
+}
+
+function CalendarMonth({
+  monthDate,
+  rangeValue,
+  onDayClick,
+  previousAction,
+  nextAction,
+}: {
+  monthDate: Date;
+  rangeValue: string;
+  onDayClick: (value: string) => void;
+  previousAction?: () => void;
+  nextAction?: () => void;
+}) {
+  const range = parseDraftRange(rangeValue);
+  const weekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const days = monthGrid(monthDate);
+
+  return (
+    <div className="calendar-month">
+      <div className="calendar-heading">
+        {previousAction ? (
+          <button
+            className="month-nav"
+            type="button"
+            aria-label="Previous month"
+            onClick={previousAction}
+          >
+            <ChevronLeft aria-hidden="true" size={20} />
+          </button>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+        <strong>{monthLabel(monthDate)}</strong>
+        {nextAction ? (
+          <button
+            className="month-nav"
+            type="button"
+            aria-label="Next month"
+            onClick={nextAction}
+          >
+            <ChevronRight aria-hidden="true" size={20} />
+          </button>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+      </div>
+      <div className="calendar-weekdays" aria-hidden="true">
+        {weekdays.map((weekday) => (
+          <span key={weekday}>{weekday}</span>
+        ))}
+      </div>
+      <div className="calendar-days">
+        {days.map((day, index) =>
+          day ? (
+            <button
+              key={toDateKey(day)}
+              className={calendarDayClass(toDateKey(day), range)}
+              type="button"
+              onClick={() => onDayClick(toDateKey(day))}
+            >
+              {day.getDate()}
+            </button>
+          ) : (
+            <span key={`empty-${index}`} />
+          ),
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -651,7 +916,158 @@ function reportTab(tab: string | null): ReportTab {
   return "overview";
 }
 
-function buildDateRange(days: number) {
+function resolveDateRange(searchParams: URLSearchParams) {
+  const customRange = parseCustomRange(
+    searchParams.get("start"),
+    searchParams.get("end"),
+  );
+  if (customRange) {
+    return {
+      ...customRange,
+      custom: true,
+      days: 0,
+      label: `${formatNumericDate(toDateKey(customRange.startDate))} - ${formatNumericDate(
+        toDateKey(customRange.endDate),
+      )}`,
+    };
+  }
+
+  const days = normalizeRangeDays(searchParams.get("days"));
+  const today = startOfDay(new Date());
+  const endDate = endOfDay(today);
+  const startDate = new Date(today);
+
+  if (days === 2) {
+    startDate.setDate(today.getDate() - 1);
+    return {
+      custom: false,
+      days,
+      label: "Yesterday",
+      startDate,
+      endDate: endOfDay(startDate),
+    };
+  }
+
+  startDate.setDate(today.getDate() - (days - 1));
+  return {
+    custom: false,
+    days,
+    label: rangeLabel(days),
+    startDate,
+    endDate,
+  };
+}
+
+function normalizeRangeDays(value: string | null) {
+  const parsed = Number(value);
+  return DATE_RANGE_OPTIONS.some((option) => option.days === parsed)
+    ? parsed
+    : 30;
+}
+
+function rangeLabel(days: number) {
+  return (
+    DATE_RANGE_OPTIONS.find((option) => option.days === days)?.label ??
+    "Last 30 Days"
+  );
+}
+
+function parseCustomRange(start: string | null, end: string | null) {
+  if (!isDateKey(start) || !isDateKey(end)) return null;
+  const startDate = startOfDay(dateFromKey(start));
+  const endDate = endOfDay(dateFromKey(end));
+  if (startDate.getTime() > endDate.getTime()) return null;
+  return { startDate, endDate };
+}
+
+function parsePickerRange(value: string) {
+  const [start, end] = value.split("--");
+  if (!isDateKey(start) || !isDateKey(end)) return null;
+  return { start, end };
+}
+
+function parseDraftRange(value: string) {
+  const [start, end] = value.split("--");
+  return {
+    start: isDateKey(start) ? start : "",
+    end: isDateKey(end) ? end : "",
+  };
+}
+
+function addMonths(value: Date, months: number) {
+  return new Date(value.getFullYear(), value.getMonth() + months, 1);
+}
+
+function monthLabel(value: Date) {
+  return value.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function monthGrid(value: Date) {
+  const firstDay = new Date(value.getFullYear(), value.getMonth(), 1);
+  const lastDay = new Date(value.getFullYear(), value.getMonth() + 1, 0);
+  const days: Array<Date | null> = [];
+
+  for (let index = 0; index < firstDay.getDay(); index += 1) {
+    days.push(null);
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    days.push(new Date(value.getFullYear(), value.getMonth(), day));
+  }
+
+  while (days.length % 7 !== 0) {
+    days.push(null);
+  }
+
+  return days;
+}
+
+function calendarDayClass(
+  key: string,
+  range: ReturnType<typeof parseDraftRange>,
+) {
+  const classes = ["calendar-day"];
+  const todayKey = toDateKey(new Date());
+  const hasCompleteRange = Boolean(range.start && range.end);
+
+  if (key === todayKey) classes.push("today");
+  if (key === range.start) classes.push("range-start");
+  if (key === range.end) classes.push("range-end");
+  if (range.start && !range.end && key === range.start) {
+    classes.push("range-pending");
+  }
+  if (hasCompleteRange && key > range.start && key < range.end) {
+    classes.push("range-middle");
+  }
+
+  return classes.join(" ");
+}
+
+function isDateKey(value: string | null | undefined): value is string {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function dateFromKey(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function startOfDay(value: Date) {
+  const next = new Date(value);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function endOfDay(value: Date) {
+  const next = new Date(value);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function buildDateRange(startDate: Date, endDate: Date) {
   const formatter = new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
@@ -660,17 +1076,17 @@ function buildDateRange(days: number) {
     weekday: "short",
   });
   const result = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const current = startOfDay(startDate);
+  const last = startOfDay(endDate);
 
-  for (let offset = days - 1; offset >= 0; offset -= 1) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - offset);
+  while (current.getTime() <= last.getTime()) {
+    const date = new Date(current);
     result.push({
       key: toDateKey(date),
       weekday: weekdayFormatter.format(date),
       label: formatter.format(date),
     });
+    current.setDate(current.getDate() + 1);
   }
 
   return result;
@@ -693,6 +1109,20 @@ function salaryLabel(employee: {
   return `${employee.currency} ${amount.toFixed(2)}`;
 }
 
+function rateLabel(employee: {
+  currency: string;
+  hourlyRate: number;
+  payrollType: string;
+  salaryAmount: number;
+}) {
+  if (employee.payrollType === "HOURLY") {
+    return `${employee.currency}${formatCompactAmount(employee.hourlyRate)}/hr`;
+  }
+
+  const period = employee.payrollType === "WEEKLY" ? "wk" : "mo";
+  return `${employee.currency}${formatCompactAmount(employee.salaryAmount)}/${period}`;
+}
+
 function hourlyRateForEntry(entry: {
   hourlyRateSnapshot: number | null;
   employee: { hourlyRate: number };
@@ -701,7 +1131,22 @@ function hourlyRateForEntry(entry: {
 }
 
 function toDateKey(value: Date) {
-  return value.toISOString().slice(0, 10);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toMonthKey(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function formatNumericDate(value: string) {
+  if (!isDateKey(value)) return value;
+  const [year, month, day] = value.split("-");
+  return `${Number(month)}/${Number(day)}/${year}`;
 }
 
 function summarizeTimeEntrySeconds(
@@ -758,6 +1203,10 @@ function formatCurrency(amount: number) {
   return `$${amount.toFixed(2)}`;
 }
 
+function formatCompactAmount(amount: number) {
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+}
+
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString(undefined, {
     month: "short",
@@ -791,12 +1240,223 @@ const REPORT_STYLES = `
   .date-filter {
     cursor: pointer;
     font-weight: 600;
+    min-width: 170px;
   }
 
   .date-filter svg {
     color: #303030;
     display: block;
     flex-shrink: 0;
+  }
+
+  .date-dropdown-wrap {
+    width: max-content;
+  }
+
+  .date-picker-panel {
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+    display: grid;
+    grid-template-columns: 170px minmax(360px, 1fr);
+    left: 0;
+    overflow: hidden;
+    padding: 10px;
+    position: absolute;
+    top: calc(100% + 8px);
+    width: min(810px, calc(100vw - 48px));
+    z-index: 30;
+  }
+
+  .date-presets {
+    display: grid;
+    align-content: start;
+    gap: 4px;
+    padding: 2px 10px 2px 0;
+  }
+
+  .date-presets button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: #303030;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    min-height: 40px;
+    padding: 8px 10px;
+    text-align: left;
+  }
+
+  .date-presets button:hover,
+  .date-presets button.selected {
+    background: #e9e9e9;
+    font-weight: 650;
+  }
+
+  .date-calendar {
+    border-left: 1px solid #ebebeb;
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding-left: 16px;
+  }
+
+  .date-input-row {
+    align-items: center;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
+  }
+
+  .date-display {
+    align-items: center;
+    border: 1px solid #aeb4b9;
+    border-radius: 8px;
+    color: #303030;
+    display: flex;
+    gap: 10px;
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .date-display svg {
+    color: #616161;
+  }
+
+  .date-arrow {
+    color: #303030;
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .dual-calendar {
+    display: grid;
+    gap: 22px;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
+  .calendar-month {
+    display: grid;
+    gap: 12px;
+  }
+
+  .calendar-heading {
+    align-items: center;
+    color: #303030;
+    display: grid;
+    grid-template-columns: 32px 1fr 32px;
+    text-align: center;
+  }
+
+  .month-nav {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: #8a8a8a;
+    cursor: pointer;
+    display: inline-flex;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .month-nav:hover {
+    background: #f1f1f1;
+    color: #303030;
+  }
+
+  .calendar-weekdays,
+  .calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(28px, 1fr));
+  }
+
+  .calendar-weekdays span {
+    color: #616161;
+    font-size: 13px;
+    font-weight: 650;
+    padding: 4px 0;
+    text-align: center;
+  }
+
+  .calendar-days {
+    row-gap: 2px;
+  }
+
+  .calendar-day {
+    background: transparent;
+    border: 0;
+    color: #303030;
+    cursor: pointer;
+    font: inherit;
+    min-height: 40px;
+    position: relative;
+    z-index: 0;
+  }
+
+  .calendar-day:hover {
+    background: #f1f1f1;
+  }
+
+  .calendar-day.range-middle {
+    background: #f1f1f1;
+  }
+
+  .calendar-day.range-start,
+  .calendar-day.range-end {
+    background: #303030;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .calendar-day.range-start {
+    border-radius: 8px 0 0 8px;
+  }
+
+  .calendar-day.range-end {
+    border-radius: 0 8px 8px 0;
+  }
+
+  .calendar-day.range-start.range-end {
+    border-radius: 8px;
+  }
+
+  .calendar-day.range-pending {
+    border-radius: 8px;
+  }
+
+  .calendar-day.today:not(.range-start):not(.range-end) {
+    box-shadow: inset 0 0 0 1px #303030;
+    border-radius: 8px;
+  }
+
+  .date-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 760px) {
+    .date-picker-panel {
+      grid-template-columns: 1fr;
+      width: min(520px, calc(100vw - 32px));
+    }
+
+    .date-calendar {
+      border-left: 0;
+      border-top: 1px solid #ebebeb;
+      padding-left: 0;
+      padding-top: 14px;
+    }
+
+    .dual-calendar {
+      grid-template-columns: 1fr;
+    }
   }
 
   .report-tabs {
@@ -1061,8 +1721,8 @@ const REPORT_STYLES = `
   }
 
   .daily-table {
-    min-width: 2400px;
-    width: max-content;
+    table-layout: fixed;
+    width: 100%;
   }
 
   .card-header {
@@ -1080,28 +1740,6 @@ const REPORT_STYLES = `
   .card-header span {
     color: #616161;
     font-size: 13px;
-  }
-
-  .day-dots {
-    align-items: center;
-    color: #8a8a8a;
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin: -16px 0 24px;
-  }
-
-  .dots {
-    display: inline-flex;
-    gap: 6px;
-  }
-
-  .dots i {
-    background: #8a8a8a;
-    border-radius: 999px;
-    display: block;
-    height: 7px;
-    width: 7px;
   }
 
   .daily-table th:first-child,
@@ -1124,6 +1762,28 @@ const REPORT_STYLES = `
     display: block;
     font-weight: 500;
     margin-top: 4px;
+  }
+
+  .daily-table th:not(:first-child):not(:nth-child(2)),
+  .daily-table td:not(:first-child):not(:nth-child(2)) {
+    text-align: center;
+  }
+
+  .strong-cell {
+    font-weight: 700;
+  }
+
+  .info-dot {
+    align-items: center;
+    background: #ebebeb;
+    border-radius: 999px;
+    color: #616161;
+    display: inline-flex;
+    font-size: 10px;
+    height: 14px;
+    justify-content: center;
+    margin-left: 4px;
+    width: 14px;
   }
 
   .position-pill {

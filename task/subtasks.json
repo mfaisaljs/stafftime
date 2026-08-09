@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:23:00.000Z",
+  "lastUpdated": "2026-08-09T17:38:10.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -569,7 +569,8 @@
         "Daily Activity Report horizontal scroll stays inside the report list/card",
         "Position and Staff Member filters use custom dropdown styling matching the reference design",
         "Report filter dropdown chevrons use Lucide icons",
-        "Last 30 Days control shows a visible Lucide calendar icon"
+        "Last 30 Days control shows a visible Lucide calendar icon",
+        "Date range control opens a dropdown and updates report data"
       ],
       "files": [
         "app/routes/app.reports.tsx",
@@ -602,6 +603,27 @@
         "app/services/payroll-export.server.ts",
         "app/services/pos-workflow.test.ts",
         "app/services/time-tracking.test.ts"
+      ]
+    },
+    {
+      "id": "ST044",
+      "taskId": "T010",
+      "title": "Add Polaris-style report date range calendar",
+      "description": "Replace the simple date dropdown with a Shopify Polaris-inspired two-month date range panel, preset ranges, custom start/end selection, and apply/cancel controls.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST042"],
+      "acceptanceCriteria": [
+        "Reports date control opens a two-month calendar panel with preset ranges",
+        "Custom date range selection supports start and end day selection side by side",
+        "Apply updates report data using start and end date query params",
+        "Today, Yesterday, Last 7, 30, 90, and 365 day presets are available",
+        "Daily Activity keeps the selected date range when switching tabs",
+        "Daily Activity columns match the reference pattern with day columns followed by total hours, working hours, and rate"
+      ],
+      "files": [
+        "app/routes/app.reports.tsx",
+        "app/services/admin.server.ts"
       ]
     }
   ]
