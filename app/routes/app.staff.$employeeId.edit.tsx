@@ -86,6 +86,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 export default function EditStaffPage() {
   const { employee, locations } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState(employee.payrollType);
   const [paymentMethod, setPaymentMethod] = useState(employee.paymentMethod);
   const availability = new Set(
@@ -105,6 +106,10 @@ export default function EditStaffPage() {
   const showBankFields = BANK_PAYMENT_METHODS.includes(paymentMethod);
   const showProviderFields = PROVIDER_PAYMENT_METHODS.includes(paymentMethod);
   const showNoPaymentFields = NO_DETAIL_PAYMENT_METHODS.includes(paymentMethod);
+
+  const generatePin = () => {
+    setPin(String(Math.floor(1000 + Math.random() * 9000)));
+  };
 
   return (
     <s-page heading="Edit Shopify Staff">
@@ -160,7 +165,18 @@ export default function EditStaffPage() {
             </FormSection>
 
             <FormSection title="PIN Code" description="Leave blank to keep current PIN.">
-              <Field label="New PIN Code" name="pin" minLength={4} />
+              <div className="staff-inline">
+                <Field
+                  label="New PIN Code"
+                  name="pin"
+                  minLength={4}
+                  value={pin}
+                  onChange={(event) => setPin(event.currentTarget.value)}
+                />
+                <button type="button" className="secondary" onClick={generatePin}>
+                  Generate Random
+                </button>
+              </div>
             </FormSection>
 
             <FormSection title="Location" description="Location Access.">
@@ -546,6 +562,28 @@ const STAFF_EDIT_STYLES = `
     width: 100%;
   }
 
+  .staff-inline {
+    align-items: end;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(160px, 220px) auto;
+    justify-content: start;
+  }
+
+  .staff-inline .staff-label {
+    min-width: 0;
+  }
+
+  button.secondary {
+    background: #fff;
+    border: 1px solid #c9cccf;
+    border-radius: 6px;
+    cursor: pointer;
+    min-height: 32px;
+    padding: 4px 12px;
+    white-space: nowrap;
+  }
+
   .staff-radio {
     align-items: center;
     display: flex;
@@ -592,7 +630,8 @@ const STAFF_EDIT_STYLES = `
   @media (max-width: 768px) {
     .form-section,
     .staff-grid.two,
-    .staff-grid.three {
+    .staff-grid.three,
+    .staff-inline {
       grid-template-columns: 1fr;
     }
 
