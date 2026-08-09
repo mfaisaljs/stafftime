@@ -2,11 +2,11 @@
   "projectName": "StaffTime — Workforce OS for Shopify POS",
   "currentPhase": "mvp-hardening",
   "overallStatus": "in_progress",
-  "progressPercent": 90,
+  "progressPercent": 91,
   "activeTaskIds": ["T009", "T015", "T016", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010"],
-  "lastUpdated": "2026-08-09T17:20:00.000Z",
+  "lastUpdated": "2026-08-09T17:25:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -21,7 +21,8 @@
     "ST033 complete: /app/staff now shows Staff Management and Add Shopify Staff opens /app/staff/new.",
     "ST034 complete: new Shopify staff remain inactive until first successful POS login, then firstLoginAt is recorded.",
     "Updated: Staff Management table actions use Lucide icons instead of text controls.",
-    "Next priorities: employee edit/PIN change, missed punch create form, production hosting, App Store prep.",
+    "ST026 complete: Staff edit route supports profile updates and optional PIN changes with uniqueness enforcement.",
+    "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
   ],
   "milestones": [
@@ -57,11 +58,6 @@
     }
   ],
   "nextUp": [
-    {
-      "id": "ST026",
-      "title": "Employee edit and change PIN",
-      "priority": "high"
-    },
     {
       "id": "ST027",
       "title": "Missed punch request create form",

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:20:00.000Z",
+  "lastUpdated": "2026-08-09T17:25:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -279,13 +279,20 @@
     {
       "id": "ST026",
       "taskId": "T017",
-      "title": "Add employee edit and change PIN",
-      "description": "Allow managers to update employee details and reassign PINs.",
-      "status": "pending",
+      "title": "Add staff edit and change PIN",
+      "description": "Allow managers to update staff details and reassign PINs.",
+      "status": "completed",
       "priority": "high",
       "dependencies": ["ST025"],
       "acceptanceCriteria": ["Manager can edit employee and change PIN with uniqueness check"],
-      "files": ["app/routes/app.staff.tsx", "app/services/workforce.server.ts"]
+      "files": [
+        "app/routes/app.staff.$employeeId.edit.tsx",
+        "app/routes/app.staff._index.tsx",
+        "app/routes/app.staff.tsx",
+        "app/services/workforce.server.ts",
+        "app/services/admin.server.ts",
+        "app/services/pos-workflow.test.ts"
+      ]
     },
     {
       "id": "ST027",
@@ -381,8 +388,9 @@
         "Staff table actions use Lucide icons with accessible labels"
       ],
       "files": [
-        "app/routes/app.staff.tsx",
+        "app/routes/app.staff._index.tsx",
         "app/routes/app.staff.new.tsx",
+        "app/routes/app.staff.tsx",
         "README.md",
         "package.json",
         "package-lock.json"

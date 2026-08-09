@@ -11,6 +11,7 @@ import {
   findEmployeeByPin,
   getAttendanceSummary,
   startBreak,
+  updateEmployee,
 } from "./workforce.server";
 
 const TEST_DOMAIN = "pos-qa-test.myshopify.com";
@@ -159,5 +160,37 @@ describe("POS workflow", () => {
     await expect(
       clockIn({ shopDomain: TEST_DOMAIN, employeeId: employee.id }),
     ).rejects.toThrow("Employee is already clocked in");
+  });
+
+  it("updates staff profile and enforces PIN uniqueness on edit", async () => {
+    const { shop, employee } = await seedTestShop();
+    await createEmployee({
+      shopId: shop.id,
+      firstName: "Taylor",
+      lastName: "Second",
+      pin: "9876",
+    });
+
+    const updated = await updateEmployee({
+      shopId: shop.id,
+      employeeId: employee.id,
+      firstName: "Alexis",
+      lastName: "Tester",
+      position: "Supervisor",
+      role: "SUPERVISOR",
+      pin: "5555",
+    });
+
+    expect(updated.firstName).toBe("Alexis");
+    expect(updated.position).toBe("Supervisor");
+    await expect(
+      updateEmployee({
+        shopId: shop.id,
+        employeeId: employee.id,
+        firstName: "Alexis",
+        lastName: "Tester",
+        pin: "9876",
+      }),
+    ).rejects.toThrow("PIN already assigned to Taylor Second");
   });
 });

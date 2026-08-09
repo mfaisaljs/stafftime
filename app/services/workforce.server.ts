@@ -111,6 +111,78 @@ export async function createEmployee(input: {
   });
 }
 
+export async function updateEmployee(input: {
+  shopId: string;
+  employeeId: string;
+  locationId?: string | null;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  pin?: string;
+  role?: Employee["role"];
+  hourlyRate?: number;
+  position?: string;
+  department?: string;
+  locationAccess?: string;
+  currency?: string;
+  payrollType?: string;
+  salaryAmount?: number;
+  weeklyAvailability?: string;
+  paymentMethod?: string;
+  paypalEmail?: string;
+  paypalAccountName?: string;
+  bankAccountType?: string;
+  bankName?: string;
+  accountHolderName?: string;
+  accountNumber?: string;
+  routingNumber?: string;
+}) {
+  const employee = await prisma.employee.findFirst({
+    where: { id: input.employeeId, shopId: input.shopId },
+  });
+
+  if (!employee) {
+    throw new Error("Staff member not found");
+  }
+
+  const data = {
+    locationId: input.locationId,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email,
+    phone: input.phone,
+    role: input.role,
+    hourlyRate: input.hourlyRate ?? 0,
+    position: input.position,
+    department: input.department,
+    locationAccess: input.locationAccess ?? "ALL",
+    currency: input.currency ?? "USD",
+    payrollType: input.payrollType ?? "HOURLY",
+    salaryAmount: input.salaryAmount ?? 0,
+    weeklyAvailability: input.weeklyAvailability,
+    paymentMethod: input.paymentMethod ?? "PAYPAL",
+    paypalEmail: input.paypalEmail,
+    paypalAccountName: input.paypalAccountName,
+    bankAccountType: input.bankAccountType,
+    bankName: input.bankName,
+    accountHolderName: input.accountHolderName,
+    accountNumber: input.accountNumber,
+    routingNumber: input.routingNumber,
+    pinHash: undefined as string | undefined,
+  };
+
+  if (input.pin) {
+    await assertPinAvailable(input.shopId, input.pin, input.employeeId);
+    data.pinHash = await hashPin(input.pin);
+  }
+
+  return prisma.employee.update({
+    where: { id: input.employeeId },
+    data,
+  });
+}
+
 export async function seedDemoDataForShop(shopId: string) {
   const location = await ensureDefaultLocation(shopId);
 

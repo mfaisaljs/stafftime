@@ -10,37 +10,50 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
   getAdminShop,
+  getEmployeeById,
   getEmployeeLocations,
 } from "../services/admin.server";
-import { createEmployee } from "../services/workforce.server";
+import { updateEmployee } from "../services/workforce.server";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const locations = await getEmployeeLocations(session);
-  return { locations };
+  const employeeId = params.employeeId;
+  if (!employeeId) throw new Response("Staff member not found", { status: 404 });
+
+  const [employee, locations] = await Promise.all([
+    getEmployeeById(session, employeeId),
+    getEmployeeLocations(session),
+  ]);
+
+  if (!employee) throw new Response("Staff member not found", { status: 404 });
+  return { employee, locations };
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
+export const action = async ({ request, params }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const employeeId = params.employeeId;
+  if (!employeeId) throw new Response("Staff member not found", { status: 404 });
+
   const shop = await getAdminShop(session);
   const formData = await request.formData();
 
   try {
     const position = String(formData.get("position") ?? "Employee");
     const locationAccess = String(formData.get("locationAccess") ?? "ALL");
-    const weeklyAvailability = formData.getAll("weeklyAvailability").join(",");
+    const pin = String(formData.get("pin") ?? "").trim();
 
-    await createEmployee({
+    await updateEmployee({
       shopId: shop.id,
+      employeeId,
       locationId:
         locationAccess === "SPECIFIC"
-          ? String(formData.get("locationId") ?? "") || undefined
-          : undefined,
+          ? String(formData.get("locationId") ?? "") || null
+          : null,
       firstName: String(formData.get("firstName") ?? ""),
       lastName: String(formData.get("lastName") ?? ""),
       email: String(formData.get("email") ?? "") || undefined,
       phone: String(formData.get("phone") ?? "") || undefined,
-      pin: String(formData.get("pin") ?? "0000"),
+      pin: pin || undefined,
       role: roleFromPosition(position),
       position,
       locationAccess,
@@ -48,7 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       currency: String(formData.get("currency") ?? "USD"),
       payrollType: String(formData.get("payrollType") ?? "HOURLY"),
       salaryAmount: Number(formData.get("salaryAmount") ?? 0),
-      weeklyAvailability,
+      weeklyAvailability: formData.getAll("weeklyAvailability").join(","),
       paymentMethod: String(formData.get("paymentMethod") ?? "PAYPAL"),
       paypalEmail: String(formData.get("paypalEmail") ?? "") || undefined,
       paypalAccountName:
@@ -63,20 +76,23 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
   } catch (error) {
     return {
-      error:
-        error instanceof Error ? error.message : "Could not add employee",
+      error: error instanceof Error ? error.message : "Could not update staff",
     };
   }
 
-  return { success: "Staff member added" };
+  return { success: "Staff member updated" };
 };
 
-export default function StaffPage() {
-  const { locations } = useLoaderData<typeof loader>();
+export default function EditStaffPage() {
+  const { employee, locations } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
-  const [pin, setPin] = useState("");
-  const [payrollType, setPayrollType] = useState("HOURLY");
-  const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
+  const [payrollType, setPayrollType] = useState(employee.payrollType);
+  const [paymentMethod, setPaymentMethod] = useState(employee.paymentMethod);
+  const availability = new Set(
+    (employee.weeklyAvailability ?? "MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY")
+      .split(",")
+      .filter(Boolean),
+  );
   const rateFieldName = payrollType === "HOURLY" ? "hourlyRate" : "salaryAmount";
   const rateFieldLabel =
     payrollType === "HOURLY"
@@ -90,13 +106,9 @@ export default function StaffPage() {
   const showProviderFields = PROVIDER_PAYMENT_METHODS.includes(paymentMethod);
   const showNoPaymentFields = NO_DETAIL_PAYMENT_METHODS.includes(paymentMethod);
 
-  const generatePin = () => {
-    setPin(String(Math.floor(1000 + Math.random() * 9000)));
-  };
-
   return (
-    <s-page heading="Add Shopify Staff">
-      <s-section heading="Add Shopify Staff">
+    <s-page heading="Edit Shopify Staff">
+      <s-section heading={`${employee.firstName} ${employee.lastName}`}>
         {actionData?.error && (
           <s-banner heading={actionData.error} tone="critical" />
         )}
@@ -105,22 +117,39 @@ export default function StaffPage() {
         )}
         <Form method="post">
           <s-stack direction="block" gap="large">
-            <FormSection
-              title="Basic Information"
-              description="Manage contact information and permissions."
-            >
+            <FormSection title="Basic Information" description="Update contact information.">
               <div className="staff-grid two">
-                <Field label="First Name" name="firstName" required />
-                <Field label="Last Name" name="lastName" required />
-                <Field label="Email" name="email" type="email" />
-                <Field label="Phone (optional)" name="phone" type="tel" />
+                <Field
+                  label="First Name"
+                  name="firstName"
+                  defaultValue={employee.firstName}
+                  required
+                />
+                <Field
+                  label="Last Name"
+                  name="lastName"
+                  defaultValue={employee.lastName}
+                  required
+                />
+                <Field
+                  label="Email"
+                  name="email"
+                  type="email"
+                  defaultValue={employee.email ?? ""}
+                />
+                <Field
+                  label="Phone (optional)"
+                  name="phone"
+                  type="tel"
+                  defaultValue={employee.phone ?? ""}
+                />
               </div>
             </FormSection>
 
             <FormSection title="Position" description="Permissions.">
               <label className="staff-label">
                 Position
-                <select name="position" defaultValue="Owner">
+                <select name="position" defaultValue={employee.position ?? "Employee"}>
                   {POSITION_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -130,23 +159,8 @@ export default function StaffPage() {
               </label>
             </FormSection>
 
-            <FormSection title="PIN Code" description="PIN Code.">
-              <p className="staff-help">
-                Staff need a unique 4 digit PIN to access the StaffTime POS app.
-              </p>
-              <div className="staff-inline">
-                <Field
-                  label="PIN Code"
-                  name="pin"
-                  minLength={4}
-                  required
-                  value={pin}
-                  onChange={(event) => setPin(event.currentTarget.value)}
-                />
-                <button type="button" className="secondary" onClick={generatePin}>
-                  Generate Random
-                </button>
-              </div>
+            <FormSection title="PIN Code" description="Leave blank to keep current PIN.">
+              <Field label="New PIN Code" name="pin" minLength={4} />
             </FormSection>
 
             <FormSection title="Location" description="Location Access.">
@@ -155,17 +169,22 @@ export default function StaffPage() {
                   type="radio"
                   name="locationAccess"
                   value="ALL"
-                  defaultChecked
+                  defaultChecked={employee.locationAccess !== "SPECIFIC"}
                 />
                 All Locations
               </label>
               <label className="staff-radio">
-                <input type="radio" name="locationAccess" value="SPECIFIC" />
+                <input
+                  type="radio"
+                  name="locationAccess"
+                  value="SPECIFIC"
+                  defaultChecked={employee.locationAccess === "SPECIFIC"}
+                />
                 Specific Locations
               </label>
               <label className="staff-label">
                 Specific location
-                <select name="locationId" defaultValue="">
+                <select name="locationId" defaultValue={employee.locationId ?? ""}>
                   <option value="">Select location</option>
                   {locations.map((location) => (
                     <option key={location.id} value={location.id}>
@@ -176,14 +195,11 @@ export default function StaffPage() {
               </label>
             </FormSection>
 
-            <FormSection
-              title="Payroll Information"
-              description="Configure payment methods and salary details."
-            >
+            <FormSection title="Payroll Information" description="Update payroll details.">
               <div className="staff-grid three">
                 <label className="staff-label">
                   Currency
-                  <select name="currency" defaultValue="USD">
+                  <select name="currency" defaultValue={employee.currency}>
                     {CURRENCY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -211,15 +227,16 @@ export default function StaffPage() {
                   name={rateFieldName}
                   type="number"
                   step="0.01"
-                  defaultValue="0"
+                  defaultValue={
+                    payrollType === "HOURLY"
+                      ? String(employee.hourlyRate)
+                      : String(employee.salaryAmount)
+                  }
                 />
               </div>
             </FormSection>
 
-            <FormSection
-              title="Weekly Availability"
-              description="Set the days this staff member is available to work. Managers will see a warning if they schedule outside these days."
-            >
+            <FormSection title="Weekly Availability" description="Update available days.">
               <div className="day-picker">
                 {WEEKDAYS.map((day) => (
                   <label key={day.value} className="day-pill">
@@ -227,21 +244,15 @@ export default function StaffPage() {
                       type="checkbox"
                       name="weeklyAvailability"
                       value={day.value}
-                      defaultChecked={day.value !== "SUNDAY"}
+                      defaultChecked={availability.has(day.value)}
                     />
                     <span>{day.label}</span>
                   </label>
                 ))}
               </div>
-              <p className="staff-help">
-                Click a day to toggle availability. Green = available.
-              </p>
             </FormSection>
 
-            <FormSection
-              title="Payment Method"
-              description="Choose the preferred payment method for international or local payments."
-            >
+            <FormSection title="Payment Method" description="Update payout details.">
               <label className="staff-label">
                 Payment Method
                 <select
@@ -262,12 +273,12 @@ export default function StaffPage() {
                     label="PayPal Email"
                     name="paypalEmail"
                     type="email"
-                    placeholder="Enter PayPal email address"
+                    defaultValue={employee.paypalEmail ?? ""}
                   />
                   <Field
                     label="PayPal Account Name"
                     name="paypalAccountName"
-                    placeholder="Account holder name in PayPal"
+                    defaultValue={employee.paypalAccountName ?? ""}
                   />
                 </div>
               )}
@@ -277,12 +288,12 @@ export default function StaffPage() {
                     label={`${selectedPaymentLabel} Account Email`}
                     name="paypalEmail"
                     type="email"
-                    placeholder={`Enter ${selectedPaymentLabel} email address`}
+                    defaultValue={employee.paypalEmail ?? ""}
                   />
                   <Field
                     label={`${selectedPaymentLabel} Account Name`}
                     name="paypalAccountName"
-                    placeholder={`Account holder name in ${selectedPaymentLabel}`}
+                    defaultValue={employee.paypalAccountName ?? ""}
                   />
                 </div>
               )}
@@ -290,15 +301,34 @@ export default function StaffPage() {
                 <div className="staff-grid two">
                   <label className="staff-label">
                     Bank Account Type
-                    <select name="bankAccountType" defaultValue="DOMESTIC">
+                    <select
+                      name="bankAccountType"
+                      defaultValue={employee.bankAccountType ?? "DOMESTIC"}
+                    >
                       <option value="DOMESTIC">Domestic</option>
                       <option value="INTERNATIONAL">International</option>
                     </select>
                   </label>
-                  <Field label="Bank Name" name="bankName" />
-                  <Field label="Account Holder Name" name="accountHolderName" />
-                  <Field label="Account Number" name="accountNumber" />
-                  <Field label="Routing Number" name="routingNumber" />
+                  <Field
+                    label="Bank Name"
+                    name="bankName"
+                    defaultValue={employee.bankName ?? ""}
+                  />
+                  <Field
+                    label="Account Holder Name"
+                    name="accountHolderName"
+                    defaultValue={employee.accountHolderName ?? ""}
+                  />
+                  <Field
+                    label="Account Number"
+                    name="accountNumber"
+                    defaultValue={employee.accountNumber ?? ""}
+                  />
+                  <Field
+                    label="Routing Number"
+                    name="routingNumber"
+                    defaultValue={employee.routingNumber ?? ""}
+                  />
                 </div>
               )}
               {showNoPaymentFields && (
@@ -308,14 +338,18 @@ export default function StaffPage() {
               )}
             </FormSection>
 
-            <s-button type="submit" variant="primary">
-              Add Shopify Staff
-            </s-button>
+            <div className="form-actions">
+              <a className="secondary-link" href="/app/staff">
+                Back to Staff
+              </a>
+              <s-button type="submit" variant="primary">
+                Save Staff
+              </s-button>
+            </div>
           </s-stack>
         </Form>
       </s-section>
-
-      <style>{EMPLOYEE_FORM_STYLES}</style>
+      <style>{STAFF_EDIT_STYLES}</style>
     </s-page>
   );
 }
@@ -418,10 +452,7 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "SQUARE", label: "Square" },
 ];
 
-const BANK_PAYMENT_METHODS = [
-  "BANK_TRANSFER",
-  "DIRECT_DEPOSIT",
-];
+const BANK_PAYMENT_METHODS = ["BANK_TRANSFER", "DIRECT_DEPOSIT"];
 
 const PROVIDER_PAYMENT_METHODS = [
   "STRIPE",
@@ -451,19 +482,19 @@ const WEEKDAYS = [
   { value: "SUNDAY", label: "Sunday" },
 ];
 
-const EMPLOYEE_FORM_STYLES = `
+const STAFF_EDIT_STYLES = `
   .form-section {
-    display: grid;
-    grid-template-columns: minmax(160px, 280px) 1fr;
-    gap: 24px;
     align-items: start;
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(160px, 280px) 1fr;
     min-width: 0;
   }
 
   .form-section-copy {
+    color: #303030;
     display: grid;
     gap: 6px;
-    color: #303030;
   }
 
   .form-section-copy span,
@@ -507,41 +538,19 @@ const EMPLOYEE_FORM_STYLES = `
 
   .staff-label input,
   .staff-label select {
-    box-sizing: border-box;
     border: 1px solid #8a8a8a;
     border-radius: 6px;
+    box-sizing: border-box;
     min-height: 32px;
     padding: 4px 8px;
     width: 100%;
   }
 
-  .staff-inline {
-    align-items: end;
-    display: grid;
-    gap: 12px;
-    grid-template-columns: minmax(160px, 220px) auto;
-    justify-content: start;
-  }
-
-  .staff-inline .staff-label {
-    min-width: 0;
-  }
-
-  button.secondary {
-    background: #fff;
-    border: 1px solid #c9cccf;
-    border-radius: 6px;
-    cursor: pointer;
-    min-height: 32px;
-    padding: 4px 12px;
-    white-space: nowrap;
-  }
-
   .staff-radio {
     align-items: center;
     display: flex;
-    gap: 8px;
     font-size: 13px;
+    gap: 8px;
   }
 
   .day-picker {
@@ -568,12 +577,28 @@ const EMPLOYEE_FORM_STYLES = `
     color: #fff;
   }
 
+  .form-actions {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  .secondary-link {
+    color: #303030;
+    text-decoration: none;
+  }
+
   @media (max-width: 768px) {
     .form-section,
     .staff-grid.two,
-    .staff-grid.three,
-    .staff-inline {
+    .staff-grid.three {
       grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+      align-items: stretch;
+      flex-direction: column;
     }
   }
 `;
