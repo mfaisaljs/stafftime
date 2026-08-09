@@ -7,7 +7,7 @@ application_url = "https://largely-main-ringtail.ngrok-free.app"
 embedded = true
 
 [access_scopes]
-scopes = "read_locations,read_orders"
+scopes = "read_locations,read_orders,read_products"
 
 [auth]
 redirect_urls = [

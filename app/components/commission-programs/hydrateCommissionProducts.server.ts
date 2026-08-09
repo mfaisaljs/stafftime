@@ -36,6 +36,19 @@ const PRODUCTS_BY_IDS = `#graphql
   }
 `;
 
+function fallbackProducts(
+  productCommissions: Array<{ productId: string; commission: string }>,
+): SelectedProduct[] {
+  return productCommissions.map(({ productId, commission }) => ({
+    id: productId,
+    title: "Product",
+    imageUrl: "",
+    price: "$0.00",
+    variantCount: 1,
+    commission,
+  }));
+}
+
 export async function hydrateCommissionProducts(
   admin: AdminGraphqlClient,
   productCommissions: Array<{ productId: string; commission: string }>,
@@ -47,35 +60,49 @@ export async function hydrateCommissionProducts(
     productCommissions.map((item) => [item.productId, item.commission]),
   );
 
-  const response = await admin.graphql(PRODUCTS_BY_IDS, { variables: { ids } });
-  const payload = (await response.json()) as {
-    data?: { nodes?: Array<ProductNode | null> };
-  };
-
-  const nodes = payload.data?.nodes ?? [];
-  const productsById = new Map<string, ProductNode>();
-  for (const node of nodes) {
-    if (node?.id) productsById.set(node.id, node);
-  }
-
-  return productCommissions.map(({ productId, commission }) => {
-    const product = productsById.get(productId);
-    const variants = product?.variants?.nodes ?? [];
-    const firstPrice = variants[0]?.price;
-    const price =
-      firstPrice === undefined || firstPrice === null || firstPrice === ""
-        ? "$0.00"
-        : `$${Number(firstPrice).toFixed(2)}`;
-
-    return {
-      id: productId,
-      title: product?.title ?? "Unavailable product",
-      imageUrl: product?.featuredImage?.url ?? "",
-      price,
-      variantCount: variants.length || 1,
-      commission: commissionById.get(productId) ?? commission,
+  try {
+    const response = await admin.graphql(PRODUCTS_BY_IDS, { variables: { ids } });
+    const payload = (await response.json()) as {
+      data?: { nodes?: Array<ProductNode | null> };
+      errors?: Array<{ message?: string }>;
     };
-  });
+
+    if (payload.errors?.length) {
+      console.warn(
+        "[hydrateCommissionProducts]",
+        payload.errors.map((error) => error.message).join("; "),
+      );
+      return fallbackProducts(productCommissions);
+    }
+
+    const nodes = payload.data?.nodes ?? [];
+    const productsById = new Map<string, ProductNode>();
+    for (const node of nodes) {
+      if (node?.id) productsById.set(node.id, node);
+    }
+
+    return productCommissions.map(({ productId, commission }) => {
+      const product = productsById.get(productId);
+      const variants = product?.variants?.nodes ?? [];
+      const firstPrice = variants[0]?.price;
+      const price =
+        firstPrice === undefined || firstPrice === null || firstPrice === ""
+          ? "$0.00"
+          : `$${Number(firstPrice).toFixed(2)}`;
+
+      return {
+        id: productId,
+        title: product?.title ?? "Unavailable product",
+        imageUrl: product?.featuredImage?.url ?? "",
+        price,
+        variantCount: variants.length || 1,
+        commission: commissionById.get(productId) ?? commission,
+      };
+    });
+  } catch (error) {
+    console.warn("[hydrateCommissionProducts]", error);
+    return fallbackProducts(productCommissions);
+  }
 }
 
 export function parseProductCommissionsJson(
