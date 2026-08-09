@@ -308,7 +308,38 @@ export async function findEmployeeByQr(destOrDomain: string, qrCode: string) {
 }
 
 function canUseForLogin(employee: EmployeeWithFirstLogin) {
+  if (employee.status === "ARCHIVED") {
+    return false;
+  }
   return employee.status === "ACTIVE" || employee.firstLoginAt === null;
+}
+
+export async function bulkArchiveEmployees(shopId: string, employeeIds: string[]) {
+  if (employeeIds.length === 0) return { count: 0 };
+
+  const result = await prisma.employee.updateMany({
+    where: {
+      shopId,
+      id: { in: employeeIds },
+      status: { not: "ARCHIVED" },
+    },
+    data: { status: "ARCHIVED" },
+  });
+
+  return { count: result.count };
+}
+
+export async function bulkDeleteEmployees(shopId: string, employeeIds: string[]) {
+  if (employeeIds.length === 0) return { count: 0 };
+
+  const result = await prisma.employee.deleteMany({
+    where: {
+      shopId,
+      id: { in: employeeIds },
+    },
+  });
+
+  return { count: result.count };
 }
 
 export async function activateEmployeeOnFirstLogin(employeeId: string) {

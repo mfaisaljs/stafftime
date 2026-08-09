@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T15:52:00.000Z",
+  "lastUpdated": "2026-08-09T15:59:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -509,6 +509,46 @@
       ],
       "files": [
         ".cursor/rules/task-tracking.mdc"
+      ]
+    },
+    {
+      "id": "ST040",
+      "taskId": "T017",
+      "title": "Staff list search, filters, and bulk selection",
+      "description": "Wire status tabs, search field, select-all checkbox, and row selection on Staff Management table.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST033"],
+      "acceptanceCriteria": [
+        "Select all toggles all visible filtered rows",
+        "Search filters by name, email, position, location, and payment method",
+        "Active, inactive, missing payment, and archived tabs filter the table",
+        "Empty states for no matches and no archived staff"
+      ],
+      "files": [
+        "app/routes/app.staff._index.tsx"
+      ]
+    },
+    {
+      "id": "ST041",
+      "taskId": "T017",
+      "title": "Bulk archive and delete selected staff",
+      "description": "Show Archive all and Delete all when staff are selected; add ARCHIVED employee status and block archived POS login.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST040"],
+      "acceptanceCriteria": [
+        "Bulk action bar appears when one or more staff are selected",
+        "Archive all sets status to ARCHIVED and Archived tab lists them",
+        "Delete all removes selected staff with confirmation dialog",
+        "Selection clears after successful bulk action",
+        "Archived staff cannot log in at POS"
+      ],
+      "files": [
+        "app/routes/app.staff._index.tsx",
+        "app/services/workforce.server.ts",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809155840_employee_archived_status/migration.sql"
       ]
     }
   ]

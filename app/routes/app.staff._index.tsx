@@ -1,10 +1,18 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Link, useLoaderData } from "react-router";
-import { useMemo, useRef, useEffect, useState } from "react";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
+import { Form, Link, useActionData, useLoaderData } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { getEmployees } from "../services/admin.server";
+import { getAdminShop, getEmployees } from "../services/admin.server";
+import {
+  bulkArchiveEmployees,
+  bulkDeleteEmployees,
+} from "../services/workforce.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -16,10 +24,45 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = await getAdminShop(session);
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+  const employeeIds = formData
+    .getAll("employeeIds")
+    .map((value) => String(value))
+    .filter(Boolean);
+
+  if (employeeIds.length === 0) {
+    return { error: "Select at least one staff member" };
+  }
+
+  try {
+    if (intent === "archive") {
+      const { count } = await bulkArchiveEmployees(shop.id, employeeIds);
+      return { success: `Archived ${count} staff member(s)` };
+    }
+
+    if (intent === "delete") {
+      const { count } = await bulkDeleteEmployees(shop.id, employeeIds);
+      return { success: `Deleted ${count} staff member(s)` };
+    }
+
+    return { error: "Unknown action" };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not update staff selection",
+    };
+  }
+};
+
 type StatusFilter = "all" | "active" | "inactive" | "missing_payment" | "archived";
 
 export default function StaffManagementPage() {
   const { employees, staffLimit } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -36,12 +79,15 @@ export default function StaffManagementPage() {
         list = list.filter((employee) => employee.status === "INACTIVE");
         break;
       case "missing_payment":
-        list = list.filter(hasMissingPaymentInfo);
+        list = list.filter(
+          (employee) => employee.status !== "ARCHIVED" && hasMissingPaymentInfo(employee),
+        );
         break;
       case "archived":
-        list = [];
+        list = list.filter((employee) => employee.status === "ARCHIVED");
         break;
       default:
+        list = list.filter((employee) => employee.status !== "ARCHIVED");
         break;
     }
 
@@ -78,6 +124,12 @@ export default function StaffManagementPage() {
     }
   }, [someVisibleSelected, allVisibleSelected]);
 
+  useEffect(() => {
+    if (actionData?.success) {
+      setSelectedIds(new Set());
+    }
+  }, [actionData?.success]);
+
   const toggleSelectAll = () => {
     setSelectedIds((previous) => {
       const next = new Set(previous);
@@ -102,14 +154,20 @@ export default function StaffManagementPage() {
     });
   };
 
-  const totalStaff = employees.length;
+  const totalStaff = employees.filter((employee) => employee.status !== "ARCHIVED").length;
   const availableStaff = Math.max(staffLimit - totalStaff, 0);
   const usagePercent = Math.min(Math.round((totalStaff / staffLimit) * 100), 100);
   const activeCount = employees.filter((employee) => employee.status === "ACTIVE").length;
   const inactiveCount = employees.filter(
     (employee) => employee.status === "INACTIVE",
   ).length;
-  const missingPaymentCount = employees.filter(hasMissingPaymentInfo).length;
+  const archivedCount = employees.filter(
+    (employee) => employee.status === "ARCHIVED",
+  ).length;
+  const missingPaymentCount = employees.filter(
+    (employee) => employee.status !== "ARCHIVED" && hasMissingPaymentInfo(employee),
+  ).length;
+  const selectedCount = selectedIds.size;
 
   return (
     <s-page heading="Staff Management">
@@ -183,6 +241,55 @@ export default function StaffManagementPage() {
           Staff automatically active when they first clock in at POS or Web Portal.
         </s-tooltip>
 
+        {actionData?.error && (
+          <s-banner heading={actionData.error} tone="critical" />
+        )}
+        {actionData?.success && (
+          <s-banner heading={actionData.success} tone="success" />
+        )}
+
+        {selectedCount > 0 && (
+          <div className="bulk-actions">
+            <span className="bulk-count">{selectedCount} selected</span>
+            <Form method="post" className="bulk-form">
+              {Array.from(selectedIds).map((employeeId) => (
+                <input key={employeeId} type="hidden" name="employeeIds" value={employeeId} />
+              ))}
+              <input type="hidden" name="intent" value="archive" />
+              <s-button type="submit" variant="secondary">
+                <span className="button-with-icon">
+                  <Archive aria-hidden="true" size={16} />
+                  Archive all
+                </span>
+              </s-button>
+            </Form>
+            <Form
+              method="post"
+              className="bulk-form"
+              onSubmit={(event) => {
+                if (
+                  !confirm(
+                    `Delete ${selectedCount} staff member(s)? This cannot be undone.`,
+                  )
+                ) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              {Array.from(selectedIds).map((employeeId) => (
+                <input key={employeeId} type="hidden" name="employeeIds" value={employeeId} />
+              ))}
+              <input type="hidden" name="intent" value="delete" />
+              <s-button type="submit" variant="primary" tone="critical">
+                <span className="button-with-icon">
+                  <Trash2 aria-hidden="true" size={16} />
+                  Delete all
+                </span>
+              </s-button>
+            </Form>
+          </div>
+        )}
+
         <section className="staff-table-card">
           <div className="table-toolbar">
             <div className="status-tabs">
@@ -219,7 +326,7 @@ export default function StaffManagementPage() {
                 type="button"
                 onClick={() => setStatusFilter("archived")}
               >
-                Archived
+                Archived ({archivedCount})
               </button>
             </div>
             <div className="table-tools">
@@ -295,6 +402,8 @@ export default function StaffManagementPage() {
                     <td>
                       {employee.status === "ACTIVE" ? (
                         <span className="status-badge active">Active</span>
+                      ) : employee.status === "ARCHIVED" ? (
+                        <span className="status-badge archived">Archived</span>
                       ) : (
                         <span className="status-badge inactive">
                           <s-icon type="info" interestFor="inactive-staff-tooltip" />
@@ -612,6 +721,33 @@ const STAFF_MANAGEMENT_STYLES = `
     justify-content: flex-end;
   }
 
+  .bulk-actions {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .bulk-count {
+    color: #303030;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .bulk-form {
+    display: inline-flex;
+  }
+
+  .button-with-icon {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
+  }
+
   .staff-table-card {
     overflow: hidden;
   }
@@ -737,6 +873,11 @@ const STAFF_MANAGEMENT_STYLES = `
     color: #8a5700;
     display: inline-flex;
     gap: 4px;
+  }
+
+  .status-badge.archived {
+    background: #ececec;
+    color: #616161;
   }
 
   .payment-badge {

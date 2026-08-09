@@ -2,11 +2,11 @@
   "projectName": "StaffTime — Workforce OS for Shopify POS",
   "currentPhase": "mvp-hardening",
   "overallStatus": "in_progress",
-  "progressPercent": 93,
+  "progressPercent": 94,
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T15:52:00.000Z",
+  "lastUpdated": "2026-08-09T15:59:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -30,6 +30,8 @@
     "ST037 complete: staff detail page at /app/staff/:id with Overview and Payroll tabs (Commission tab empty).",
     "ST038 complete: Lucide star on Current Plan card; staff names link to detail page.",
     "ST039 complete: task-tracking Cursor rule for keeping task JSON in sync after updates.",
+    "ST040 complete: staff list search, status tabs, select-all, and row selection on Staff Management.",
+    "ST041 complete: bulk Archive all and Delete all for selected staff; ARCHIVED status added to schema.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

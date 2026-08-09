@@ -18,6 +18,7 @@ enum EmployeeRole {
 enum EmployeeStatus {
   ACTIVE
   INACTIVE
+  ARCHIVED
 }
 
 enum TimeEntryStatus {
