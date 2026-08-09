@@ -79,6 +79,44 @@ declare namespace JSX {
       },
       HTMLElement
     >;
+    "s-checkbox": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        label?: string;
+        name?: string;
+        value?: string;
+        checked?: boolean;
+        defaultChecked?: boolean;
+        indeterminate?: boolean;
+        disabled?: boolean;
+        onChange?: (event: { currentTarget: unknown }) => void;
+        onInput?: (event: { currentTarget: unknown }) => void;
+      },
+      HTMLElement
+    >;
+    "s-select": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        label?: string;
+        labelAccessibilityVisibility?: "visible" | "exclusive";
+        name?: string;
+        value?: string;
+        defaultValue?: string;
+        required?: boolean;
+        disabled?: boolean;
+        placeholder?: string;
+        error?: string;
+        onChange?: (event: { currentTarget: unknown }) => void;
+        onInput?: (event: { currentTarget: unknown }) => void;
+      },
+      HTMLElement
+    >;
+    "s-option": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        value?: string;
+        selected?: boolean;
+        defaultSelected?: boolean;
+      },
+      HTMLElement
+    >;
     "s-icon": React.DetailedHTMLProps<
       React.HTMLAttributes<HTMLElement> & {
         type?: string;

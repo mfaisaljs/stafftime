@@ -1,0 +1,16 @@
+---
+description: Prefer Shopify Polaris components for embedded app UI
+alwaysApply: true
+---
+
+# Polaris Components First
+
+For embedded Shopify admin UI, use Shopify Polaris/App Home web components wherever practical before custom HTML/CSS.
+
+## Required Pattern
+
+- Prefer `s-button`, `s-modal`, `s-checkbox`, `s-select`, `s-text`, `s-banner`, `s-tooltip`, and related Polaris components for standard UI controls.
+- Use custom React/HTML only when Polaris does not provide the needed component, layout, or interaction.
+- If custom UI is necessary, keep styling consistent with nearby Polaris components and document the reason in code only when it is not obvious.
+- For destructive confirmations, prefer `s-modal` with `primary-action` and `secondary-actions` slots.
+- For forms, prefer Polaris field components where they fit the behavior. Use native inputs only for unsupported cases or when existing app behavior depends on native form semantics.

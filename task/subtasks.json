@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:38:01.000Z",
+  "lastUpdated": "2026-08-09T18:52:49.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -664,10 +664,35 @@
         "Clear All Shifts opens a warning dialog with staff selection before deleting shifts",
         "Clear All Shifts confirmation uses Shopify Polaris s-modal actions",
         "Clear All Shifts staff selectors use native checkbox styling",
-        "Schedule dialogs use smaller consistent widths with larger headers"
+        "Schedule dialogs use smaller consistent widths with larger headers",
+        "App navigation label is Schedule instead of Schedules",
+        "Clear All Shifts staff selectors use Shopify Polaris s-checkbox components",
+        "Standard Schedule toolbar and dialog action buttons use Shopify Polaris s-button components",
+        "Standard Schedule toolbar and shift form dropdowns use Shopify Polaris s-select components",
+        "Schedule date range button uses native Polaris button styling without custom outer textbox chrome",
+        "Schedule toolbar Polaris dropdowns use compact wrappers so controls stay inline"
       ],
       "files": [
-        "app/routes/app.schedules.tsx"
+        "app/routes/app.schedules.tsx",
+        "app/routes/app.tsx",
+        "app/globals.d.ts"
+      ]
+    },
+    {
+      "id": "ST046",
+      "taskId": "T015",
+      "title": "Add Polaris-first UI rule",
+      "description": "Create an always-on Cursor rule that prefers Shopify Polaris/App Home components for embedded admin UI wherever practical.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST039"],
+      "acceptanceCriteria": [
+        "Rule exists under .cursor/rules",
+        "Rule instructs agents to prefer Polaris components for standard controls",
+        "Rule allows custom UI only when Polaris does not fit the behavior"
+      ],
+      "files": [
+        ".cursor/rules/polaris-components.mdc"
       ]
     }
   ]

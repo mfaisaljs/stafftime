@@ -361,22 +361,34 @@ export default function SchedulesPage() {
 
         <div className="schedule-toolbar">
           <div className="toolbar-left">
-            <button className="toolbar-button" type="button">
-              <Palette aria-hidden="true" size={15} />
-              Customize Colors
-            </button>
-            <select className="toolbar-select" aria-label="Color mode">
-              <option>Color by Location</option>
-              <option>Color by Staff</option>
-            </select>
-            <button className="toolbar-button" type="button">
-              <Copy aria-hidden="true" size={15} />
-              Copy Week
-            </button>
-            <button className="toolbar-button" type="button" onClick={() => window.print()}>
-              <Printer aria-hidden="true" size={15} />
-              Print Schedule
-            </button>
+            <s-button variant="secondary">
+              <span className="toolbar-button-content">
+                <Palette aria-hidden="true" size={15} />
+                Customize Colors
+              </span>
+            </s-button>
+            <div className="color-select">
+              <s-select
+                label="Color mode"
+                labelAccessibilityVisibility="exclusive"
+                value="location"
+              >
+                <s-option value="location">Color by Location</s-option>
+                <s-option value="staff">Color by Staff</s-option>
+              </s-select>
+            </div>
+            <s-button variant="secondary">
+              <span className="toolbar-button-content">
+                <Copy aria-hidden="true" size={15} />
+                Copy Week
+              </span>
+            </s-button>
+            <s-button variant="secondary" onClick={() => window.print()}>
+              <span className="toolbar-button-content">
+                <Printer aria-hidden="true" size={15} />
+                Print Schedule
+              </span>
+            </s-button>
             <s-button
               variant="secondary"
               tone="critical"
@@ -392,47 +404,49 @@ export default function SchedulesPage() {
           <div className="toolbar-right">
             {period === "yearly" ? (
               <>
-                <select
-                  className="toolbar-select period-select"
-                  aria-label="Schedule month"
-                  value={selectedMonth}
-                  onChange={(event) =>
-                    changeMonthYear(Number(event.currentTarget.value), selectedYear)
-                  }
-                >
-                  {MONTH_OPTIONS.map((month, index) => (
-                    <option key={month} value={index}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="toolbar-select year-select"
-                  aria-label="Schedule year"
-                  value={selectedYear}
-                  onChange={(event) =>
-                    changeMonthYear(selectedMonth, Number(event.currentTarget.value))
-                  }
-                >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
+                <div className="period-select">
+                  <s-select
+                    label="Schedule month"
+                    labelAccessibilityVisibility="exclusive"
+                    value={String(selectedMonth)}
+                    onChange={(event) =>
+                      changeMonthYear(Number(selectValue(event)), selectedYear)
+                    }
+                  >
+                    {MONTH_OPTIONS.map((month, index) => (
+                      <s-option key={month} value={String(index)}>
+                        {month}
+                      </s-option>
+                    ))}
+                  </s-select>
+                </div>
+                <div className="year-select">
+                  <s-select
+                    label="Schedule year"
+                    labelAccessibilityVisibility="exclusive"
+                    value={String(selectedYear)}
+                    onChange={(event) =>
+                      changeMonthYear(selectedMonth, Number(selectValue(event)))
+                    }
+                  >
+                    {yearOptions.map((year) => (
+                      <s-option key={year} value={String(year)}>
+                        {year}
+                      </s-option>
+                    ))}
+                  </s-select>
+                </div>
               </>
             ) : (
               <div className="schedule-date-wrap">
-                <button
-                  className="week-range"
-                  type="button"
+                <s-button
                   aria-haspopup="dialog"
                   aria-expanded={datePickerOpen}
                   onClick={() => setDatePickerOpen((value) => !value)}
                 >
                   <CalendarDays aria-hidden="true" size={16} />
                   {formatDateRange(weekStart, weekEnd)}
-                </button>
+                </s-button>
                 {datePickerOpen && (
                   <div className="schedule-date-popover">
                     <s-date-picker
@@ -446,20 +460,22 @@ export default function SchedulesPage() {
                 )}
               </div>
             )}
-            <select
-              className="toolbar-select"
-              aria-label="Schedule view"
-              value={period}
-              onChange={(event) =>
-                changePeriod(event.currentTarget.value as SchedulePeriod)
-              }
-            >
-              {SCHEDULE_PERIODS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <div className="view-select">
+              <s-select
+                label="Schedule view"
+                labelAccessibilityVisibility="exclusive"
+                value={period}
+                onChange={(event) =>
+                  changePeriod(selectValue(event) as SchedulePeriod)
+                }
+              >
+                {SCHEDULE_PERIODS.map((option) => (
+                  <s-option key={option.value} value={option.value}>
+                    {option.label}
+                  </s-option>
+                ))}
+              </s-select>
+            </div>
           </div>
         </div>
 
@@ -834,30 +850,25 @@ function ShiftDialog({
         <fetcher.Form method="post" className="dialog-body">
           <input type="hidden" name="intent" value={isEdit ? "updateShift" : "createShift"} />
           {isEdit && <input type="hidden" name="shiftId" value={selectedShift?.id} />}
-          <label>
-            Staff
-            <select name="employeeId" defaultValue={employeeId} required>
-              {employees.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Location
-            <select
-              name="locationId"
-              defaultValue={selectedShift?.locationId ?? firstLocationId}
-              required
-            >
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <s-select label="Staff" name="employeeId" value={employeeId} required>
+            {employees.map((employee) => (
+              <s-option key={employee.id} value={employee.id}>
+                {employee.name}
+              </s-option>
+            ))}
+          </s-select>
+          <s-select
+            label="Location"
+            name="locationId"
+            value={selectedShift?.locationId ?? firstLocationId}
+            required
+          >
+            {locations.map((location) => (
+              <s-option key={location.id} value={location.id}>
+                {location.name}
+              </s-option>
+            ))}
+          </s-select>
           <label>
             Date
             <input name="date" type="date" defaultValue={dateKey} required />
@@ -898,12 +909,12 @@ function ShiftDialog({
             </label>
           )}
           <div className="dialog-actions">
-            <button className="secondary-action" type="button" onClick={onClose}>
+            <s-button variant="secondary" type="button" onClick={onClose}>
               Cancel
-            </button>
-            <button className="primary-action" type="submit">
+            </s-button>
+            <s-button variant="primary" type="submit">
               {isEdit ? "Save Shift" : "Create Shift"}
-            </button>
+            </s-button>
           </div>
         </fetcher.Form>
       </div>
@@ -949,12 +960,12 @@ function AvailabilityDialog({
             ))}
           </div>
           <div className="dialog-actions">
-            <button className="secondary-action" type="button" onClick={onClose}>
+            <s-button variant="secondary" type="button" onClick={onClose}>
               Cancel
-            </button>
-            <button className="primary-action" type="submit">
+            </s-button>
+            <s-button variant="primary" type="submit">
               Save
-            </button>
+            </s-button>
           </div>
         </fetcher.Form>
       </div>
@@ -998,30 +1009,26 @@ function ClearShiftsDialog({
             shifts for the selected staff members. This action cannot be undone.
           </span>
         </div>
-        <label className="clear-check-row">
-          <input
-            type="checkbox"
+          <s-checkbox
+            label="Select All Staff"
             checked={allSelected}
+            indeterminate={selectedIds.size > 0 && !allSelected}
             onChange={(event) =>
               setSelectedIds(
-                event.currentTarget.checked
+                checkboxChecked(event)
                   ? new Set(employees.map((employee) => employee.id))
                   : new Set(),
               )
             }
-          />
-          Select All Staff
-        </label>
+          ></s-checkbox>
         <div className="clear-staff-list">
           {employees.map((employee) => (
-            <label className="clear-check-row" key={employee.id}>
-              <input
-                type="checkbox"
+              <s-checkbox
+                key={employee.id}
+                label={employee.name}
                 checked={selectedIds.has(employee.id)}
                 onChange={() => toggleStaff(employee.id)}
-              />
-              {employee.name}
-            </label>
+              ></s-checkbox>
           ))}
         </div>
         <p className="selected-count">{selectedIds.size} staff selected</p>
@@ -1202,6 +1209,14 @@ function pickerValue(event: { currentTarget: unknown }) {
   return ((event.currentTarget as unknown as { value: string }).value ?? "");
 }
 
+function checkboxChecked(event: { currentTarget: unknown }) {
+  return Boolean((event.currentTarget as unknown as { checked: boolean }).checked);
+}
+
+function selectValue(event: { currentTarget: unknown }) {
+  return String((event.currentTarget as unknown as { value: string }).value ?? "");
+}
+
 function dateFromKey(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
@@ -1286,48 +1301,28 @@ const SCHEDULE_STYLES = `
     gap: 8px;
   }
 
-  .toolbar-button,
-  .toolbar-select,
-  .week-range {
-    align-items: center;
-    background: #fff;
-    border: 1px solid #d4d4d4;
-    border-radius: 8px;
-    color: #303030;
-    display: inline-flex;
-    gap: 6px;
-    min-height: 32px;
-    padding: 0 12px;
-  }
-
   .toolbar-button-content {
     align-items: center;
     display: inline-flex;
     gap: 6px;
   }
 
-  .toolbar-button {
-    cursor: pointer;
-    font-weight: 600;
-  }
-
-  .toolbar-button.danger {
-    color: #8e1f0b;
-  }
-
   .period-select {
     min-width: 132px;
+    width: 132px;
   }
 
   .year-select {
     min-width: 112px;
+    width: 112px;
   }
 
-  .week-range {
-    cursor: pointer;
-    justify-content: flex-start;
-    min-width: 300px;
-    position: relative;
+  .color-select {
+    width: 170px;
+  }
+
+  .view-select {
+    width: 112px;
   }
 
   .schedule-date-wrap {
@@ -1696,23 +1691,9 @@ const SCHEDULE_STYLES = `
     margin-top: 2px;
   }
 
-  .clear-check-row {
-    align-items: center;
-    color: #303030;
-    display: flex;
-    gap: 12px;
-    min-height: 40px;
-  }
-
-  .clear-check-row input {
-    accent-color: #303030;
-    height: 20px;
-    width: 20px;
-  }
-
   .clear-staff-list {
     display: grid;
-    gap: 4px;
+    gap: 12px;
   }
 
   .selected-count {
@@ -1728,7 +1709,6 @@ const SCHEDULE_STYLES = `
   }
 
   .dialog-body input,
-  .dialog-body select,
   .dialog-body textarea {
     border: 1px solid #aeb4b9;
     border-radius: 9px;
@@ -1768,39 +1748,6 @@ const SCHEDULE_STYLES = `
     justify-content: flex-end;
     margin: 12px -24px -24px;
     padding: 18px 24px;
-  }
-
-  .primary-action,
-  .secondary-action {
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 700;
-    min-height: 40px;
-    padding: 0 18px;
-  }
-
-  .primary-action {
-    background: #303030;
-    border: 1px solid #303030;
-    color: #fff;
-  }
-
-  .primary-action:disabled {
-    background: #d4d4d4;
-    border-color: #d4d4d4;
-    color: #fff;
-    cursor: not-allowed;
-  }
-
-  .danger-action:not(:disabled) {
-    background: #8e1f0b;
-    border-color: #8e1f0b;
-  }
-
-  .secondary-action {
-    background: #fff;
-    border: 1px solid #d4d4d4;
-    color: #303030;
   }
 
   .availability-days {
