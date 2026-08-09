@@ -47,6 +47,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         lastName: employee.lastName,
       },
       status,
+      serverTime: Date.now(),
     }),
   );
 };

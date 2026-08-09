@@ -1,22 +1,23 @@
 import { render } from "preact";
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 type EmployeeStatus = {
   employeeId: string;
   employeeName: string;
   status: "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
   clockInAt?: string;
+  clockInAtMs?: number;
   breakStartAt?: string;
   shiftStart?: string;
   shiftEnd?: string;
+  serverTime?: number;
 };
 
 type VerifyResponse = {
   employee: { id: string; firstName: string; lastName: string };
   status: EmployeeStatus;
+  serverTime?: number;
 };
-
-const APP_URL = "https://largely-main-ringtail.ngrok-free.app";
 
 export default async function extension() {
   render(<WorkforceModal />, document.body);
@@ -30,25 +31,40 @@ function WorkforceModal() {
   const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState<VerifyResponse | null>(null);
   const [now, setNow] = useState(Date.now());
+  const clockOffsetRef = useRef(0);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  const syncClockOffset = useCallback((status: EmployeeStatus, serverTime?: number) => {
+    if (typeof serverTime !== "number") return;
+    clockOffsetRef.current = serverTime - Date.now();
+    if (typeof status.clockInAtMs === "number") {
+      // Anchor timer to server time to avoid device clock drift.
+      return;
+    }
+    if (status.clockInAt) {
+      status.clockInAtMs = new Date(status.clockInAt).getTime();
+    }
+  }, []);
+
   const elapsedLabel = useMemo(() => {
-    if (!verified?.status.clockInAt) return "Not clocked in";
-    const start = new Date(verified.status.clockInAt).getTime();
-    const seconds = Math.max(0, Math.floor((now - start) / 1000));
+    const clockInAtMs = verified?.status.clockInAtMs;
+    if (!clockInAtMs) return "Not clocked in";
+
+    const adjustedNow = now + clockOffsetRef.current;
+    const seconds = Math.max(0, Math.floor((adjustedNow - clockInAtMs) / 1000));
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     return `${h}h ${m}m ${s}s`;
-  }, [now, verified?.status.clockInAt]);
+  }, [now, verified?.status.clockInAtMs]);
 
   const apiFetch = useCallback(async (path: string, body?: Record<string, unknown>) => {
     const token = await shopify.session.getSessionToken();
-    const response = await fetch(appUrl(path), {
+    const response = await fetch(path, {
       method: body ? "POST" : "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -67,9 +83,9 @@ function WorkforceModal() {
     setLoading(true);
     setError(null);
     try {
-      const payload =
-        mode === "pin" ? { pin } : { qrCode };
+      const payload = mode === "pin" ? { pin } : { qrCode };
       const data = (await apiFetch("/api/pos/verify", payload)) as VerifyResponse;
+      syncClockOffset(data.status, data.serverTime);
       setVerified(data);
       setPin("");
       setQrCode("");
@@ -87,8 +103,9 @@ function WorkforceModal() {
     try {
       const data = (await apiFetch(`/api/pos/${action}`, {
         employeeId: verified.employee.id,
-      })) as { status: EmployeeStatus };
-      setVerified({ ...verified, status: data.status });
+      })) as { status: EmployeeStatus; serverTime?: number };
+      syncClockOffset(data.status, data.serverTime);
+      setVerified({ ...verified, status: data.status, serverTime: data.serverTime });
     } catch (err) {
       setError(messageFromError(err, "Action failed"));
     } finally {
@@ -238,10 +255,6 @@ function formatTime(iso: string) {
   });
 }
 
-function appUrl(path: string): string {
-  return new URL(path, APP_URL).toString();
-}
-
 function errorMessageFromResponse(data: unknown): string | null {
   if (!data || typeof data !== "object" || !("error" in data)) return null;
 
@@ -252,4 +265,3 @@ function errorMessageFromResponse(data: unknown): string | null {
 function messageFromError(error: unknown, fallback: string): string {
   return error instanceof Error && error.message.trim() ? error.message : fallback;
 }
-

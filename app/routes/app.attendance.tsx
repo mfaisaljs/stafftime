@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
+import { useEffect } from "react";
+import { useLoaderData, useRevalidator } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAttendanceSummary } from "../services/workforce.server";
@@ -11,6 +12,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function AttendancePage() {
   const summary = useLoaderData<typeof loader>();
+  const revalidator = useRevalidator();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (revalidator.state === "idle") {
+        revalidator.revalidate();
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [revalidator]);
 
   return (
     <s-page heading="Attendance Dashboard">

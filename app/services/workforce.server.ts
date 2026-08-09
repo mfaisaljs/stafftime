@@ -13,7 +13,7 @@ import { shopFromDest } from "../utils/http.server";
 export type WorkforceStatus = "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
 
 export async function ensureShop(destOrDomain: string) {
-  const domain = shopFromDest(destOrDomain);
+  const domain = shopFromDest(destOrDomain).toLowerCase();
   return prisma.shop.upsert({
     where: { domain },
     update: {},
@@ -212,9 +212,11 @@ export async function buildEmployeeStatus(employeeId: string) {
     employeeName: "",
     status,
     clockInAt: entry?.clockInAt.toISOString(),
+    clockInAtMs: entry?.clockInAt.getTime(),
     breakStartAt,
     shiftStart: shift?.startsAt.toISOString(),
     shiftEnd: shift?.endsAt.toISOString(),
+    serverTime: Date.now(),
   };
 }
 
@@ -479,7 +481,6 @@ export async function getAttendanceSummary(shopDomain: string) {
       where: {
         shopId: shop.id,
         status: "OPEN",
-        clockInAt: { gte: start },
       },
       include: {
         employee: true,

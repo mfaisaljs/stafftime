@@ -40,7 +40,7 @@ export async function handlePosClockAction(request: Request, action: PosAction) 
         status = await endBreak({ shopDomain: sessionToken.dest, employeeId });
         break;
     }
-    return cors(jsonResponse({ status }));
+    return cors(jsonResponse({ status, serverTime: Date.now() }));
   } catch (error) {
     return cors(
       errorResponse(error instanceof Error ? error.message : "Action failed"),

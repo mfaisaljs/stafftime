@@ -1,13 +1,8 @@
-import type {
-  ActionFunctionArgs,
-  HeadersFunction,
-  LoaderFunctionArgs,
-} from "react-router";
-import { useLoaderData } from "react-router";
+import type { HeadersFunction, LoaderFunctionArgs } from "react-router";import { useEffect } from "react";
+import { useLoaderData, useRevalidator } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getDashboardData } from "../services/admin.server";
-import { formatMinutes } from "../services/time-tracking.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -16,6 +11,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function DashboardPage() {
   const { summary, laborCostToday, shopName } = useLoaderData<typeof loader>();
+  const revalidator = useRevalidator();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (revalidator.state === "idle") {
+        revalidator.revalidate();
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [revalidator]);
 
   return (
     <s-page heading="Workforce OS Dashboard">
