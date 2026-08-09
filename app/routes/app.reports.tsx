@@ -246,7 +246,7 @@ export default function ReportsPage() {
   };
 
   return (
-    <s-page heading="Reports">
+    <s-page heading="Reports" inlineSize="large">
       <div className="reports-page">
         <div className="dropdown-wrap date-dropdown-wrap">
           <button

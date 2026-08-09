@@ -24,7 +24,7 @@ export default function DashboardPage() {
   }, [revalidator]);
 
   return (
-    <s-page heading="Workforce OS Dashboard">
+    <s-page heading="Workforce OS Dashboard" inlineSize="large">
       <s-section heading={`${shopName} — Today`}>
         <s-stack direction="inline" gap="base">
           <s-badge tone="success">{summary.workingCount} Working</s-badge>

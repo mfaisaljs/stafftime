@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T22:25:00.000Z",
+  "lastUpdated": "2026-08-09T22:29:00.000Z",
   "notes": [
+    "Fixed: Commission Programs index restores POS banner, create header, and empty state; only the programs list uses the table layout.",
+    "Updated: All app routes now use s-page inlineSize large for full page width.",
     "ST048 complete: Commission Programs index shows Status/Name/Type/Products/Staff table with active toggles.",
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",

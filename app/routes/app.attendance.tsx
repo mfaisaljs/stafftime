@@ -25,7 +25,7 @@ export default function AttendancePage() {
   }, [revalidator]);
 
   return (
-    <s-page heading="Attendance Dashboard">
+    <s-page heading="Attendance Dashboard" inlineSize="large">
       <s-section heading="Status Overview">
         <s-stack direction="inline" gap="base">
           <s-badge tone="success">{summary.workingCount} Working</s-badge>

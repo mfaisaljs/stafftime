@@ -81,7 +81,7 @@ export default function PayrollPage() {
   };
 
   return (
-    <s-page heading="Payroll Export">
+    <s-page heading="Payroll Export" inlineSize="large">
       <s-section heading="Recent Timesheets">
         <s-button
           type="button"

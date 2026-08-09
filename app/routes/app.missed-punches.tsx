@@ -36,7 +36,7 @@ export default function MissedPunchesPage() {
   const requests = useLoaderData<typeof loader>();
 
   return (
-    <s-page heading="Missed Punch Approvals">
+    <s-page heading="Missed Punch Approvals" inlineSize="large">
       <s-section heading="Pending and recent requests">
         <s-stack direction="block" gap="base">
           {requests.length === 0 ? (

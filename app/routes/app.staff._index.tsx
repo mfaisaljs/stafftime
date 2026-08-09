@@ -140,7 +140,7 @@ export default function StaffManagementPage() {
   const selectedCount = selectedIds.size;
 
   return (
-    <s-page heading="Staff Management">
+    <s-page heading="Staff Management" inlineSize="large">
       <s-stack direction="block" gap="large">
         <section className="plan-card">
           <div className="plan-icon">

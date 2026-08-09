@@ -730,7 +730,7 @@
         "Commission Programs Create Program buttons navigate to /app/commission-programs/new using React Router links around Polaris buttons",
         "Commission Programs parent route renders an Outlet so the /new child route displays correctly",
         "Create Commission Program text inputs use compact heights matching the reference",
-        "Commission Programs pages use default app page width instead of the Schedule large width",
+        "All app routes use s-page inlineSize large for full page width",
         "Commission Programs and Create Commission Program custom page headings are hidden",
         "Commission Program routes set Shopify page heading metadata instead of falling back to the app name",
         "Limited Time Commission reveals a date range selector button and keeps the preset calendar popover closed until clicked",

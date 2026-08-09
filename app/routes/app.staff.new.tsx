@@ -107,7 +107,7 @@ export default function StaffPage() {
   };
 
   return (
-    <s-page heading="Add Shopify Staff">
+    <s-page heading="Add Shopify Staff" inlineSize="large">
       {actionData?.error && (
         <s-banner heading={actionData.error} tone="critical" />
       )}

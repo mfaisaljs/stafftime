@@ -112,7 +112,7 @@ export default function EditStaffPage() {
   };
 
   return (
-    <s-page heading="Edit Shopify Staff">
+    <s-page heading="Edit Shopify Staff" inlineSize="large">
       <s-section heading={`${employee.firstName} ${employee.lastName}`}>
         {actionData?.error && (
           <s-banner heading={actionData.error} tone="critical" />

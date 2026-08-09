@@ -133,7 +133,7 @@ export default function StaffDetailPage() {
   const fullName = `${employee.firstName} ${employee.lastName}`;
 
   return (
-    <s-page>
+    <s-page inlineSize="large">
       <s-tooltip id="inactive-staff-detail-tooltip">
         Staff automatically active when they first clock in at POS or Web Portal.
       </s-tooltip>

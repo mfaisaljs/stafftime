@@ -299,7 +299,7 @@ export default function CreateCommissionProgram() {
   };
 
   return (
-    <s-page heading="Create Commission Program">
+    <s-page heading="Create Commission Program" inlineSize="large">
       {actionData &&
         "error" in actionData &&
         actionData.error &&
