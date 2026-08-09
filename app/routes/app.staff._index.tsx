@@ -1,6 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
-import { Archive, Pencil, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
@@ -30,7 +30,9 @@ export default function StaffManagementPage() {
     <s-page heading="Staff Management">
       <s-stack direction="block" gap="large">
         <section className="plan-card">
-          <div className="plan-icon">*</div>
+          <div className="plan-icon">
+            <Star aria-hidden="true" size={28} strokeWidth={1.75} />
+          </div>
           <div className="plan-copy">
             <div className="plan-title">
               <strong>Current Plan: Free</strong>
@@ -302,10 +304,13 @@ const STAFF_MANAGEMENT_STYLES = `
     border-radius: 12px;
     color: #707070;
     display: flex;
-    font-size: 28px;
     height: 52px;
     justify-content: center;
     width: 52px;
+  }
+
+  .plan-icon svg {
+    display: block;
   }
 
   .plan-copy,
