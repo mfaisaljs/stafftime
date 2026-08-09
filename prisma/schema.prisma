@@ -79,15 +79,16 @@ model Shop {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  locations      StoreLocation[]
-  employees      Employee[]
-  shifts         Shift[]
-  timeEntries    TimeEntry[]
-  missedPunches  MissedPunchRequest[]
-  auditLogs      AuditLog[]
-  devices        Device[]
-  payrollExports PayrollExport[]
-  settings       Setting?
+  locations           StoreLocation[]
+  employees           Employee[]
+  shifts              Shift[]
+  timeEntries         TimeEntry[]
+  missedPunches       MissedPunchRequest[]
+  auditLogs           AuditLog[]
+  devices             Device[]
+  payrollExports      PayrollExport[]
+  settings            Setting?
+  commissionPrograms  CommissionProgram[]
 }
 
 model StoreLocation {
@@ -170,6 +171,27 @@ model Shift {
 
   @@index([shopId, startsAt])
   @@index([employeeId, startsAt])
+}
+
+model CommissionProgram {
+  id                   String   @id @default(cuid())
+  shopId               String
+  name                 String
+  commissionType       String   @default("fixed")
+  afterDiscount        Boolean  @default(true)
+  limitedTime          Boolean  @default(false)
+  startDate            String?
+  endDate              String?
+  productScope         String   @default("all")
+  allProductsCommission Float?
+  productCommissions   String   @default("[]")
+  employeeIds          String   @default("[]")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
 }
 
 model TimeEntry {

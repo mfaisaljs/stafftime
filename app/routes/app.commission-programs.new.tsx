@@ -1,5 +1,15 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Form, useLoaderData, useRouteError } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
+import {
+  Form,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useRouteError,
+} from "react-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
@@ -40,11 +50,76 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = await getAdminShop(session);
+  const formData = await request.formData();
+
+  try {
+    const name = String(formData.get("programName") ?? "").trim();
+    if (!name) {
+      return { error: "Program name is required." };
+    }
+
+    const commissionType = String(formData.get("commissionType") ?? "fixed");
+    const afterDiscount = formData.get("afterDiscount") === "true";
+    const limitedTime = formData.get("limitedTime") === "true";
+    const productScope = String(formData.get("productScope") ?? "all");
+    const dateRange = String(formData.get("dateRange") ?? "");
+    const [startDate = "", endDate = ""] = dateRange.split("--");
+    const employeeIds = formData.getAll("employeeIds").map(String).filter(Boolean);
+    const productIds = formData.getAll("productIds").map(String).filter(Boolean);
+    const allProductsCommissionRaw = String(formData.get("commissionValue") ?? "").trim();
+    const allProductsCommission =
+      productScope === "all" && allProductsCommissionRaw
+        ? Number(allProductsCommissionRaw)
+        : null;
+
+    if (productScope === "all" && allProductsCommissionRaw && Number.isNaN(allProductsCommission)) {
+      return { error: "Enter a valid commission amount." };
+    }
+
+    if (productScope === "specific" && productIds.length === 0) {
+      return { error: "Select at least one product." };
+    }
+
+    const productCommissions = productIds.map((productId) => ({
+      productId,
+      commission: String(formData.get(`commission_${productId}`) ?? "").trim(),
+    }));
+
+    await prisma.commissionProgram.create({
+      data: {
+        shopId: shop.id,
+        name,
+        commissionType,
+        afterDiscount,
+        limitedTime,
+        startDate: limitedTime && startDate ? startDate : null,
+        endDate: limitedTime && endDate ? endDate : null,
+        productScope,
+        allProductsCommission,
+        productCommissions: JSON.stringify(productCommissions),
+        employeeIds: JSON.stringify(employeeIds),
+      },
+    });
+
+    return redirect("/app/commission-programs?created=1");
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not create commission program.",
+    };
+  }
+};
+
 export default function CreateCommissionProgram() {
   const { employees } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const [query, setQuery] = useState("");
   const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(() => new Set());
   const todayKey = toDateKey(new Date());
+  const [afterDiscount, setAfterDiscount] = useState(true);
   const [limitedTime, setLimitedTime] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [dateRange, setDateRange] = useState(`${todayKey}--${todayKey}`);
@@ -192,6 +267,7 @@ export default function CreateCommissionProgram() {
   const handleDiscard = () => {
     setQuery("");
     setSelectedStaffIds(new Set());
+    setAfterDiscount(true);
     setLimitedTime(false);
     setDateRangeOpen(false);
     setDateRange(`${todayKey}--${todayKey}`);
@@ -205,6 +281,9 @@ export default function CreateCommissionProgram() {
 
   return (
     <s-page heading="Create Commission Program">
+      {actionData && "error" in actionData && actionData.error && (
+        <s-banner tone="critical" heading={actionData.error} />
+      )}
       <Form
         method="post"
         data-save-bar
@@ -252,7 +331,13 @@ export default function CreateCommissionProgram() {
               <div className="checkbox-block">
                 <s-checkbox
                   label="Calculate commission after discount is applied"
-                  checked
+                  name="afterDiscount"
+                  value="true"
+                  checked={afterDiscount}
+                  onChange={(event) => {
+                    setAfterDiscount(checkboxChecked(event));
+                    markDirty();
+                  }}
                 ></s-checkbox>
                 <span aria-label="Discount calculation info">ⓘ</span>
               </div>
@@ -264,6 +349,8 @@ export default function CreateCommissionProgram() {
               <div className="checkbox-block">
                 <s-checkbox
                   label="Limited Time Commission"
+                  name="limitedTimeFlag"
+                  value="true"
                   checked={limitedTime}
                   onChange={(event) => {
                     const checked = checkboxChecked(event);

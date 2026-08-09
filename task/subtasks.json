@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T22:17:30.000Z",
+  "lastUpdated": "2026-08-09T22:19:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -741,13 +741,17 @@
         "Include Specific Products shows empty-state select UI and opens App Bridge product resource picker",
         "Create Commission Program form uses Shopify data-save-bar for save/discard",
         "Product Selection radio buttons use black accent color matching checkbox styling",
-        "After product resource picker selection, product manager shows details, commissions, select-all, and bulk update"
+        "After product resource picker selection, product manager shows details, commissions, select-all, and bulk update",
+        "Create Commission Program save bar submits through a route action that persists CommissionProgram records",
+        "Commission Programs index lists saved programs after create"
       ],
       "files": [
         "app/routes/app.commission-programs.tsx",
         "app/routes/app.commission-programs._index.tsx",
         "app/routes/app.commission-programs.new.tsx",
-        "app/routes/app.tsx"
+        "app/routes/app.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809221900_commission_programs/migration.sql"
       ]
     }
   ]

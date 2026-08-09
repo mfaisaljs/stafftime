@@ -1,18 +1,46 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Link, useRouteError } from "react-router";
+import { Link, useLoaderData, useRouteError, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { FileText, Plus } from "lucide-react";
 import { authenticate } from "../shopify.server";
+import { getAdminShop } from "../services/admin.server";
+import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+  const shop = await getAdminShop(session);
+  const programs = await prisma.commissionProgram.findMany({
+    where: { shopId: shop.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return {
+    programs: programs.map((program) => ({
+      id: program.id,
+      name: program.name,
+      commissionType: program.commissionType,
+      productScope: program.productScope,
+      staffCount: parseJsonArray(program.employeeIds).length,
+      productCount:
+        program.productScope === "all"
+          ? null
+          : parseJsonArray(program.productCommissions).length,
+    })),
+  };
 };
 
 export default function CommissionProgramsIndex() {
+  const { programs } = useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
+  const created = searchParams.get("created") === "1";
+
   return (
     <s-page heading="Commission Program">
       <div className="commission-page">
+        {created && (
+          <s-banner tone="success" heading="Commission program created." />
+        )}
+
         <div className="commission-header">
           <Link className="button-link" to="/app/commission-programs/new">
             <s-button variant="primary">
@@ -41,27 +69,63 @@ export default function CommissionProgramsIndex() {
           </div>
         </div>
 
-        <section className="empty-card">
-          <div className="empty-illustration" aria-hidden="true">
-            <FileText size={72} />
-            <span />
-          </div>
-          <strong>Create your first commission program</strong>
-          <p>Start managing commission programs for your staff members.</p>
-          <Link className="button-link" to="/app/commission-programs/new">
-            <s-button variant="primary">
-              <span className="button-content">
-                <Plus aria-hidden="true" size={13} />
-                Create Program
-              </span>
-            </s-button>
-          </Link>
-        </section>
+        {programs.length === 0 ? (
+          <section className="empty-card">
+            <div className="empty-illustration" aria-hidden="true">
+              <FileText size={72} />
+              <span />
+            </div>
+            <strong>Create your first commission program</strong>
+            <p>Start managing commission programs for your staff members.</p>
+            <Link className="button-link" to="/app/commission-programs/new">
+              <s-button variant="primary">
+                <span className="button-content">
+                  <Plus aria-hidden="true" size={13} />
+                  Create Program
+                </span>
+              </s-button>
+            </Link>
+          </section>
+        ) : (
+          <section className="programs-card">
+            <div className="programs-header">
+              <strong>Commission Programs</strong>
+              <span>{programs.length} program{programs.length === 1 ? "" : "s"}</span>
+            </div>
+            <div className="programs-list">
+              {programs.map((program) => (
+                <div className="program-row" key={program.id}>
+                  <div>
+                    <strong>{program.name}</strong>
+                    <span>
+                      {program.commissionType === "percentage"
+                        ? "Percentage"
+                        : "Fixed Amount"}{" "}
+                      · {program.staffCount} staff ·{" "}
+                      {program.productScope === "all"
+                        ? "All products"
+                        : `${program.productCount ?? 0} products`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       <style>{COMMISSION_STYLES}</style>
     </s-page>
   );
+}
+
+function parseJsonArray(value: string) {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export function ErrorBoundary() {
@@ -128,11 +192,15 @@ const COMMISSION_STYLES = `
     padding: 0 12px 14px;
   }
 
-  .empty-card {
-    align-items: center;
+  .empty-card,
+  .programs-card {
     background: #fff;
     border: 1px solid #d9d9d9;
     border-radius: 8px;
+  }
+
+  .empty-card {
+    align-items: center;
     display: grid;
     gap: 8px;
     justify-items: center;
@@ -162,5 +230,34 @@ const COMMISSION_STYLES = `
     position: absolute;
     top: 14px;
     width: 20px;
+  }
+
+  .programs-header {
+    align-items: center;
+    border-bottom: 1px solid #ececec;
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 16px;
+  }
+
+  .programs-header span,
+  .program-row span {
+    color: #616161;
+  }
+
+  .program-row {
+    border-bottom: 1px solid #ececec;
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+  }
+
+  .program-row:last-child {
+    border-bottom: 0;
+  }
+
+  .program-row strong,
+  .program-row span {
+    display: block;
   }
 `;
