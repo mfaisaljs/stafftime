@@ -84,12 +84,12 @@ export default function StaffManagementPage() {
         </div>
 
         <div className="staff-actions">
-          <Link className="primary-action" to="/app/staff/new">
+          <s-button variant="primary" href="/app/staff/new">
             Add Shopify Staff
-          </Link>
-          <button className="secondary-action" type="button" disabled>
+          </s-button>
+          <s-button variant="secondary" disabled>
             Bulk Import
-          </button>
+          </s-button>
         </div>
 
         <s-tooltip id="inactive-staff-tooltip">
@@ -360,9 +360,7 @@ const STAFF_MANAGEMENT_STYLES = `
   }
 
   .dark-button,
-  .claim-button,
-  .primary-action,
-  .secondary-action {
+  .claim-button {
     border-radius: 8px;
     font-weight: 600;
     padding: 8px 14px;
@@ -469,17 +467,6 @@ const STAFF_MANAGEMENT_STYLES = `
 
   .staff-actions {
     justify-content: flex-end;
-  }
-
-  .primary-action {
-    background: #1f1f1f;
-    color: #fff;
-  }
-
-  .secondary-action {
-    background: #e9e9e9;
-    border: 0;
-    color: #8a8a8a;
   }
 
   .staff-table-card {
