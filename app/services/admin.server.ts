@@ -5,7 +5,6 @@ import {
   ensureDefaultLocation,
   ensureShop,
   getAttendanceSummary,
-  seedDemoDataForShop,
 } from "./workforce.server";
 
 export async function getAdminShop(session: Session) {
@@ -17,13 +16,7 @@ export async function getAdminShop(session: Session) {
   });
 }
 
-export async function seedDemoData(session: Session) {
-  const shop = await getAdminShop(session);
-  return seedDemoDataForShop(shop.id);
-}
-
 export async function getDashboardData(session: Session) {
-  await seedDemoData(session);
   const summary = await getAttendanceSummary(session.shop);
   const shop = await getAdminShop(session);
 

@@ -6,7 +6,6 @@ import {
   ensureShop,
   findEmployeeByPin,
   findEmployeeByQr,
-  seedDemoDataForShop,
 } from "../services/workforce.server";
 import {
   errorResponse,
@@ -24,8 +23,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const body = await request.json();
   const { pin, qrCode } = body as { pin?: string; qrCode?: string };
   const shop = await ensureShop(sessionToken.dest);
-
-  await seedDemoDataForShop(shop.id);
 
   try {
     const employee = pin

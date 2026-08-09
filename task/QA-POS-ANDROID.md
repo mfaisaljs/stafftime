@@ -31,11 +31,11 @@ npm run dev:pos
 
 ## PIN verification
 
-Demo PINs (seeded on first verify): John `1234`, Sarah `5678`.
+Use the PIN assigned when adding staff in admin (Staff → Add Shopify Staff).
 
 | Step | Action | Expected | Pass |
 |------|--------|----------|------|
-| 3 | Enter John PIN `1234` → Continue | Greeting + status badge | ☐ |
+| 3 | Enter staff PIN from admin → Continue | Greeting + status badge; inactive staff becomes active | ☐ |
 | 4 | Wrong PIN `0000` | Error: Invalid PIN or QR code | ☐ |
 
 ## Clock in / timer

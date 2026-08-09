@@ -63,18 +63,15 @@ For production deploy (includes webhooks):
 npm run deploy
 ```
 
-Install the app on your development store, then open the embedded admin to seed demo data.
+Install the app on your development store and add staff under **Staff** in admin.
 
-## Demo credentials
+## POS staff login
 
-On first admin visit, StaffTime seeds demo employees:
+New Shopify staff start **Inactive** until they verify on POS (or Web Portal) for the first time. After first successful PIN or QR verify, they become **Active** and can clock in/out.
 
-| Employee | PIN  | Role       |
-|----------|------|------------|
-| John Rivera | 1234 | Employee   |
-| Sarah Chen  | 5678 | Supervisor |
-
-Use these PINs in the POS **StaffTime** smart grid tile.
+1. Add staff in admin with a unique 4-digit PIN.
+2. On POS, open the **StaffTime** tile and enter that PIN.
+3. First verify activates the staff member; then use Clock in / out as normal.
 
 ### Android POS testing
 
