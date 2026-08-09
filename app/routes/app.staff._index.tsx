@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -15,8 +16,92 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
+type StatusFilter = "all" | "active" | "inactive" | "missing_payment" | "archived";
+
 export default function StaffManagementPage() {
   const { employees, staffLimit } = useLoaderData<typeof loader>();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const filteredEmployees = useMemo(() => {
+    let list = employees;
+
+    switch (statusFilter) {
+      case "active":
+        list = list.filter((employee) => employee.status === "ACTIVE");
+        break;
+      case "inactive":
+        list = list.filter((employee) => employee.status === "INACTIVE");
+        break;
+      case "missing_payment":
+        list = list.filter(hasMissingPaymentInfo);
+        break;
+      case "archived":
+        list = [];
+        break;
+      default:
+        break;
+    }
+
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return list;
+
+    return list.filter((employee) => {
+      const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
+      const email = employee.email?.toLowerCase() ?? "";
+      const position = (employee.position ?? "").toLowerCase();
+      const location = (employee.location?.name ?? "").toLowerCase();
+      const payment = paymentMethodLabel(employee.paymentMethod).toLowerCase();
+
+      return (
+        fullName.includes(query) ||
+        email.includes(query) ||
+        position.includes(query) ||
+        location.includes(query) ||
+        payment.includes(query)
+      );
+    });
+  }, [employees, statusFilter, searchQuery]);
+
+  const allVisibleSelected =
+    filteredEmployees.length > 0 &&
+    filteredEmployees.every((employee) => selectedIds.has(employee.id));
+  const someVisibleSelected = filteredEmployees.some((employee) =>
+    selectedIds.has(employee.id),
+  );
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someVisibleSelected && !allVisibleSelected;
+    }
+  }, [someVisibleSelected, allVisibleSelected]);
+
+  const toggleSelectAll = () => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (allVisibleSelected) {
+        filteredEmployees.forEach((employee) => next.delete(employee.id));
+      } else {
+        filteredEmployees.forEach((employee) => next.add(employee.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectOne = (employeeId: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(employeeId)) {
+        next.delete(employeeId);
+      } else {
+        next.add(employeeId);
+      }
+      return next;
+    });
+  };
+
   const totalStaff = employees.length;
   const availableStaff = Math.max(staffLimit - totalStaff, 0);
   const usagePercent = Math.min(Math.round((totalStaff / staffLimit) * 100), 100);
@@ -101,27 +186,54 @@ export default function StaffManagementPage() {
         <section className="staff-table-card">
           <div className="table-toolbar">
             <div className="status-tabs">
-              <button className="status-tab active" type="button">
+              <button
+                className={`status-tab${statusFilter === "all" ? " active" : ""}`}
+                type="button"
+                onClick={() => setStatusFilter("all")}
+              >
                 All
               </button>
-              <button className="status-tab" type="button">
+              <button
+                className={`status-tab${statusFilter === "active" ? " active" : ""}`}
+                type="button"
+                onClick={() => setStatusFilter("active")}
+              >
                 Active ({activeCount})
               </button>
-              <button className="status-tab" type="button">
+              <button
+                className={`status-tab${statusFilter === "inactive" ? " active" : ""}`}
+                type="button"
+                onClick={() => setStatusFilter("inactive")}
+              >
                 Inactive ({inactiveCount})
               </button>
-              <button className="status-tab" type="button">
+              <button
+                className={`status-tab${statusFilter === "missing_payment" ? " active" : ""}`}
+                type="button"
+                onClick={() => setStatusFilter("missing_payment")}
+              >
                 Missing Payment Info ({missingPaymentCount})
               </button>
-              <button className="status-tab" type="button">
+              <button
+                className={`status-tab${statusFilter === "archived" ? " active" : ""}`}
+                type="button"
+                onClick={() => setStatusFilter("archived")}
+              >
                 Archived
               </button>
             </div>
             <div className="table-tools">
-              <button type="button" aria-label="Search">
+              <label className="search-field">
                 <Search aria-hidden="true" size={16} />
-              </button>
-              <button type="button" aria-label="Filter">
+                <input
+                  type="search"
+                  placeholder="Search staff..."
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.currentTarget.value)}
+                  aria-label="Search staff"
+                />
+              </label>
+              <button type="button" aria-label="Filter" disabled>
                 <SlidersHorizontal aria-hidden="true" size={16} />
               </button>
             </div>
@@ -132,7 +244,13 @@ export default function StaffManagementPage() {
               <thead>
                 <tr>
                   <th>
-                    <input type="checkbox" aria-label="Select all staff" />
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      aria-label="Select all staff"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                    />
                   </th>
                   <th>Name</th>
                   <th>Position</th>
@@ -144,12 +262,14 @@ export default function StaffManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {employees.map((employee) => (
+                {filteredEmployees.map((employee) => (
                   <tr key={employee.id}>
                     <td>
                       <input
                         type="checkbox"
                         aria-label={`Select ${employee.firstName} ${employee.lastName}`}
+                        checked={selectedIds.has(employee.id)}
+                        onChange={() => toggleSelectOne(employee.id)}
                       />
                     </td>
                     <td>
@@ -206,11 +326,15 @@ export default function StaffManagementPage() {
                     </td>
                   </tr>
                 ))}
-                {employees.length === 0 && (
+                {filteredEmployees.length === 0 && (
                   <tr>
                     <td colSpan={8}>
                       <div className="empty-state">
-                        No staff yet. Add your first Shopify staff member.
+                        {employees.length === 0
+                          ? "No staff yet. Add your first Shopify staff member."
+                          : statusFilter === "archived"
+                            ? "No archived staff."
+                            : "No staff match your search or filters."}
                       </div>
                     </td>
                   </tr>
@@ -517,6 +641,31 @@ const STAFF_MANAGEMENT_STYLES = `
   .table-tools svg,
   .row-actions svg {
     display: block;
+  }
+
+  .search-field {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-radius: 6px;
+    color: #616161;
+    display: inline-flex;
+    gap: 8px;
+    min-height: 28px;
+    padding: 0 10px;
+  }
+
+  .search-field input {
+    border: 0;
+    font-size: 13px;
+    min-width: 180px;
+    outline: none;
+    padding: 4px 0;
+  }
+
+  .table-tools button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
 
   .table-scroll {
