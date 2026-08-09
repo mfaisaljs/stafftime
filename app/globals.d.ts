@@ -114,7 +114,6 @@ declare namespace JSX {
         value?: string;
         selected?: boolean;
         defaultSelected?: boolean;
-        disabled?: boolean;
       },
       HTMLElement
     >;

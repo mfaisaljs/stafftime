@@ -847,6 +847,15 @@ function ShiftDialog({
   const employeeId = isEdit ? selectedShift?.employeeId ?? "" : "";
   const locationId = isEdit ? selectedShift?.locationId ?? "" : "";
   const dateKey = modal.mode === "create" ? modal.dateKey : selectedShift?.dateKey ?? "";
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState(employeeId);
+  const [selectedLocationId, setSelectedLocationId] = useState(locationId);
+
+  useEffect(() => {
+    setSelectedEmployeeId(employeeId);
+    setSelectedLocationId(locationId);
+  }, [employeeId, locationId]);
+
+  const saveDisabled = !selectedEmployeeId || !selectedLocationId;
 
   return (
     <s-modal id="shift-modal" heading={isEdit ? "Edit Shift" : "Create Shift"} size="base">
@@ -856,13 +865,11 @@ function ShiftDialog({
           <s-select
             label="Staff"
             name="employeeId"
-            value={employeeId}
+            value={selectedEmployeeId || undefined}
             placeholder="Select a staff"
+            onChange={(event) => setSelectedEmployeeId(selectValue(event))}
             required
           >
-            <s-option value="" disabled>
-              Select a staff
-            </s-option>
             {employees.map((employee) => (
               <s-option key={employee.id} value={employee.id}>
                 {employee.name}
@@ -872,13 +879,11 @@ function ShiftDialog({
           <s-select
             label="Location"
             name="locationId"
-            value={locationId}
+            value={selectedLocationId || undefined}
             placeholder="Select a location"
+            onChange={(event) => setSelectedLocationId(selectValue(event))}
             required
           >
-            <s-option value="" disabled>
-              Select a location
-            </s-option>
             {locations.map((location) => (
               <s-option key={location.id} value={location.id}>
                 {location.name}
@@ -938,6 +943,7 @@ function ShiftDialog({
         slot="primary-action"
         variant="primary"
         type="button"
+        disabled={saveDisabled}
         commandFor="shift-modal"
         command="--hide"
         onClick={() =>
