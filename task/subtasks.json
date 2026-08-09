@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T21:37:30.000Z",
+  "lastUpdated": "2026-08-09T21:42:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -685,7 +685,8 @@
         "Shift hover action overlay uses the same solid color as the schedule card",
         "Copy Week opens a Polaris modal to choose a target week and optionally clear existing target shifts",
         "Copy Week duplicates source week shifts into the selected target week while preserving weekdays, times, staff, locations, and notes",
-        "Creating a shift updates an existing same-day shift for the same staff and location instead of creating a duplicate"
+        "Creating a shift updates an existing same-day shift for the same staff and location instead of creating a duplicate",
+        "Schedule appears immediately below Reports in app navigation"
       ],
       "files": [
         "app/routes/app.schedules.tsx",
@@ -710,6 +711,26 @@
       ],
       "files": [
         ".cursor/rules/polaris-components.mdc"
+      ]
+    },
+    {
+      "id": "ST047",
+      "taskId": "T017",
+      "title": "Add Commission Programs routes",
+      "description": "Create commission program listing and create-program form screens matching the provided references.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST033"],
+      "acceptanceCriteria": [
+        "/app/commission-programs shows the Commission Programs header, POS assignment banner, and empty state",
+        "Create Program opens /app/commission-programs/new",
+        "Create Commission Program page includes program details, commission type, discount and limited-time options, product selection, and commission amount",
+        "Create Commission Program page loads real staff, supports staff search, select-all, individual selection, and selected count"
+      ],
+      "files": [
+        "app/routes/app.commission-programs.tsx",
+        "app/routes/app.commission-programs.new.tsx",
+        "app/routes/app.tsx"
       ]
     }
   ]
