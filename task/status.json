@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T22:50:00.000Z",
+  "lastUpdated": "2026-08-09T22:52:00.000Z",
   "notes": [
+    "ST052 complete: Sales Targets route added with POS setup banner, empty state, Set target CTA, and nav link.",
     "Fixed: root / now redirects to /app so Admin never shows the template marketing login page.",
     "Fixed: staff detail hours use exact seconds (Xh Ym Zs) instead of rounded minutes.",
     "Fixed: added read_products scope for commission product hydration; edit loader falls back if products API is denied.",
