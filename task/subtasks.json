@@ -540,7 +540,7 @@
       "acceptanceCriteria": [
         "Bulk action bar appears when one or more staff are selected",
         "Archive all sets status to ARCHIVED and Archived tab lists them",
-        "Delete all removes selected staff with confirmation dialog",
+        "Delete all removes selected staff after Polaris modal confirmation",
         "Selection clears after successful bulk action",
         "Archived staff cannot log in at POS"
       ],

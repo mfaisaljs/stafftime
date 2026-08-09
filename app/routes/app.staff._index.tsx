@@ -67,6 +67,7 @@ export default function StaffManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const deleteFormRef = useRef<HTMLFormElement>(null);
 
   const filteredEmployees = useMemo(() => {
     let list = employees;
@@ -263,32 +264,58 @@ export default function StaffManagementPage() {
                 </span>
               </s-button>
             </Form>
-            <Form
-              method="post"
-              className="bulk-form"
-              onSubmit={(event) => {
-                if (
-                  !confirm(
-                    `Delete ${selectedCount} staff member(s)? This cannot be undone.`,
-                  )
-                ) {
-                  event.preventDefault();
-                }
-              }}
+            <s-button
+              type="button"
+              variant="primary"
+              tone="critical"
+              commandFor="bulk-delete-modal"
+              command="--show"
             >
+              <span className="button-with-icon">
+                <Trash2 aria-hidden="true" size={16} />
+                Delete all
+              </span>
+            </s-button>
+            <Form ref={deleteFormRef} method="post" className="bulk-form-hidden">
               {Array.from(selectedIds).map((employeeId) => (
                 <input key={employeeId} type="hidden" name="employeeIds" value={employeeId} />
               ))}
               <input type="hidden" name="intent" value="delete" />
-              <s-button type="submit" variant="primary" tone="critical">
-                <span className="button-with-icon">
-                  <Trash2 aria-hidden="true" size={16} />
-                  Delete all
-                </span>
-              </s-button>
             </Form>
           </div>
         )}
+
+        <s-modal id="bulk-delete-modal" heading="Delete staff?">
+          <s-stack direction="block" gap="base">
+            <s-text>
+              Are you sure you want to delete {selectedCount} staff member(s)? This
+              action cannot be undone.
+            </s-text>
+            <s-banner tone="warning">
+              <s-text>
+                This will permanently remove the selected staff and related workforce
+                records.
+              </s-text>
+            </s-banner>
+          </s-stack>
+          <s-button
+            slot="primary-action"
+            variant="primary"
+            tone="critical"
+            commandFor="bulk-delete-modal"
+            command="--hide"
+            onClick={() => deleteFormRef.current?.requestSubmit()}
+          >
+            Delete all
+          </s-button>
+          <s-button
+            slot="secondary-actions"
+            commandFor="bulk-delete-modal"
+            command="--hide"
+          >
+            Cancel
+          </s-button>
+        </s-modal>
 
         <section className="staff-table-card">
           <div className="table-toolbar">
@@ -740,6 +767,10 @@ const STAFF_MANAGEMENT_STYLES = `
 
   .bulk-form {
     display: inline-flex;
+  }
+
+  .bulk-form-hidden {
+    display: none;
   }
 
   .button-with-icon {

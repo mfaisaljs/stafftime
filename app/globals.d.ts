@@ -52,10 +52,40 @@ declare namespace JSX {
     "s-button": React.DetailedHTMLProps<
       React.ButtonHTMLAttributes<HTMLButtonElement> & {
         variant?: string;
+        tone?: string;
         loading?: boolean;
         slot?: string;
+        commandFor?: string;
+        command?: string;
       },
       HTMLButtonElement
+    >;
+    "s-modal": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        id?: string;
+        heading?: string;
+        size?: string;
+      },
+      HTMLElement
+    >;
+    "s-banner": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        heading?: string;
+        tone?: string;
+        dismissible?: boolean;
+      },
+      HTMLElement
+    >;
+    "s-icon": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        type?: string;
+        interestFor?: string;
+      },
+      HTMLElement
+    >;
+    "s-tooltip": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & { id?: string },
+      HTMLElement
     >;
     "s-heading": React.DetailedHTMLProps<
       React.HTMLAttributes<HTMLElement>,
