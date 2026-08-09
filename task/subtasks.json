@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:53:30.000Z",
+  "lastUpdated": "2026-08-09T20:53:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -671,7 +671,8 @@
         "Standard Schedule toolbar and shift form dropdowns use Shopify Polaris s-select components",
         "Schedule date range button uses native Polaris button styling without custom outer textbox chrome",
         "Schedule toolbar Polaris dropdowns use compact wrappers so controls stay inline",
-        "Create and edit shift dialog uses Shopify Polaris s-modal with native modal actions"
+        "Create and edit shift dialog uses Shopify Polaris s-modal with native modal actions",
+        "Shift hover edit and delete controls are centered on a solid overlay that hides shift content"
       ],
       "files": [
         "app/routes/app.schedules.tsx",

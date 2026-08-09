@@ -1621,12 +1621,15 @@ const SCHEDULE_STYLES = `
   }
 
   .shift-actions {
-    background: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    background: #000;
+    border-radius: inherit;
     display: none;
     gap: 4px;
+    inset: 0;
+    justify-content: center;
     position: absolute;
-    right: 5px;
-    top: 5px;
+    z-index: 2;
   }
 
   .shift-card:hover .shift-actions {
