@@ -1,9 +1,11 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import {
   Briefcase,
   Calendar,
+  ChevronDown,
   Clock,
   DollarSign,
   Download,
@@ -387,21 +389,43 @@ function DailyActivityReport({
   selectedPosition: string;
   onPositionChange: (value: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const positionOptions = ["All Positions", ...positions];
+
   return (
     <>
       <div className="report-controls">
-        <label className="select-control">
-          Position
-          <select
-            value={selectedPosition}
-            onChange={(event) => onPositionChange(event.currentTarget.value)}
+        <div className="dropdown-wrap">
+          <button
+            className="filter-dropdown position-dropdown"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
           >
-            <option>All Positions</option>
-            {positions.map((position) => (
-              <option key={position}>{position}</option>
-            ))}
-          </select>
-        </label>
+            <span>Position</span>
+            <strong>{selectedPosition}</strong>
+            <ChevronDown className="chevron" aria-hidden="true" size={16} />
+          </button>
+          {open && (
+            <div className="dropdown-menu position-menu" role="menu">
+              {positionOptions.map((position) => (
+                <button
+                  key={position}
+                  className={position === selectedPosition ? "selected" : ""}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onPositionChange(position);
+                    setOpen(false);
+                  }}
+                >
+                  {position}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <s-button variant="secondary">
           <span className="button-with-icon">
             <Download aria-hidden="true" size={16} />
@@ -492,23 +516,60 @@ function StaffActivityLog({
   selectedStaffId: string;
   onStaffChange: (value: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const selectedStaff = staffRows.find((staff) => staff.id === selectedStaffId);
+
   return (
     <>
       <div className="report-controls">
-        <label className="staff-select">
-          <User aria-hidden="true" size={18} />
-          <select
-            value={selectedStaffId}
-            onChange={(event) => onStaffChange(event.currentTarget.value)}
+        <div className="dropdown-wrap">
+          <button
+            className="filter-dropdown staff-dropdown"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
           >
-            <option value="">Select Staff Member</option>
-            {staffRows.map((staff) => (
-              <option key={staff.id} value={staff.id}>
-                {staff.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span className="dropdown-icon">
+              <User aria-hidden="true" size={18} />
+            </span>
+            <strong>{selectedStaff?.name ?? "Select Staff Member"}</strong>
+            <ChevronDown className="chevron" aria-hidden="true" size={16} />
+          </button>
+          {open && (
+            <div className="dropdown-menu staff-menu" role="menu">
+              <button
+                className={!selectedStaffId ? "selected" : ""}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onStaffChange("");
+                  setOpen(false);
+                }}
+              >
+                <span className="dropdown-icon">
+                  <User aria-hidden="true" size={18} />
+                </span>
+                <strong>Select Staff Member</strong>
+              </button>
+              {staffRows.map((staff) => (
+                <button
+                  key={staff.id}
+                  className={staff.id === selectedStaffId ? "selected" : ""}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onStaffChange(staff.id);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="avatar turquoise">{staff.initials}</span>
+                  <strong>{staff.name}</strong>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <s-button variant="secondary">
           <span className="button-with-icon">
             <Download aria-hidden="true" size={16} />
@@ -710,11 +771,11 @@ const REPORT_STYLES = `
   .reports-page {
     display: grid;
     gap: 18px;
+    min-width: 0;
   }
 
   .date-filter,
-  .select-control,
-  .staff-select {
+  .filter-dropdown {
     align-items: center;
     background: #fff;
     border: 1px solid #d4d4d4;
@@ -762,6 +823,7 @@ const REPORT_STYLES = `
     border: 1px solid #e3e3e3;
     border-radius: 12px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    min-width: 0;
   }
 
   .metric-card {
@@ -825,19 +887,86 @@ const REPORT_STYLES = `
     justify-content: space-between;
   }
 
-  .select-control,
-  .staff-select {
+  .dropdown-wrap {
+    justify-self: start;
+    position: relative;
+  }
+
+  .filter-dropdown {
+    cursor: pointer;
     font-size: 13px;
     font-weight: 500;
   }
 
-  .select-control select,
-  .staff-select select {
+  .filter-dropdown strong {
+    font-weight: 650;
+  }
+
+  .position-dropdown {
+    min-width: 210px;
+  }
+
+  .staff-dropdown {
+    min-width: 250px;
+  }
+
+  .dropdown-icon {
+    align-items: center;
+    background: #e8f6ff;
+    border-radius: 6px;
+    color: #007ace;
+    display: inline-flex;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
+  }
+
+  .chevron {
+    color: #616161;
+    margin-left: auto;
+  }
+
+  .dropdown-menu {
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    display: grid;
+    left: 0;
+    min-width: 100%;
+    overflow: hidden;
+    padding: 8px;
+    position: absolute;
+    top: calc(100% + 6px);
+    z-index: 20;
+  }
+
+  .dropdown-menu button {
+    align-items: center;
     background: transparent;
     border: 0;
+    border-radius: 8px;
     color: #303030;
-    font: inherit;
-    outline: 0;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    min-height: 40px;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .dropdown-menu button:hover,
+  .dropdown-menu button.selected {
+    background: #f1f1f1;
+  }
+
+  .staff-menu {
+    min-width: 250px;
+  }
+
+  .position-menu {
+    min-width: 210px;
   }
 
   .button-with-icon {
@@ -851,6 +980,8 @@ const REPORT_STYLES = `
   }
 
   .table-scroll {
+    max-width: 100%;
+    min-width: 0;
     overflow-x: auto;
   }
 
@@ -914,7 +1045,18 @@ const REPORT_STYLES = `
 
   .daily-card,
   .activity-card {
+    min-width: 0;
+    overflow: hidden;
     padding: 28px 32px;
+  }
+
+  .daily-card .table-scroll {
+    padding-bottom: 12px;
+  }
+
+  .daily-table {
+    min-width: 2400px;
+    width: max-content;
   }
 
   .card-header {

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:00:00.000Z",
+  "lastUpdated": "2026-08-09T17:21:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -565,7 +565,10 @@
         "Daily Activity Report tab shows position filter and staff-by-day activity table",
         "Staff Activity Log tab shows staff selector, export action, and empty/activity states",
         "Report values use real staff and time entry data from the last 30 days",
-        "Report time values include exact minutes and seconds without rounding"
+        "Report time values include exact minutes and seconds without rounding",
+        "Daily Activity Report horizontal scroll stays inside the report list/card",
+        "Position and Staff Member filters use custom dropdown styling matching the reference design",
+        "Report filter dropdown chevrons use Lucide icons"
       ],
       "files": [
         "app/routes/app.reports.tsx",

@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T17:00:00.000Z",
+  "lastUpdated": "2026-08-09T17:21:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -37,6 +37,9 @@
     "ST042 complete: Reports route at /app/reports with Overview, Daily Activity Report, and Staff Activity Log tabs.",
     "Updated: Reports time values now use exact seconds from timestamps with no minute rounding.",
     "ST043 complete: time entries snapshot hourly rate at clock-in so historical reporting and payroll do not change when staff rates change.",
+    "Updated: Daily Activity Report horizontal scrolling is contained inside the report card/list.",
+    "Updated: Reports Position and Staff Member filters use custom dropdown styling matching the reference design.",
+    "Updated: Reports dropdown chevrons use Lucide ChevronDown icons.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
