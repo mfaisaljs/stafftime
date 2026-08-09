@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T16:46:00.000Z",
+  "lastUpdated": "2026-08-09T16:54:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -35,6 +35,7 @@
     "Updated: bulk delete uses Polaris modal instead of browser confirm alert.",
     "Fixed: bulk archive/delete uses useFetcher so URL stays on /app/staff without blank ?index= page.",
     "ST042 complete: Reports route at /app/reports with Overview, Daily Activity Report, and Staff Activity Log tabs.",
+    "Updated: Reports time values now use exact seconds from timestamps with no minute rounding.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

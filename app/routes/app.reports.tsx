@@ -15,47 +15,39 @@ import {
 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import {
-  getAdminShop,
-  getEmployees,
-  getPayrollEntries,
-} from "../services/admin.server";
-import { summarizeTimeEntry } from "../services/time-tracking.server";
+import { getEmployees, getPayrollEntries } from "../services/admin.server";
 
 type ReportTab = "overview" | "daily" | "activity";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const [shop, employees, entries] = await Promise.all([
-    getAdminShop(session),
+  const [employees, entries] = await Promise.all([
     getEmployees(session),
     getPayrollEntries(session, 30),
   ]);
+  const reportEnd = new Date();
 
   const activeEmployees = employees.filter(
     (employee) => employee.status !== "ARCHIVED",
   );
-  const settings = {
-    overtimeDailyHours: shop.settings?.overtimeDailyHours ?? 8,
-  };
 
   const summaries = entries.map((entry) => {
-    const summary = summarizeTimeEntry(entry, settings);
-    const earnings = (summary.paidMinutes / 60) * entry.employee.hourlyRate;
+    const summary = summarizeTimeEntrySeconds(entry, reportEnd);
+    const earnings = (summary.paidSeconds / 3600) * entry.employee.hourlyRate;
     return { entry, summary, earnings };
   });
 
-  const totalMinutes = summaries.reduce(
-    (sum, item) => sum + item.summary.totalWorkedMinutes,
+  const totalSeconds = summaries.reduce(
+    (sum, item) => sum + item.summary.totalWorkedSeconds,
     0,
   );
-  const workingMinutes = summaries.reduce(
-    (sum, item) => sum + item.summary.paidMinutes,
+  const workingSeconds = summaries.reduce(
+    (sum, item) => sum + item.summary.paidSeconds,
     0,
   );
-  const breakMinutes = summaries.reduce(
+  const breakSeconds = summaries.reduce(
     (sum, item) =>
-      sum + item.summary.paidBreakMinutes + item.summary.unpaidBreakMinutes,
+      sum + item.summary.paidBreakSeconds + item.summary.unpaidBreakSeconds,
     0,
   );
   const totalEarnings = summaries.reduce((sum, item) => sum + item.earnings, 0);
@@ -64,12 +56,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const employeeSummaries = summaries.filter(
       (item) => item.entry.employeeId === employee.id,
     );
-    const employeeTotalMinutes = employeeSummaries.reduce(
-      (sum, item) => sum + item.summary.totalWorkedMinutes,
+    const employeeTotalSeconds = employeeSummaries.reduce(
+      (sum, item) => sum + item.summary.totalWorkedSeconds,
       0,
     );
-    const employeeWorkingMinutes = employeeSummaries.reduce(
-      (sum, item) => sum + item.summary.paidMinutes,
+    const employeeWorkingSeconds = employeeSummaries.reduce(
+      (sum, item) => sum + item.summary.paidSeconds,
       0,
     );
     const employeeEarnings = employeeSummaries.reduce(
@@ -83,8 +75,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       initials: initials(employee.firstName, employee.lastName),
       position: employee.position ?? "Staff",
       salary: salaryLabel(employee),
-      totalHours: formatDurationHms(employeeTotalMinutes),
-      workingHours: formatDurationHms(employeeWorkingMinutes),
+      totalHours: formatDurationHms(employeeTotalSeconds),
+      workingHours: formatDurationHms(employeeWorkingSeconds),
       totalEarnings: formatCurrency(employeeEarnings),
       totalPaid: formatCurrency(employeeEarnings),
     };
@@ -94,14 +86,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const dailyRows = staffRows.map((staff) => ({
     ...staff,
     days: days.map((day) => {
-      const minutes = summaries
+      const seconds = summaries
         .filter(
           (item) =>
             item.entry.employeeId === staff.id &&
             toDateKey(item.entry.clockInAt) === day.key,
         )
-        .reduce((sum, item) => sum + item.summary.totalWorkedMinutes, 0);
-      return formatTimecode(minutes);
+        .reduce((sum, item) => sum + item.summary.totalWorkedSeconds, 0);
+      return formatTimecode(seconds);
     }),
   }));
 
@@ -116,7 +108,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           ? "Completed shift"
           : "Pending approval",
     details: `${item.entry.location.name} · ${formatDurationHms(
-      item.summary.totalWorkedMinutes,
+      item.summary.totalWorkedSeconds,
     )}`,
     createdAt: item.entry.clockInAt.toISOString(),
   }));
@@ -132,11 +124,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       activeStaff: activeEmployees.filter(
         (employee) => employee.status === "ACTIVE",
       ).length,
-      totalHours: formatDurationHms(totalMinutes),
-      workingHours: formatDurationHms(workingMinutes),
+      totalHours: formatDurationHms(totalSeconds),
+      workingHours: formatDurationHms(workingSeconds),
       totalAbsents: 0,
       totalEarnings: formatCurrency(totalEarnings),
-      totalBreakTime: formatDurationHms(breakMinutes),
+      totalBreakTime: formatDurationHms(breakSeconds),
       totalPaid: formatCurrency(totalEarnings),
       totalUnpaid: formatCurrency(0),
       totalLeaves: 0,
@@ -644,16 +636,54 @@ function toDateKey(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
-function formatDurationHms(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.floor(minutes % 60);
-  return `${hours}h ${mins}m 0s`;
+function summarizeTimeEntrySeconds(
+  entry: {
+    clockInAt: Date;
+    clockOutAt: Date | null;
+    breaks: Array<{ type: string; startedAt: Date; endedAt: Date | null }>;
+  },
+  referenceDate: Date,
+) {
+  const end = entry.clockOutAt ?? referenceDate;
+  const totalWorkedSeconds = secondsBetween(entry.clockInAt, end);
+  const breakTotals = entry.breaks.reduce(
+    (totals, breakEntry) => {
+      const breakEnd = breakEntry.endedAt ?? end;
+      const seconds = secondsBetween(breakEntry.startedAt, breakEnd);
+      if (breakEntry.type === "PAID") {
+        totals.paidBreakSeconds += seconds;
+      } else {
+        totals.unpaidBreakSeconds += seconds;
+      }
+      return totals;
+    },
+    { paidBreakSeconds: 0, unpaidBreakSeconds: 0 },
+  );
+
+  return {
+    totalWorkedSeconds,
+    paidBreakSeconds: breakTotals.paidBreakSeconds,
+    unpaidBreakSeconds: breakTotals.unpaidBreakSeconds,
+    paidSeconds: Math.max(0, totalWorkedSeconds - breakTotals.unpaidBreakSeconds),
+  };
 }
 
-function formatTimecode(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.floor(minutes % 60);
-  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+function secondsBetween(start: Date, end: Date) {
+  return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+}
+
+function formatDurationHms(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${mins}m ${seconds}s`;
+}
+
+function formatTimecode(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function formatCurrency(amount: number) {

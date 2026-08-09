@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T16:46:00.000Z",
+  "lastUpdated": "2026-08-09T16:54:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -564,7 +564,8 @@
         "Overview tab shows report metric cards and staff summary table",
         "Daily Activity Report tab shows position filter and staff-by-day activity table",
         "Staff Activity Log tab shows staff selector, export action, and empty/activity states",
-        "Report values use real staff and time entry data from the last 30 days"
+        "Report values use real staff and time entry data from the last 30 days",
+        "Report time values include exact minutes and seconds without rounding"
       ],
       "files": [
         "app/routes/app.reports.tsx",
