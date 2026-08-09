@@ -850,16 +850,18 @@
         "/app/sales-targets shows Sales Targets heading and POS setup banner",
         "Banner includes Open POS editor action and dismiss control",
         "Empty state shows No sales targets yet with Set target CTA",
-        "Set target navigates to /app/sales-targets/new",
+        "Set target opens a Polaris s-modal to create a monthly sales target",
+        "Modal includes staff members, locations, select-all, monthly target amount, Cancel, and Save",
         "Sales Targets appears in app navigation"
       ],
       "files": [
         "app/routes/app.sales-targets.tsx",
         "app/routes/app.sales-targets._index.tsx",
-        "app/routes/app.sales-targets.new.tsx",
-        "app/routes/app.tsx"
+        "app/routes/app.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809225500_sales_targets/migration.sql"
       ],
-      "lastUpdated": "2026-08-09T22:52:00.000Z"
+      "lastUpdated": "2026-08-09T22:56:00.000Z"
     }
   ]
 }
