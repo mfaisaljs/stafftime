@@ -1,5 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useRouteError } from "react-router";
+import { useNavigate, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { FileText, Plus } from "lucide-react";
 import { authenticate } from "../shopify.server";
@@ -10,12 +10,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function CommissionPrograms() {
+  const navigate = useNavigate();
+
   return (
     <s-page heading="Commission Programs" inlineSize="large">
       <div className="commission-page">
         <div className="commission-header">
           <h1>Commission Programs</h1>
-          <s-button variant="primary" href="/app/commission-programs/new">
+          <s-button
+            variant="primary"
+            onClick={() => navigate("/app/commission-programs/new")}
+          >
             <span className="button-content">
               <Plus aria-hidden="true" size={14} />
               Create Program
@@ -35,7 +40,9 @@ export default function CommissionPrograms() {
             You can assign commission program to your staff during order or after order
             in Shopify POS.
           </p>
-          <s-button variant="secondary">Learn More</s-button>
+          <div className="banner-action">
+            <s-button variant="secondary">Learn More</s-button>
+          </div>
         </div>
 
         <section className="empty-card">
@@ -45,7 +52,10 @@ export default function CommissionPrograms() {
           </div>
           <strong>Create your first commission program</strong>
           <p>Start managing commission programs for your staff members.</p>
-          <s-button variant="primary" href="/app/commission-programs/new">
+          <s-button
+            variant="primary"
+            onClick={() => navigate("/app/commission-programs/new")}
+          >
             <span className="button-content">
               <Plus aria-hidden="true" size={13} />
               Create Program
@@ -119,8 +129,8 @@ const COMMISSION_STYLES = `
     margin: 14px 12px 10px;
   }
 
-  .commission-banner s-button {
-    margin: 0 12px 14px;
+  .banner-action {
+    padding: 0 12px 14px;
   }
 
   .empty-card {

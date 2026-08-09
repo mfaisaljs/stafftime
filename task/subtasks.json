@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T21:42:00.000Z",
+  "lastUpdated": "2026-08-09T21:47:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -725,7 +725,9 @@
         "/app/commission-programs shows the Commission Programs header, POS assignment banner, and empty state",
         "Create Program opens /app/commission-programs/new",
         "Create Commission Program page includes program details, commission type, discount and limited-time options, product selection, and commission amount",
-        "Create Commission Program page loads real staff, supports staff search, select-all, individual selection, and selected count"
+        "Create Commission Program page loads real staff, supports staff search, select-all, individual selection, and selected count",
+        "Commission Programs banner Learn More action has card padding around it",
+        "Commission Programs Create Program buttons navigate to /app/commission-programs/new"
       ],
       "files": [
         "app/routes/app.commission-programs.tsx",

@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T21:42:00.000Z",
+  "lastUpdated": "2026-08-09T21:47:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -87,6 +87,8 @@
     "Updated: Creating a shift now updates an existing same-day shift for the same staff and location instead of creating a duplicate.",
     "Updated: Schedule now appears immediately below Reports in app navigation.",
     "ST047 complete: Commission Programs routes added with empty state, create-program form, and staff selection UI.",
+    "Updated: Commission Programs banner Learn More action now has proper card padding.",
+    "Updated: Commission Programs Create Program buttons now use React Router navigation to /app/commission-programs/new.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
