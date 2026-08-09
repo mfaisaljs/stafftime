@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:15:00.000Z",
+  "lastUpdated": "2026-08-09T17:20:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -377,12 +377,15 @@
       "acceptanceCriteria": [
         "/app/staff shows Staff Management instead of the add form",
         "Add Shopify Staff opens /app/staff/new",
-        "Staff table shows name, position, location, status, payment method, payroll type, and actions"
+        "Staff table shows name, position, location, status, payment method, payroll type, and actions",
+        "Staff table actions use Lucide icons with accessible labels"
       ],
       "files": [
         "app/routes/app.staff.tsx",
         "app/routes/app.staff.new.tsx",
-        "README.md"
+        "README.md",
+        "package.json",
+        "package-lock.json"
       ]
     },
     {

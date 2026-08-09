@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
+import { Archive, Pencil, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
@@ -112,10 +113,10 @@ export default function StaffManagementPage() {
             </div>
             <div className="table-tools">
               <button type="button" aria-label="Search">
-                Search
+                <Search aria-hidden="true" size={16} />
               </button>
               <button type="button" aria-label="Filter">
-                Filter
+                <SlidersHorizontal aria-hidden="true" size={16} />
               </button>
             </div>
           </div>
@@ -180,13 +181,13 @@ export default function StaffManagementPage() {
                     <td>
                       <div className="row-actions">
                         <a href={`/app/staff/new`} aria-label="Edit staff">
-                          Edit
+                          <Pencil aria-hidden="true" size={15} />
                         </a>
                         <button type="button" aria-label="Archive staff">
-                          Archive
+                          <Archive aria-hidden="true" size={15} />
                         </button>
                         <button type="button" aria-label="Delete staff">
-                          Delete
+                          <Trash2 aria-hidden="true" size={15} />
                         </button>
                       </div>
                     </td>
@@ -487,15 +488,23 @@ const STAFF_MANAGEMENT_STYLES = `
   .table-tools button,
   .row-actions button,
   .row-actions a {
+    align-items: center;
     background: #fff;
     border: 1px solid #d4d4d4;
     border-radius: 6px;
     color: #303030;
     cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
     min-height: 28px;
     min-width: 28px;
     text-align: center;
     text-decoration: none;
+  }
+
+  .table-tools svg,
+  .row-actions svg {
+    display: block;
   }
 
   .table-scroll {
