@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:48:32.000Z",
+  "lastUpdated": "2026-08-09T18:09:03.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -628,6 +628,33 @@
       "files": [
         "app/routes/app.reports.tsx",
         "app/services/admin.server.ts"
+      ]
+    },
+    {
+      "id": "ST045",
+      "taskId": "T006",
+      "title": "Build weekly schedule grid and availability editor",
+      "description": "Replace the basic schedule form with a weekly staff schedule grid showing forecast totals, unavailable days, add-shift slots, scheduled shift cards, and editable availability.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST010", "ST032"],
+      "acceptanceCriteria": [
+        "Schedule route shows a weekly grid with staff rows and Monday-Sunday columns",
+        "Unavailable staff days render as unavailable and open the availability editor",
+        "Available unscheduled days show a plus/add slot",
+        "Creating a shift opens a modal with staff, location, date, time, notes, and repeat-rest-of-week fields",
+        "Scheduled shifts render as black cards with time and location",
+        "Shift cards reveal edit and delete actions on hover",
+        "Totals row forecasts scheduled hours, labor cost, and staff count per day",
+        "Schedule toolbar date range opens a minimal Polaris range calendar",
+        "Schedule grid styling matches the compact reference layout",
+        "Schedule page does not show the Knowledge Base guidance footer",
+        "Schedule page uses the large Shopify page layout for a full-width grid",
+        "Schedule calendar control does not show outside previous/next chevron buttons",
+        "Schedule current-day indicator dot does not overlap the day label"
+      ],
+      "files": [
+        "app/routes/app.schedules.tsx"
       ]
     }
   ]

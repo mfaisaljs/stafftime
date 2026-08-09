@@ -11,7 +11,10 @@ declare namespace JSX {
       HTMLAnchorElement
     >;
     "s-page": React.DetailedHTMLProps<
-      React.HTMLAttributes<HTMLElement> & { heading?: string },
+      React.HTMLAttributes<HTMLElement> & {
+        heading?: string;
+        inlineSize?: "small" | "base" | "large";
+      },
       HTMLElement
     >;
     "s-section": React.DetailedHTMLProps<
@@ -85,6 +88,18 @@ declare namespace JSX {
     >;
     "s-tooltip": React.DetailedHTMLProps<
       React.HTMLAttributes<HTMLElement> & { id?: string },
+      HTMLElement
+    >;
+    "s-date-picker": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        type?: "single" | "range";
+        value?: string;
+        view?: string;
+        defaultView?: string;
+        name?: string;
+        onInput?: (event: { currentTarget: unknown }) => void;
+        onChange?: (event: { currentTarget: unknown }) => void;
+      },
       HTMLElement
     >;
     "s-heading": React.DetailedHTMLProps<
