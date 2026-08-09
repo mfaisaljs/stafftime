@@ -886,15 +886,15 @@ const SCHEDULE_STYLES = `
     border-radius: 14px;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
     left: 0;
-    padding: 16px;
+    padding: 14px;
     position: absolute;
     top: calc(100% + 8px);
-    width: 390px;
+    width: max-content;
     z-index: 40;
   }
 
   .schedule-date-popover s-date-picker {
-    width: 100%;
+    display: block;
   }
 
   .schedule-card {

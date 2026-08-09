@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:09:03.000Z",
+  "lastUpdated": "2026-08-09T18:10:13.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -651,7 +651,8 @@
         "Schedule page does not show the Knowledge Base guidance footer",
         "Schedule page uses the large Shopify page layout for a full-width grid",
         "Schedule calendar control does not show outside previous/next chevron buttons",
-        "Schedule current-day indicator dot does not overlap the day label"
+        "Schedule current-day indicator dot does not overlap the day label",
+        "Schedule calendar popover shrink-wraps the Polaris picker without extra right spacing"
       ],
       "files": [
         "app/routes/app.schedules.tsx"
