@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:28:00.000Z",
+  "lastUpdated": "2026-08-09T18:36:03.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -660,7 +660,10 @@
         "Yearly schedule view hides the calendar picker and uses month/year dropdowns to show the selected full month",
         "Yearly schedule year dropdown does not include years before the current year",
         "Yearly schedule year dropdown is capped to 10 years including the current year",
-        "Switching to Yearly auto-populates month and year from the current date"
+        "Switching to Yearly auto-populates month and year from the current date",
+        "Clear All Shifts opens a warning dialog with staff selection before deleting shifts",
+        "Clear All Shifts confirmation uses Shopify Polaris s-modal actions",
+        "Clear All Shifts staff selectors use native checkbox styling"
       ],
       "files": [
         "app/routes/app.schedules.tsx"

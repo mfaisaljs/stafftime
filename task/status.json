@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T18:28:00.000Z",
+  "lastUpdated": "2026-08-09T18:36:03.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -62,6 +62,9 @@
     "Updated: Yearly Schedule year dropdown now starts at the current year and normalizes past-year URLs.",
     "Updated: Yearly Schedule year dropdown is capped to 10 years including the current year.",
     "Updated: Switching to Yearly auto-populates the selected month and year from the current date.",
+    "Updated: Clear All Shifts now opens a warning dialog and deletes shifts only for selected staff members.",
+    "Updated: Clear All Shifts confirmation now uses Shopify Polaris s-modal with native modal actions.",
+    "Updated: Clear All Shifts staff selectors now use native checkbox styling instead of custom square indicators.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

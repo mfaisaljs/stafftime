@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
+  AlertTriangle,
   CalendarDays,
   Clock,
   Copy,
@@ -156,18 +157,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     if (intent === "clearWeek") {
-      const period = normalizePeriod(String(formData.get("period") ?? "weekly"));
-      const range = rangeForPeriod(
-        parseDateKey(String(formData.get("date") ?? "")),
-        period,
-      );
+      const employeeIds = formData.getAll("employeeIds").map(String).filter(Boolean);
+      if (employeeIds.length === 0) {
+        return { error: "Select at least one staff member." };
+      }
       await prisma.shift.deleteMany({
         where: {
           shopId: shop.id,
-          startsAt: { gte: range.start, lte: range.end },
+          employeeId: { in: employeeIds },
         },
       });
-      return { success: "All shifts cleared for this range." };
+      return { success: "Selected staff shifts deleted." };
     }
 
     if (intent === "updateAvailability") {
@@ -256,6 +256,9 @@ export default function SchedulesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [shiftModal, setShiftModal] = useState<ScheduleModal>(null);
   const [availabilityEmployeeId, setAvailabilityEmployeeId] = useState("");
+  const [selectedClearStaff, setSelectedClearStaff] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [draftRange, setDraftRange] = useState(`${weekStart}--${weekEnd}`);
 
@@ -263,6 +266,7 @@ export default function SchedulesPage() {
     if (actionFetcher.data?.success) {
       setShiftModal(null);
       setAvailabilityEmployeeId("");
+      setSelectedClearStaff(new Set());
     }
   }, [actionFetcher.data]);
 
@@ -373,15 +377,17 @@ export default function SchedulesPage() {
               <Printer aria-hidden="true" size={15} />
               Print Schedule
             </button>
-            <actionFetcher.Form method="post">
-              <input type="hidden" name="intent" value="clearWeek" />
-              <input type="hidden" name="date" value={selectedDate} />
-              <input type="hidden" name="period" value={period} />
-              <button className="toolbar-button danger" type="submit">
+            <s-button
+              variant="secondary"
+              tone="critical"
+              commandFor="clear-shifts-modal"
+              command="--show"
+            >
+              <span className="toolbar-button-content">
                 <Trash2 aria-hidden="true" size={15} />
                 Clear All Shifts
-              </button>
-            </actionFetcher.Form>
+              </span>
+            </s-button>
           </div>
           <div className="toolbar-right">
             {period === "yearly" ? (
@@ -589,6 +595,13 @@ export default function SchedulesPage() {
           onClose={() => setAvailabilityEmployeeId("")}
         />
       )}
+
+      <ClearShiftsDialog
+        employees={employees}
+        selectedIds={selectedClearStaff}
+        setSelectedIds={setSelectedClearStaff}
+        fetcher={actionFetcher}
+      />
 
       <style>{SCHEDULE_STYLES}</style>
     </s-page>
@@ -949,6 +962,97 @@ function AvailabilityDialog({
   );
 }
 
+function ClearShiftsDialog({
+  employees,
+  selectedIds,
+  setSelectedIds,
+  fetcher,
+}: {
+  employees: Array<{ id: string; name: string }>;
+  selectedIds: Set<string>;
+  setSelectedIds: (value: Set<string>) => void;
+  fetcher: ReturnType<typeof useFetcher<ScheduleActionResult>>;
+}) {
+  const allSelected = employees.length > 0 && selectedIds.size === employees.length;
+  const toggleStaff = (employeeId: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(employeeId)) {
+      next.delete(employeeId);
+    } else {
+      next.add(employeeId);
+    }
+    setSelectedIds(next);
+  };
+
+  return (
+    <s-modal id="clear-shifts-modal" heading="Delete All Shifts" size="large">
+      <fetcher.Form id="clear-shifts-form" method="post" className="clear-body">
+        <input type="hidden" name="intent" value="clearWeek" />
+        {Array.from(selectedIds).map((employeeId) => (
+          <input key={employeeId} type="hidden" name="employeeIds" value={employeeId} />
+        ))}
+        <div className="warning-box">
+          <AlertTriangle aria-hidden="true" size={20} />
+          <span>
+            Warning: This will permanently delete ALL past, present, and future
+            shifts for the selected staff members. This action cannot be undone.
+          </span>
+        </div>
+        <label className="clear-check-row">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={(event) =>
+              setSelectedIds(
+                event.currentTarget.checked
+                  ? new Set(employees.map((employee) => employee.id))
+                  : new Set(),
+              )
+            }
+          />
+          Select All Staff
+        </label>
+        <div className="clear-staff-list">
+          {employees.map((employee) => (
+            <label className="clear-check-row" key={employee.id}>
+              <input
+                type="checkbox"
+                checked={selectedIds.has(employee.id)}
+                onChange={() => toggleStaff(employee.id)}
+              />
+              {employee.name}
+            </label>
+          ))}
+        </div>
+        <p className="selected-count">{selectedIds.size} staff selected</p>
+      </fetcher.Form>
+      <s-button
+        slot="secondary-actions"
+        variant="secondary"
+        commandFor="clear-shifts-modal"
+        command="--hide"
+      >
+        Cancel
+      </s-button>
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        tone="critical"
+        type="button"
+        disabled={selectedIds.size === 0}
+        commandFor="clear-shifts-modal"
+        command="--hide"
+        onClick={() =>
+          (document.getElementById("clear-shifts-form") as HTMLFormElement | null)
+            ?.requestSubmit()
+        }
+      >
+        Delete Shifts
+      </s-button>
+    </s-modal>
+  );
+}
+
 async function assertEmployee(shopId: string, employeeId: string) {
   const employee = await prisma.employee.findFirst({
     where: { id: employeeId, shopId },
@@ -1194,6 +1298,12 @@ const SCHEDULE_STYLES = `
     gap: 6px;
     min-height: 32px;
     padding: 0 12px;
+  }
+
+  .toolbar-button-content {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
   }
 
   .toolbar-button {
@@ -1562,10 +1672,51 @@ const SCHEDULE_STYLES = `
   }
 
   .dialog-body,
-  .availability-body {
+  .availability-body,
+  .clear-body {
     display: grid;
     gap: 12px;
     padding: 24px;
+  }
+
+  .warning-box {
+    align-items: flex-start;
+    background: #fde2e2;
+    border-radius: 10px;
+    color: #8e1f0b;
+    display: flex;
+    gap: 12px;
+    line-height: 1.5;
+    padding: 14px 16px;
+  }
+
+  .warning-box svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .clear-check-row {
+    align-items: center;
+    color: #303030;
+    display: flex;
+    gap: 12px;
+    min-height: 40px;
+  }
+
+  .clear-check-row input {
+    accent-color: #303030;
+    height: 20px;
+    width: 20px;
+  }
+
+  .clear-staff-list {
+    display: grid;
+    gap: 4px;
+  }
+
+  .selected-count {
+    color: #616161;
+    margin: 8px 0 0;
   }
 
   .dialog-body label,
@@ -1631,6 +1782,18 @@ const SCHEDULE_STYLES = `
     background: #303030;
     border: 1px solid #303030;
     color: #fff;
+  }
+
+  .primary-action:disabled {
+    background: #d4d4d4;
+    border-color: #d4d4d4;
+    color: #fff;
+    cursor: not-allowed;
+  }
+
+  .danger-action:not(:disabled) {
+    background: #8e1f0b;
+    border-color: #8e1f0b;
   }
 
   .secondary-action {
