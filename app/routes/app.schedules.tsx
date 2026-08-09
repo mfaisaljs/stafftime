@@ -274,6 +274,12 @@ export default function SchedulesPage() {
     setDraftRange(`${weekStart}--${weekEnd}`);
   }, [weekStart, weekEnd]);
 
+  useEffect(() => {
+    if (shiftModal) {
+      void showShopifyModal("shift-modal");
+    }
+  }, [shiftModal]);
+
   const shiftsByEmployeeDay = useMemo(() => {
     const map = new Map<string, typeof shifts>();
     for (const shift of shifts) {
@@ -347,6 +353,11 @@ export default function SchedulesPage() {
     params.set("date", nextDate);
     params.delete("week");
     setSearchParams(params);
+  };
+
+  const closeShiftModal = () => {
+    void hideShopifyModal("shift-modal");
+    setShiftModal(null);
   };
 
   return (
@@ -600,7 +611,7 @@ export default function SchedulesPage() {
           employees={employees}
           locations={locations}
           fetcher={actionFetcher}
-          onClose={() => setShiftModal(null)}
+          onClose={closeShiftModal}
         />
       )}
 
@@ -839,15 +850,8 @@ function ShiftDialog({
   const firstLocationId = locations[0]?.id ?? "";
 
   return (
-    <div className="dialog-backdrop" role="presentation">
-      <div className="schedule-dialog" role="dialog" aria-modal="true">
-        <div className="dialog-header">
-          <h2>{isEdit ? "Edit Shift" : "Create Shift"}</h2>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
-        <fetcher.Form method="post" className="dialog-body">
+    <s-modal id="shift-modal" heading={isEdit ? "Edit Shift" : "Create Shift"} size="base">
+      <fetcher.Form id="shift-form" method="post" className="dialog-body">
           <input type="hidden" name="intent" value={isEdit ? "updateShift" : "createShift"} />
           {isEdit && <input type="hidden" name="shiftId" value={selectedShift?.id} />}
           <s-select label="Staff" name="employeeId" value={employeeId} required>
@@ -908,17 +912,30 @@ function ShiftDialog({
               Repeat this shift for the rest of the week
             </label>
           )}
-          <div className="dialog-actions">
-            <s-button variant="secondary" type="button" onClick={onClose}>
-              Cancel
-            </s-button>
-            <s-button variant="primary" type="submit">
-              {isEdit ? "Save Shift" : "Create Shift"}
-            </s-button>
-          </div>
         </fetcher.Form>
-      </div>
-    </div>
+      <s-button
+        slot="secondary-actions"
+        variant="secondary"
+        commandFor="shift-modal"
+        command="--hide"
+        onClick={onClose}
+      >
+        Cancel
+      </s-button>
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        type="button"
+        commandFor="shift-modal"
+        command="--hide"
+        onClick={() =>
+          (document.getElementById("shift-form") as HTMLFormElement | null)
+            ?.requestSubmit()
+        }
+      >
+        {isEdit ? "Save Shift" : "Create Shift"}
+      </s-button>
+    </s-modal>
   );
 }
 
@@ -1072,6 +1089,27 @@ async function assertLocation(shopId: string, locationId: string) {
     where: { id: locationId, shopId },
   });
   if (!location) throw new Error("Choose a valid location.");
+}
+
+function showShopifyModal(id: string) {
+  return shopifyModal()?.show(id);
+}
+
+function hideShopifyModal(id: string) {
+  return shopifyModal()?.hide(id);
+}
+
+function shopifyModal() {
+  return (
+    window as unknown as {
+      shopify?: {
+        modal?: {
+          show: (id: string) => Promise<void>;
+          hide: (id: string) => Promise<void>;
+        };
+      };
+    }
+  ).shopify?.modal;
 }
 
 function dayTotals(
