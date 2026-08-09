@@ -24,6 +24,7 @@ import prisma from "../db.server";
 
 type ScheduleActionResult = { success?: string; error?: string };
 type SchedulePeriod = "weekly" | "monthly" | "yearly";
+type ColorCustomizationTarget = "location" | "staff";
 type ScheduleModal =
   | { mode: "create"; employeeId: string; dateKey: string }
   | { mode: "edit"; shiftId: string }
@@ -70,6 +71,26 @@ const MONTH_OPTIONS = [
   "December",
 ];
 
+const DEFAULT_SHIFT_COLOR = "#000000";
+const SCHEDULE_COLORS = [
+  { value: "#000000", label: "Black" },
+  { value: "#12a8e0", label: "Sky Blue" },
+  { value: "#14b87a", label: "Green" },
+  { value: "#8352f3", label: "Purple" },
+  { value: "#f43f5e", label: "Rose" },
+  { value: "#f59e0b", label: "Orange" },
+  { value: "#6366f1", label: "Indigo" },
+  { value: "#14b8a6", label: "Teal" },
+  { value: "#ef4444", label: "Red" },
+  { value: "#64748b", label: "Slate" },
+  { value: "#84cc16", label: "Lime" },
+  { value: "#ec4899", label: "Pink" },
+  { value: "#f4b400", label: "Yellow Sun" },
+  { value: "#06b6d4", label: "Cyan" },
+  { value: "#059669", label: "Emerald" },
+  { value: "#f97316", label: "Deep Orange" },
+];
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
@@ -84,7 +105,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       : rawSelectedDate;
   const range = rangeForPeriod(selectedDate, period);
 
-  const [employees, shifts, locations] = await Promise.all([
+  const [employees, shifts, locations, setting] = await Promise.all([
     prisma.employee.findMany({
       where: { shopId: shop.id, status: { not: "ARCHIVED" } },
       include: { location: true },
@@ -101,6 +122,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     prisma.storeLocation.findMany({
       where: { shopId: shop.id, active: true },
       orderBy: { name: "asc" },
+    }),
+    prisma.setting.findUnique({
+      where: { shopId: shop.id },
+      select: { scheduleLocationColors: true, scheduleStaffColors: true },
     }),
   ]);
 
@@ -140,6 +165,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       id: location.id,
       name: location.name,
     })),
+    scheduleColors: {
+      location: parseColorMap(setting?.scheduleLocationColors),
+      staff: parseColorMap(setting?.scheduleStaffColors),
+    },
   };
 };
 
@@ -150,6 +179,51 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const intent = String(formData.get("intent") ?? "createShift");
 
   try {
+    if (intent === "updateScheduleColor") {
+      const colorTarget = String(formData.get("colorTarget") ?? "");
+      const targetId = String(formData.get("targetId") ?? "");
+      const color = String(formData.get("color") ?? "");
+      if (colorTarget !== "location" && colorTarget !== "staff") {
+        return { error: "Choose whether to customize locations or staff." };
+      }
+      if (!targetId) {
+        return { error: "Choose a location or staff member to customize." };
+      }
+      if (!SCHEDULE_COLORS.some((option) => option.value === color)) {
+        return { error: "Choose a valid schedule color." };
+      }
+      if (colorTarget === "location") {
+        await assertLocation(shop.id, targetId);
+      } else {
+        await assertEmployee(shop.id, targetId);
+      }
+
+      const setting = await prisma.setting.findUnique({
+        where: { shopId: shop.id },
+        select: { scheduleLocationColors: true, scheduleStaffColors: true },
+      });
+      const locationColors = parseColorMap(setting?.scheduleLocationColors);
+      const staffColors = parseColorMap(setting?.scheduleStaffColors);
+      if (colorTarget === "location") {
+        locationColors[targetId] = color;
+      } else {
+        staffColors[targetId] = color;
+      }
+      await prisma.setting.upsert({
+        where: { shopId: shop.id },
+        update: {
+          scheduleLocationColors: JSON.stringify(locationColors),
+          scheduleStaffColors: JSON.stringify(staffColors),
+        },
+        create: {
+          shopId: shop.id,
+          scheduleLocationColors: JSON.stringify(locationColors),
+          scheduleStaffColors: JSON.stringify(staffColors),
+        },
+      });
+      return { success: "Schedule color updated." };
+    }
+
     if (intent === "deleteShift") {
       const shiftId = String(formData.get("shiftId") ?? "");
       await prisma.shift.deleteMany({ where: { id: shiftId, shopId: shop.id } });
@@ -245,6 +319,7 @@ export default function SchedulesPage() {
     shifts,
     employees,
     locations,
+    scheduleColors,
     days,
     period,
     selectedDate,
@@ -261,6 +336,8 @@ export default function SchedulesPage() {
   );
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [draftRange, setDraftRange] = useState(`${weekStart}--${weekEnd}`);
+  const [scheduleColorMode, setScheduleColorMode] =
+    useState<ColorCustomizationTarget>("location");
 
   useEffect(() => {
     if (actionFetcher.data?.success) {
@@ -312,6 +389,11 @@ export default function SchedulesPage() {
   const selectedYear = selectedDateObject.getFullYear();
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 10 }, (_, index) => currentYear + index);
+  const shiftColor = (shift: { employeeId: string; locationId: string }) =>
+    (scheduleColorMode === "staff"
+      ? scheduleColors.staff[shift.employeeId]
+      : scheduleColors.location[shift.locationId]) ??
+    DEFAULT_SHIFT_COLOR;
 
   const selectAnchorDate = (date: string) => {
     const range = rangeForPeriod(dateFromKey(date), period);
@@ -372,7 +454,11 @@ export default function SchedulesPage() {
 
         <div className="schedule-toolbar">
           <div className="toolbar-left">
-            <s-button variant="secondary">
+            <s-button
+              variant="secondary"
+              commandFor="customize-colors-modal"
+              command="--show"
+            >
               <span className="toolbar-button-content">
                 <Palette aria-hidden="true" size={15} />
                 Customize Colors
@@ -382,7 +468,10 @@ export default function SchedulesPage() {
               <s-select
                 label="Color mode"
                 labelAccessibilityVisibility="exclusive"
-                value="location"
+                value={scheduleColorMode}
+                onChange={(event) =>
+                  setScheduleColorMode(selectValue(event) as ColorCustomizationTarget)
+                }
               >
                 <s-option value="location">Color by Location</s-option>
                 <s-option value="staff">Color by Staff</s-option>
@@ -495,6 +584,7 @@ export default function SchedulesPage() {
             <MonthlySchedule
               days={monthlyDays}
               shiftsByDay={shiftsByDay}
+              shiftColor={shiftColor}
               employees={employees}
               fetcher={actionFetcher}
               onAdd={(dateKey) => {
@@ -541,6 +631,7 @@ export default function SchedulesPage() {
                               employee={employee}
                               day={day}
                               shifts={cellShifts}
+                              shiftColor={shiftColor}
                               available={available}
                               isPast={day.isPast}
                               onAdd={() =>
@@ -623,6 +714,12 @@ export default function SchedulesPage() {
         />
       )}
 
+      <CustomizeColorsDialog
+        employees={employees}
+        locations={locations}
+        scheduleColors={scheduleColors}
+      />
+
       <ClearShiftsDialog
         employees={employees}
         selectedIds={selectedClearStaff}
@@ -638,6 +735,7 @@ export default function SchedulesPage() {
 function MonthlySchedule({
   days,
   shiftsByDay,
+  shiftColor,
   employees,
   fetcher,
   onAdd,
@@ -654,12 +752,15 @@ function MonthlySchedule({
     string,
     Array<{
       id: string;
+      employeeId: string;
+      locationId: string;
       employeeName: string;
       startTime: string;
       endTime: string;
       locationName: string;
     }>
   >;
+  shiftColor: (shift: { employeeId: string; locationId: string }) => string;
   employees: Array<{ id: string }>;
   fetcher: ReturnType<typeof useFetcher<ScheduleActionResult>>;
   onAdd: (dateKey: string) => void;
@@ -686,7 +787,11 @@ function MonthlySchedule({
               <div className="month-day-number">{day.dayNumber}</div>
               <div className="month-shifts">
                 {dayShifts.map((shift) => (
-                  <div className="shift-card month-shift" key={shift.id}>
+                  <div
+                    className="shift-card month-shift"
+                    key={shift.id}
+                    style={{ backgroundColor: shiftColor(shift) }}
+                  >
                     <button
                       className="shift-content"
                       type="button"
@@ -739,6 +844,7 @@ function ScheduleCell({
   employee,
   day,
   shifts,
+  shiftColor,
   available,
   isPast,
   onAdd,
@@ -750,10 +856,13 @@ function ScheduleCell({
   day: { key: string; value: (typeof WEEKDAY_VALUES)[number] };
   shifts: Array<{
     id: string;
+    employeeId: string;
+    locationId: string;
     startTime: string;
     endTime: string;
     locationName: string;
   }>;
+  shiftColor: (shift: { employeeId: string; locationId: string }) => string;
   available: boolean;
   isPast: boolean;
   onAdd: () => void;
@@ -782,7 +891,11 @@ function ScheduleCell({
   return (
     <div className="schedule-cell">
       {shifts.map((shift) => (
-        <div className="shift-card" key={shift.id}>
+        <div
+          className="shift-card"
+          key={shift.id}
+          style={{ backgroundColor: shiftColor(shift) }}
+        >
           <button
             className="shift-content"
             type="button"
@@ -1008,6 +1121,155 @@ function AvailabilityDialog({
   );
 }
 
+function CustomizeColorsDialog({
+  employees,
+  locations,
+  scheduleColors,
+}: {
+  employees: Array<{ id: string; name: string }>;
+  locations: Array<{ id: string; name: string }>;
+  scheduleColors: {
+    location: Record<string, string>;
+    staff: Record<string, string>;
+  };
+}) {
+  const fetcher = useFetcher<ScheduleActionResult>();
+  const [customizeFor, setCustomizeFor] =
+    useState<ColorCustomizationTarget>("location");
+  const [selectedTargetId, setSelectedTargetId] = useState("");
+  const savedColors =
+    customizeFor === "location" ? scheduleColors.location : scheduleColors.staff;
+  const targetOptions = customizeFor === "location" ? locations : employees;
+  const selectedTarget = targetOptions.find((target) => target.id === selectedTargetId);
+  const targetLabel = customizeFor === "location" ? "Select Location" : "Select Staff";
+  const targetPlaceholder =
+    customizeFor === "location"
+      ? "Choose a location to customize"
+      : "Choose a staff member to customize";
+  const currentColor = selectedTargetId
+    ? savedColors[selectedTargetId] ?? DEFAULT_SHIFT_COLOR
+    : DEFAULT_SHIFT_COLOR;
+  const currentColorOption = colorOption(currentColor);
+  const [selectedColor, setSelectedColor] = useState(currentColor);
+
+  useEffect(() => {
+    setSelectedColor(currentColor);
+  }, [currentColor]);
+
+  const changeCustomizeFor = (event: { currentTarget: unknown }) => {
+    setCustomizeFor(selectValue(event) as ColorCustomizationTarget);
+    setSelectedTargetId("");
+  };
+
+  return (
+    <s-modal id="customize-colors-modal" heading="Customize Colors" size="base">
+      <fetcher.Form id="customize-colors-form" method="post" className="dialog-body">
+        <input type="hidden" name="intent" value="updateScheduleColor" />
+        <input type="hidden" name="colorTarget" value={customizeFor} />
+        <input type="hidden" name="targetId" value={selectedTargetId} />
+        <input type="hidden" name="color" value={selectedColor} />
+        {fetcher.data?.error && (
+          <s-banner tone="critical" heading={fetcher.data.error} />
+        )}
+        <s-select
+          label="Customize Colors For"
+          value={customizeFor}
+          onChange={changeCustomizeFor}
+        >
+          <s-option value="location">Locations</s-option>
+          <s-option value="staff">Staff</s-option>
+        </s-select>
+        <s-select
+          label={targetLabel}
+          value={selectedTargetId || undefined}
+          placeholder={targetPlaceholder}
+          onChange={(event) => setSelectedTargetId(selectValue(event))}
+          required
+        >
+          {targetOptions.map((target) => (
+            <s-option key={target.id} value={target.id}>
+              {target.name}
+            </s-option>
+          ))}
+        </s-select>
+        {selectedTarget && (
+          <>
+            <div className="color-current">
+              <strong>Current Color</strong>
+              <div className="color-current-row">
+                <span
+                  className="color-chip"
+                  style={{ backgroundColor: currentColor }}
+                  aria-hidden="true"
+                />
+                <span>{currentColorOption.label}</span>
+              </div>
+            </div>
+            <div className="color-picker">
+              <strong>Choose New Color</strong>
+              <div className="color-grid" role="radiogroup" aria-label="Choose new color">
+                {SCHEDULE_COLORS.map((option) => (
+                  <button
+                    className={`color-swatch${
+                      option.value === selectedColor ? " selected" : ""
+                    }`}
+                    key={option.value}
+                    type="button"
+                    style={{ backgroundColor: option.value }}
+                    aria-label={option.label}
+                    aria-checked={option.value === selectedColor}
+                    role="radio"
+                    onClick={() => setSelectedColor(option.value)}
+                  >
+                    {option.value === selectedColor ? "✓" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="color-preview">
+              <strong>Preview</strong>
+              <div
+                className="color-preview-card"
+                style={{
+                  backgroundColor: selectedColor,
+                  color: readableTextColor(selectedColor),
+                }}
+              >
+                <strong>09:00 - 17:00</strong>
+                <span>
+                  {selectedTarget.name} (
+                  {customizeFor === "location" ? "Location" : "Staff"})
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+      </fetcher.Form>
+      <s-button
+        slot="secondary-actions"
+        variant="secondary"
+        commandFor="customize-colors-modal"
+        command="--hide"
+      >
+        Cancel
+      </s-button>
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        disabled={!selectedTargetId}
+        commandFor="customize-colors-modal"
+        command="--hide"
+        onClick={() =>
+          (document.getElementById("customize-colors-form") as HTMLFormElement | null)
+            ?.requestSubmit()
+        }
+      >
+        Update Color
+      </s-button>
+    </s-modal>
+  );
+}
+
 function ClearShiftsDialog({
   employees,
   selectedIds,
@@ -1128,6 +1390,42 @@ function shopifyModal() {
       };
     }
   ).shopify?.modal;
+}
+
+function parseColorMap(value: string | null | undefined) {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, string] =>
+          typeof entry[0] === "string" &&
+          typeof entry[1] === "string" &&
+          SCHEDULE_COLORS.some((option) => option.value === entry[1]),
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function colorOption(value: string) {
+  return (
+    SCHEDULE_COLORS.find((option) => option.value === value) ??
+    SCHEDULE_COLORS.find((option) => option.value === DEFAULT_SHIFT_COLOR) ??
+    SCHEDULE_COLORS[0]
+  );
+}
+
+function readableTextColor(backgroundColor: string) {
+  const hex = backgroundColor.replace("#", "");
+  if (hex.length !== 6) return "#ffffff";
+  const red = Number.parseInt(hex.slice(0, 2), 16);
+  const green = Number.parseInt(hex.slice(2, 4), 16);
+  const blue = Number.parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
+  return luminance > 0.62 ? "#111111" : "#ffffff";
 }
 
 function dayTotals(
@@ -1795,6 +2093,70 @@ const SCHEDULE_STYLES = `
   .form-help {
     color: #616161;
     margin: 0;
+  }
+
+  .color-current,
+  .color-picker,
+  .color-preview {
+    display: grid;
+    gap: 10px;
+  }
+
+  .color-current-row {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+  }
+
+  .color-chip {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+    display: inline-block;
+    height: 28px;
+    width: 28px;
+  }
+
+  .color-grid {
+    display: grid;
+    gap: 8px 30px;
+    grid-template-columns: repeat(5, 48px);
+    justify-content: start;
+  }
+
+  .color-swatch {
+    align-items: center;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 22px;
+    font-weight: 800;
+    height: 38px;
+    justify-content: center;
+    line-height: 1;
+    width: 38px;
+  }
+
+  .color-swatch.selected {
+    border-color: #202223;
+    box-shadow: 0 0 0 1px #202223;
+  }
+
+  .color-preview-card {
+    border-radius: 8px;
+    color: #111;
+    display: grid;
+    gap: 6px;
+    min-height: 54px;
+    padding: 10px;
+    place-items: center;
+    text-align: center;
+  }
+
+  .color-preview-card span {
+    font-size: 11px;
+    font-weight: 650;
   }
 
   .checkbox-row {

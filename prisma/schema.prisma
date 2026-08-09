@@ -293,6 +293,8 @@ model Setting {
   mandatoryBreakMinutes Int      @default(30)
   requireGps            Boolean  @default(false)
   requirePhoto          Boolean  @default(false)
+  scheduleLocationColors String   @default("{}")
+  scheduleStaffColors    String   @default("{}")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

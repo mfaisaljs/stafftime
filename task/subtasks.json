@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T21:01:30.000Z",
+  "lastUpdated": "2026-08-09T21:28:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -676,12 +676,19 @@
         "Shift hover action icons and buttons are sized for better visibility",
         "Shift hover edit and delete buttons use white backgrounds with a red delete icon",
         "Create Shift staff and location fields use native Polaris placeholders with no selected option",
-        "Create Shift action stays disabled until mandatory staff and location selections are made"
+        "Create Shift action stays disabled until mandatory staff and location selections are made",
+        "Customize Colors opens a Polaris modal where Location or Staff controls the second dropdown",
+        "Customize Colors shows current color, palette, and preview after a location or staff member is selected",
+        "Updating a schedule color persists the choice and applies it to matching shift cards",
+        "Schedule toolbar keeps the Color by Location or Color by Staff dropdown next to Customize Colors",
+        "Customize Colors preview text switches between light and dark for selected color contrast"
       ],
       "files": [
         "app/routes/app.schedules.tsx",
         "app/routes/app.tsx",
-        "app/globals.d.ts"
+        "app/globals.d.ts",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809210500_schedule_color_overrides/migration.sql"
       ]
     },
     {

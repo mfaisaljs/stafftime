@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T21:01:30.000Z",
+  "lastUpdated": "2026-08-09T21:28:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -78,6 +78,10 @@
     "Updated: Schedule shift hover action buttons now use white backgrounds with a red delete icon.",
     "Updated: Create Shift staff and location selects now use native Polaris placeholders with no selected option.",
     "Updated: Create Shift action remains disabled until mandatory staff and location selections are made.",
+    "Updated: Customize Colors opens a Polaris modal where Location or Staff controls the second dropdown.",
+    "Updated: Customize Colors now shows current color, palette, preview, and persists staff/location color overrides for shift cards.",
+    "Updated: Restored the toolbar Color by Location/Color by Staff dropdown next to Customize Colors.",
+    "Updated: Customize Colors preview text now switches between light and dark based on selected color contrast.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
