@@ -92,6 +92,10 @@ export default function StaffManagementPage() {
           </button>
         </div>
 
+        <s-tooltip id="inactive-staff-tooltip">
+          Staff automatically active when they first clock in at POS or Web Portal.
+        </s-tooltip>
+
         <section className="staff-table-card">
           <div className="table-toolbar">
             <div className="status-tabs">
@@ -162,15 +166,14 @@ export default function StaffManagementPage() {
                     <td>{employee.position ?? "Staff"}</td>
                     <td>{employee.location?.name ?? "Shop location"}</td>
                     <td>
-                      <span
-                        className={
-                          employee.status === "ACTIVE"
-                            ? "status-badge active"
-                            : "status-badge inactive"
-                        }
-                      >
-                        {employee.status === "ACTIVE" ? "Active" : "Inactive"}
-                      </span>
+                      {employee.status === "ACTIVE" ? (
+                        <span className="status-badge active">Active</span>
+                      ) : (
+                        <span className="status-badge inactive">
+                          <s-icon type="info" interestFor="inactive-staff-tooltip" />
+                          Inactive
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span className="payment-badge">
@@ -570,7 +573,14 @@ const STAFF_MANAGEMENT_STYLES = `
     color: #0b6b32;
   }
 
-  .status-badge.inactive,
+  .status-badge.inactive {
+    align-items: center;
+    background: #ffe8bd;
+    color: #8a5700;
+    display: inline-flex;
+    gap: 4px;
+  }
+
   .payment-badge {
     background: #ffe8bd;
     color: #8a5700;
