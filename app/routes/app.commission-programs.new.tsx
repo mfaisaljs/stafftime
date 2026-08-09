@@ -13,6 +13,7 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
+  AlertCircle,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -75,6 +76,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         ? Number(allProductsCommissionRaw)
         : null;
 
+    if (employeeIds.length === 0) {
+      return {
+        error: "Please select at least one staff member",
+        staffError: "Please select at least one staff member",
+      };
+    }
+
     if (productScope === "all" && allProductsCommissionRaw && Number.isNaN(allProductsCommission)) {
       return { error: "Enter a valid commission amount." };
     }
@@ -129,6 +137,7 @@ export default function CreateCommissionProgram() {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [checkedProductIds, setCheckedProductIds] = useState<Set<string>>(() => new Set());
   const [bulkCommission, setBulkCommission] = useState("");
+  const [staffError, setStaffError] = useState("");
   const limitedDateRef = useRef<HTMLDivElement | null>(null);
   const dirtyInputRef = useRef<HTMLInputElement | null>(null);
   const filteredStaff = useMemo(() => {
@@ -155,6 +164,12 @@ export default function CreateCommissionProgram() {
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
   }, [dateRangeOpen]);
 
+  useEffect(() => {
+    if (actionData && "staffError" in actionData && actionData.staffError) {
+      setStaffError(actionData.staffError);
+    }
+  }, [actionData]);
+
   const markDirty = () => {
     if (dirtyInputRef.current) {
       dirtyInputRef.current.value = String(Date.now());
@@ -170,6 +185,7 @@ export default function CreateCommissionProgram() {
       next.add(employeeId);
     }
     setSelectedStaffIds(next);
+    setStaffError(next.size === 0 ? "Please select at least one staff member" : "");
     markDirty();
   };
 
@@ -183,6 +199,7 @@ export default function CreateCommissionProgram() {
       }
     }
     setSelectedStaffIds(next);
+    setStaffError(next.size === 0 ? "Please select at least one staff member" : "");
     markDirty();
   };
 
@@ -277,11 +294,15 @@ export default function CreateCommissionProgram() {
     setSelectedProducts([]);
     setCheckedProductIds(new Set());
     setBulkCommission("");
+    setStaffError("");
   };
 
   return (
     <s-page heading="Create Commission Program">
-      {actionData && "error" in actionData && actionData.error && (
+      {actionData &&
+        "error" in actionData &&
+        actionData.error &&
+        !("staffError" in actionData && actionData.staffError) && (
         <s-banner tone="critical" heading={actionData.error} />
       )}
       <Form
@@ -289,6 +310,12 @@ export default function CreateCommissionProgram() {
         data-save-bar
         data-discard-confirmation
         onReset={handleDiscard}
+        onSubmit={(event) => {
+          if (selectedStaffIds.size === 0) {
+            event.preventDefault();
+            setStaffError("Please select at least one staff member");
+          }
+        }}
         className="commission-create-page"
       >
         <input ref={dirtyInputRef} type="hidden" name="formDirty" defaultValue="0" />
@@ -636,6 +663,12 @@ export default function CreateCommissionProgram() {
                 placeholder="Search staff members..."
               />
             </label>
+            {staffError && (
+              <p className="staff-field-error" role="alert">
+                <AlertCircle aria-hidden="true" size={16} />
+                {staffError}
+              </p>
+            )}
 
             <div className="staff-select-all">
               <s-checkbox
@@ -1396,6 +1429,16 @@ const CREATE_COMMISSION_STYLES = `
     gap: 8px;
     min-height: 36px;
     padding: 0 12px;
+  }
+
+  .staff-field-error {
+    align-items: center;
+    color: #8e1f0b;
+    display: flex;
+    font-size: 13px;
+    font-weight: 650;
+    gap: 6px;
+    margin: 0;
   }
 
   .search-field input {

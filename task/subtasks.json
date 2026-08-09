@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T22:19:30.000Z",
+  "lastUpdated": "2026-08-09T22:23:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -743,7 +743,8 @@
         "Product Selection radio buttons use black accent color matching checkbox styling",
         "After product resource picker selection, product manager shows details, commissions, select-all, and bulk update",
         "Create Commission Program save bar submits through a route action that persists CommissionProgram records",
-        "Commission Programs index lists saved programs after create"
+        "Commission Programs index lists saved programs after create",
+        "Create Commission Program blocks save when no staff is selected and shows an inline error under the staff search field"
       ],
       "files": [
         "app/routes/app.commission-programs.tsx",
