@@ -1,5 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
+import { Link, useLoaderData } from "react-router";
 import { Archive, Pencil, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -51,9 +51,9 @@ export default function StaffManagementPage() {
           </div>
           <div className="plan-action">
             <span>Upgrade to add more staff</span>
-            <a className="dark-button" href="/app">
+            <Link className="dark-button" to="/app">
               Upgrade Plan
-            </a>
+            </Link>
           </div>
         </section>
 
@@ -69,9 +69,9 @@ export default function StaffManagementPage() {
             </div>
             <p>Looking to grow your team? Chat with us to unlock a free bonus staff slot</p>
           </div>
-          <a className="claim-button" href="/app">
+          <Link className="claim-button" to="/app">
             Claim Now
-          </a>
+          </Link>
         </section>
 
         <div className="staff-type-tabs">
@@ -84,9 +84,9 @@ export default function StaffManagementPage() {
         </div>
 
         <div className="staff-actions">
-          <a className="primary-action" href="/app/staff/new">
+          <Link className="primary-action" to="/app/staff/new">
             Add Shopify Staff
-          </a>
+          </Link>
           <button className="secondary-action" type="button" disabled>
             Bulk Import
           </button>
@@ -183,9 +183,12 @@ export default function StaffManagementPage() {
                     <td>{payrollTypeLabel(employee.payrollType)}</td>
                     <td>
                       <div className="row-actions">
-                        <a href={`/app/staff/${employee.id}/edit`} aria-label="Edit staff">
+                        <Link
+                          to={`/app/staff/${employee.id}/edit`}
+                          aria-label="Edit staff"
+                        >
                           <Pencil aria-hidden="true" size={15} />
-                        </a>
+                        </Link>
                         <button type="button" aria-label="Archive staff">
                           <Archive aria-hidden="true" size={15} />
                         </button>
