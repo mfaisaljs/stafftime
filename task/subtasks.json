@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T21:56:30.000Z",
+  "lastUpdated": "2026-08-09T22:06:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -732,7 +732,12 @@
         "Create Commission Program text inputs use compact heights matching the reference",
         "Commission Programs pages use default app page width instead of the Schedule large width",
         "Commission Programs and Create Commission Program custom page headings are hidden",
-        "Commission Program routes set Shopify page heading metadata instead of falling back to the app name"
+        "Commission Program routes set Shopify page heading metadata instead of falling back to the app name",
+        "Limited Time Commission reveals a date range selector button and keeps the preset calendar popover closed until clicked",
+        "Limited Time Commission date selector matches the Reports date picker structure and styling with two months side by side",
+        "Limited Time Commission date selector closes when clicking outside the calendar",
+        "Limited Time Commission date selector shrink-wraps content without extra right-side space",
+        "Create Commission Program route does not show a back arrow"
       ],
       "files": [
         "app/routes/app.commission-programs.tsx",

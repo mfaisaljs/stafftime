@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T21:56:30.000Z",
+  "lastUpdated": "2026-08-09T22:06:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -94,6 +94,11 @@
     "Updated: Commission Programs pages now use the default app page width; Schedule remains the large-width route.",
     "Updated: Commission Programs and Create Commission Program visible page headings removed.",
     "Updated: Commission Program routes now set Shopify page heading metadata instead of falling back to the app name.",
+    "Updated: Limited Time Commission now reveals a date range button while keeping the calendar popover closed until clicked.",
+    "Updated: Limited Time Commission date selector now matches the Reports date picker structure and styling.",
+    "Updated: Limited Time Commission calendar now closes when clicking outside the selector.",
+    "Updated: Limited Time Commission calendar now shrink-wraps content without extra right-side space.",
+    "Updated: Create Commission Program route no longer shows a back arrow.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
