@@ -2,7 +2,7 @@
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
-name = "StaffTime"
+name = "Trubuild: Staff Management"
 application_url = "https://largely-main-ringtail.ngrok-free.app"
 embedded = true
 

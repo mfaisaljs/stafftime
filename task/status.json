@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T016", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010"],
-  "lastUpdated": "2026-08-09T16:55:00.000Z",
+  "lastUpdated": "2026-08-09T17:00:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -16,6 +16,7 @@
     "ST028 complete: POS workflow integration tests (6), Android QA checklist, dev:pos script for ngrok.",
     "ST032 complete: Employees add form expanded to match competitor staff profile flow with payroll, availability, and payment method fields.",
     "Fixed: payment method detail fields now render conditionally based on selected method.",
+    "Fixed: employee form fields wrap cleanly; payroll type is hourly, weekly, or monthly with one matching amount field.",
     "Next priorities: employee edit/PIN change, missed punch create form, production hosting, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
   ],

@@ -1,4 +1,4 @@
-name = "StaffTime"
+name = "Trubuild: Staff Management"
 roles = ["frontend", "backend"]
 webhooks_path = "/webhooks/app/uninstalled"
 port = 3458

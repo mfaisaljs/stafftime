@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T16:55:00.000Z",
+  "lastUpdated": "2026-08-09T17:00:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -352,6 +352,8 @@
       "dependencies": ["ST025"],
       "acceptanceCriteria": [
         "Form includes screenshot-matched sections and options",
+        "Form fields wrap without overlapping or squeezing",
+        "Payroll type supports hourly, weekly, and monthly with one matching amount field",
         "Payment method details render only for the selected method",
         "New employee profile fields persist in Prisma",
         "PIN uniqueness remains enforced"

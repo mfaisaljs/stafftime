@@ -79,7 +79,15 @@ export default function EmployeesPage() {
   const { employees, locations } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const [pin, setPin] = useState("");
+  const [payrollType, setPayrollType] = useState("HOURLY");
   const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
+  const rateFieldName = payrollType === "HOURLY" ? "hourlyRate" : "salaryAmount";
+  const rateFieldLabel =
+    payrollType === "HOURLY"
+      ? "Hourly Rate"
+      : payrollType === "WEEKLY"
+        ? "Weekly Pay"
+        : "Monthly Salary";
   const selectedPaymentLabel = paymentMethodLabel(paymentMethod);
   const showPayPalFields = paymentMethod === "PAYPAL";
   const showBankFields = BANK_PAYMENT_METHODS.includes(paymentMethod);
@@ -189,7 +197,11 @@ export default function EmployeesPage() {
                 </label>
                 <label className="staff-label">
                   Payroll Type
-                  <select name="payrollType" defaultValue="HOURLY">
+                  <select
+                    name="payrollType"
+                    value={payrollType}
+                    onChange={(event) => setPayrollType(event.currentTarget.value)}
+                  >
                     {PAYROLL_TYPE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -198,20 +210,14 @@ export default function EmployeesPage() {
                   </select>
                 </label>
                 <Field
-                  label="Salary Amount"
-                  name="salaryAmount"
+                  key={rateFieldName}
+                  label={rateFieldLabel}
+                  name={rateFieldName}
                   type="number"
                   step="0.01"
                   defaultValue="0"
                 />
               </div>
-              <Field
-                label="Hourly Rate"
-                name="hourlyRate"
-                type="number"
-                step="0.01"
-                defaultValue="0"
-              />
             </FormSection>
 
             <FormSection
@@ -412,9 +418,8 @@ const CURRENCY_OPTIONS = [
 
 const PAYROLL_TYPE_OPTIONS = [
   { value: "HOURLY", label: "Hourly" },
-  { value: "SALARY", label: "Salary" },
-  { value: "COMMISSION", label: "Commission" },
-  { value: "CONTRACT", label: "Contract" },
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
 ];
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -470,6 +475,7 @@ const EMPLOYEE_FORM_STYLES = `
     grid-template-columns: minmax(160px, 280px) 1fr;
     gap: 24px;
     align-items: start;
+    min-width: 0;
   }
 
   .form-section-copy {
@@ -491,20 +497,22 @@ const EMPLOYEE_FORM_STYLES = `
     border-radius: 12px;
     display: grid;
     gap: 12px;
+    min-width: 0;
     padding: 16px;
   }
 
   .staff-grid {
     display: grid;
     gap: 12px;
+    min-width: 0;
   }
 
   .staff-grid.two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
 
   .staff-grid.three {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 
   .staff-label {
@@ -512,24 +520,29 @@ const EMPLOYEE_FORM_STYLES = `
     display: grid;
     font-size: 12px;
     gap: 4px;
+    min-width: 0;
   }
 
   .staff-label input,
   .staff-label select {
+    box-sizing: border-box;
     border: 1px solid #8a8a8a;
     border-radius: 6px;
     min-height: 32px;
     padding: 4px 8px;
+    width: 100%;
   }
 
   .staff-inline {
     align-items: end;
-    display: flex;
+    display: grid;
     gap: 12px;
+    grid-template-columns: minmax(160px, 220px) auto;
+    justify-content: start;
   }
 
   .staff-inline .staff-label {
-    max-width: 140px;
+    min-width: 0;
   }
 
   button.secondary {
@@ -539,6 +552,7 @@ const EMPLOYEE_FORM_STYLES = `
     cursor: pointer;
     min-height: 32px;
     padding: 4px 12px;
+    white-space: nowrap;
   }
 
   .staff-radio {
@@ -575,7 +589,8 @@ const EMPLOYEE_FORM_STYLES = `
   @media (max-width: 768px) {
     .form-section,
     .staff-grid.two,
-    .staff-grid.three {
+    .staff-grid.three,
+    .staff-inline {
       grid-template-columns: 1fr;
     }
   }
