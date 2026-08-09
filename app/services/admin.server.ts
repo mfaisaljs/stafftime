@@ -2,10 +2,10 @@ import type { Session } from "@shopify/shopify-api";
 import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
 import {
-  createEmployee,
   ensureDefaultLocation,
   ensureShop,
   getAttendanceSummary,
+  seedDemoDataForShop,
 } from "./workforce.server";
 
 export async function getAdminShop(session: Session) {
@@ -19,66 +19,7 @@ export async function getAdminShop(session: Session) {
 
 export async function seedDemoData(session: Session) {
   const shop = await getAdminShop(session);
-  const location = await ensureDefaultLocation(shop.id);
-
-  const count = await prisma.employee.count({ where: { shopId: shop.id } });
-  if (count > 0) return { seeded: false };
-
-  const john = await createEmployee({
-    shopId: shop.id,
-    locationId: location.id,
-    firstName: "John",
-    lastName: "Rivera",
-    email: "john@example.com",
-    pin: "1234",
-    role: "EMPLOYEE",
-    hourlyRate: 18,
-    department: "Sales",
-  });
-
-  const sarah = await createEmployee({
-    shopId: shop.id,
-    locationId: location.id,
-    firstName: "Sarah",
-    lastName: "Chen",
-    email: "sarah@example.com",
-    pin: "5678",
-    role: "SUPERVISOR",
-    hourlyRate: 22,
-    department: "Operations",
-  });
-
-  const monday = new Date();
-  monday.setHours(9, 0, 0, 0);
-  const mondayEnd = new Date(monday);
-  mondayEnd.setHours(17, 0, 0, 0);
-
-  const tuesday = new Date(monday);
-  tuesday.setDate(tuesday.getDate() + 1);
-  tuesday.setHours(12, 0, 0, 0);
-  const tuesdayEnd = new Date(tuesday);
-  tuesdayEnd.setHours(20, 0, 0, 0);
-
-  await prisma.shift.createMany({
-    data: [
-      {
-        shopId: shop.id,
-        locationId: location.id,
-        employeeId: john.id,
-        startsAt: monday,
-        endsAt: mondayEnd,
-      },
-      {
-        shopId: shop.id,
-        locationId: location.id,
-        employeeId: sarah.id,
-        startsAt: tuesday,
-        endsAt: tuesdayEnd,
-      },
-    ],
-  });
-
-  return { seeded: true };
+  return seedDemoDataForShop(shop.id);
 }
 
 export async function getDashboardData(session: Session) {

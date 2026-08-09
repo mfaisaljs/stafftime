@@ -3,7 +3,7 @@
 
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
 name = "StaffTime"
-application_url = "https://comrade-trailside-reliably.ngrok-free.dev"
+application_url = "https://largely-main-ringtail.ngrok-free.app"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "read_locations,read_orders"
 
 [auth]
 redirect_urls = [
-  "https://comrade-trailside-reliably.ngrok-free.dev/auth/callback",
-  "https://comrade-trailside-reliably.ngrok-free.dev/auth/shopify/callback",
-  "https://comrade-trailside-reliably.ngrok-free.dev/api/auth/callback",
+  "https://largely-main-ringtail.ngrok-free.app/auth/callback",
+  "https://largely-main-ringtail.ngrok-free.app/auth/shopify/callback",
+  "https://largely-main-ringtail.ngrok-free.app/api/auth/callback",
 ]
 
 [webhooks]

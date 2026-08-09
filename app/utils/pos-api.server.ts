@@ -1,3 +1,4 @@
+import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import {
   clockIn,
@@ -5,9 +6,14 @@ import {
   endBreak,
   startBreak,
 } from "../services/workforce.server";
-import { errorResponse, jsonResponse } from "./http.server";
+import { errorResponse, jsonResponse, posPreflightResponse } from "./http.server";
 
 type PosAction = "clock-in" | "clock-out" | "break-start" | "break-end";
+
+export async function handlePosPreflight({ request }: LoaderFunctionArgs) {
+  if (request.method === "OPTIONS") return posPreflightResponse();
+  return errorResponse("Method not allowed", 405);
+}
 
 export async function handlePosClockAction(request: Request, action: PosAction) {
   const { sessionToken, cors } = await authenticate.pos(request);

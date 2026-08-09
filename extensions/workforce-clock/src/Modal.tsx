@@ -16,6 +16,8 @@ type VerifyResponse = {
   status: EmployeeStatus;
 };
 
+const APP_URL = "https://largely-main-ringtail.ngrok-free.app";
+
 export default async function extension() {
   render(<WorkforceModal />, document.body);
 }
@@ -46,7 +48,7 @@ function WorkforceModal() {
 
   const apiFetch = useCallback(async (path: string, body?: Record<string, unknown>) => {
     const token = await shopify.session.getSessionToken();
-    const response = await fetch(path, {
+    const response = await fetch(appUrl(path), {
       method: body ? "POST" : "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -54,9 +56,9 @@ function WorkforceModal() {
       },
       body: body ? JSON.stringify(body) : undefined,
     });
-    const data = await response.json();
+    const data = await response.json().catch((): null => null);
     if (!response.ok) {
-      throw new Error(data.error || "Request failed");
+      throw new Error(errorMessageFromResponse(data) ?? "Request failed");
     }
     return data;
   }, []);
@@ -72,7 +74,7 @@ function WorkforceModal() {
       setPin("");
       setQrCode("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed");
+      setError(messageFromError(err, "Verification failed"));
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,7 @@ function WorkforceModal() {
       })) as { status: EmployeeStatus };
       setVerified({ ...verified, status: data.status });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Action failed");
+      setError(messageFromError(err, "Action failed"));
     } finally {
       setLoading(false);
     }
@@ -127,7 +129,7 @@ function WorkforceModal() {
                 onInput={(event) => setQrCode(event.currentTarget.value)}
               />
             )}
-            {error && <s-banner tone="critical">{error}</s-banner>}
+            {error && <s-banner heading={error} tone="critical" />}
             <s-button
               variant="primary"
               loading={loading}
@@ -172,7 +174,7 @@ function WorkforceModal() {
               {formatTime(status.shiftEnd)}
             </s-text>
           )}
-          {error && <s-banner tone="critical">{error}</s-banner>}
+          {error && <s-banner heading={error} tone="critical" />}
           <s-stack direction="inline" gap="base">
             {status.status === "CLOCKED_OUT" && (
               <s-button
@@ -234,5 +236,20 @@ function formatTime(iso: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function appUrl(path: string): string {
+  return new URL(path, APP_URL).toString();
+}
+
+function errorMessageFromResponse(data: unknown): string | null {
+  if (!data || typeof data !== "object" || !("error" in data)) return null;
+
+  const error = (data as { error?: unknown }).error;
+  return typeof error === "string" && error.trim() ? error : null;
+}
+
+function messageFromError(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message.trim() ? error.message : fallback;
 }
 

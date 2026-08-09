@@ -1,21 +1,35 @@
-import type { ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import {
   buildEmployeeStatus,
+  ensureShop,
   findEmployeeByPin,
   findEmployeeByQr,
+  seedDemoDataForShop,
 } from "../services/workforce.server";
-import { errorResponse, jsonResponse } from "../utils/http.server";
+import {
+  errorResponse,
+  jsonResponse,
+  posPreflightResponse,
+} from "../utils/http.server";
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  if (request.method === "OPTIONS") return posPreflightResponse();
+  return errorResponse("Method not allowed", 405);
+};
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
   const { pin, qrCode } = body as { pin?: string; qrCode?: string };
+  const shop = await ensureShop(sessionToken.dest);
+
+  await seedDemoDataForShop(shop.id);
 
   const employee = pin
-    ? await findEmployeeByPin(sessionToken.dest, pin)
+    ? await findEmployeeByPin(shop.domain, pin)
     : qrCode
-      ? await findEmployeeByQr(sessionToken.dest, qrCode)
+      ? await findEmployeeByQr(shop.domain, qrCode)
       : null;
 
   if (!employee) {

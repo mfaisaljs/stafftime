@@ -16,3 +16,15 @@ export function jsonResponse(data: unknown, init?: ResponseInit) {
 export function errorResponse(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
+
+export function posPreflightResponse() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+}
