@@ -2,11 +2,11 @@
   "projectName": "StaffTime — Workforce OS for Shopify POS",
   "currentPhase": "mvp-hardening",
   "overallStatus": "in_progress",
-  "progressPercent": 88,
+  "progressPercent": 90,
   "activeTaskIds": ["T009", "T015", "T016", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010"],
-  "lastUpdated": "2026-08-09T17:00:00.000Z",
+  "lastUpdated": "2026-08-09T17:15:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -17,6 +17,9 @@
     "ST032 complete: Staff add form expanded to match competitor staff profile flow with payroll, availability, and payment method fields.",
     "Fixed: payment method detail fields now render conditionally based on selected method.",
     "Fixed: employee form fields wrap cleanly; payroll type is hourly, weekly, or monthly with one matching amount field.",
+    "Renamed admin Employees route to Staff at /app/staff.",
+    "ST033 complete: /app/staff now shows Staff Management and Add Shopify Staff opens /app/staff/new.",
+    "ST034 complete: new Shopify staff remain inactive until first successful POS login, then firstLoginAt is recorded.",
     "Next priorities: employee edit/PIN change, missed punch create form, production hosting, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
   ],

@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import {
+  activateEmployeeOnFirstLogin,
   buildEmployeeStatus,
   ensureShop,
   findEmployeeByPin,
@@ -37,15 +38,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return cors(errorResponse("Invalid PIN or QR code", 401));
     }
 
-    const status = await buildEmployeeStatus(employee.id);
-    status.employeeName = `${employee.firstName} ${employee.lastName}`;
+    const activatedEmployee = await activateEmployeeOnFirstLogin(employee.id);
+    const status = await buildEmployeeStatus(activatedEmployee.id);
+    status.employeeName = `${activatedEmployee.firstName} ${activatedEmployee.lastName}`;
 
     return cors(
       jsonResponse({
         employee: {
-          id: employee.id,
-          firstName: employee.firstName,
-          lastName: employee.lastName,
+          id: activatedEmployee.id,
+          firstName: activatedEmployee.firstName,
+          lastName: activatedEmployee.lastName,
         },
         status,
         serverTime: Date.now(),

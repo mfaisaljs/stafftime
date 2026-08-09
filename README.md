@@ -122,6 +122,7 @@ POS routes:
 - `/app/payroll` — timesheets and CSV export
 - `/app/missed-punches` — approval queue
 - `/app/staff` — staff management
+- `/app/staff/new` — add Shopify staff form
 
 ## Task tracking
 

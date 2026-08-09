@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import prisma from "../db.server";
 import {
+  activateEmployeeOnFirstLogin,
   assertPinAvailable,
   clockIn,
   clockOut,
@@ -51,6 +52,17 @@ describe("POS workflow", () => {
     });
     expect(status.status).toBe("CLOCKED_IN");
     expect(status.clockInAtMs).toBeTypeOf("number");
+  });
+
+  it("keeps new staff inactive until first successful login", async () => {
+    const { employee } = await seedTestShop();
+
+    expect(employee.status).toBe("INACTIVE");
+    expect(employee.firstLoginAt).toBeNull();
+
+    const activated = await activateEmployeeOnFirstLogin(employee.id);
+    expect(activated.status).toBe("ACTIVE");
+    expect(activated.firstLoginAt).toBeInstanceOf(Date);
   });
 
   it("runs clock in → break → end break → clock out", async () => {

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:00:00.000Z",
+  "lastUpdated": "2026-08-09T17:15:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -274,7 +274,7 @@
       "priority": "high",
       "dependencies": ["ST008"],
       "acceptanceCriteria": ["Duplicate PIN shows error in Admin and POS", "QR remains unique identifier"],
-      "files": ["app/services/workforce.server.ts", "app/routes/app.staff.tsx", "app/routes/api.pos.verify.tsx"]
+      "files": ["app/services/workforce.server.ts", "app/routes/app.staff.new.tsx", "app/routes/api.pos.verify.tsx"]
     },
     {
       "id": "ST026",
@@ -359,11 +359,51 @@
         "PIN uniqueness remains enforced"
       ],
       "files": [
-        "app/routes/app.staff.tsx",
+        "app/routes/app.staff.new.tsx",
         "app/services/workforce.server.ts",
         "app/services/admin.server.ts",
         "prisma/schema.prisma",
         "prisma/migrations/20260809144317_employee_profile_fields/migration.sql"
+      ]
+    },
+    {
+      "id": "ST033",
+      "taskId": "T017",
+      "title": "Build Staff Management landing page",
+      "description": "Create a Staff main route with plan usage, bonus staff banner, Shopify/non-Shopify tabs, status filters, actions, and staff table.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST032"],
+      "acceptanceCriteria": [
+        "/app/staff shows Staff Management instead of the add form",
+        "Add Shopify Staff opens /app/staff/new",
+        "Staff table shows name, position, location, status, payment method, payroll type, and actions"
+      ],
+      "files": [
+        "app/routes/app.staff.tsx",
+        "app/routes/app.staff.new.tsx",
+        "README.md"
+      ]
+    },
+    {
+      "id": "ST034",
+      "taskId": "T017",
+      "title": "Activate staff on first POS login",
+      "description": "New Shopify staff start inactive, then become active with firstLoginAt recorded after first successful POS PIN or QR verification.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST032", "ST033"],
+      "acceptanceCriteria": [
+        "New staff records are inactive by default",
+        "First successful POS verify activates the staff member",
+        "firstLoginAt is recorded to distinguish first login from later deactivation"
+      ],
+      "files": [
+        "app/services/workforce.server.ts",
+        "app/routes/api.pos.verify.tsx",
+        "app/services/pos-workflow.test.ts",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809145907_employee_first_login_activation/migration.sql"
       ]
     }
   ]

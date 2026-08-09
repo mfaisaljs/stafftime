@@ -11,6 +11,7 @@ import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
 
 export type WorkforceStatus = "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
+type EmployeeWithFirstLogin = Employee & { firstLoginAt: Date | null };
 
 export async function ensureShop(destOrDomain: string) {
   const domain = shopFromDest(destOrDomain).toLowerCase();
@@ -56,6 +57,8 @@ export async function createEmployee(input: {
   phone?: string;
   pin: string;
   role?: Employee["role"];
+  status?: Employee["status"];
+  firstLoginAt?: Date;
   hourlyRate?: number;
   position?: string;
   department?: string;
@@ -86,6 +89,8 @@ export async function createEmployee(input: {
       pinHash: await hashPin(input.pin),
       qrCode: randomUUID(),
       role: input.role ?? "EMPLOYEE",
+      status: input.status ?? "INACTIVE",
+      firstLoginAt: input.firstLoginAt,
       hourlyRate: input.hourlyRate ?? 0,
       position: input.position,
       department: input.department,
@@ -120,6 +125,7 @@ export async function seedDemoDataForShop(shopId: string) {
     email: "john@example.com",
     pin: "1234",
     role: "EMPLOYEE",
+    status: "ACTIVE",
     hourlyRate: 18,
     department: "Sales",
   });
@@ -132,6 +138,7 @@ export async function seedDemoDataForShop(shopId: string) {
     email: "sarah@example.com",
     pin: "5678",
     role: "SUPERVISOR",
+    status: "ACTIVE",
     hourlyRate: 22,
     department: "Operations",
   });
@@ -171,7 +178,7 @@ export async function seedDemoDataForShop(shopId: string) {
 
 export async function findPinMatches(shopId: string, pin: string) {
   const employees = await prisma.employee.findMany({
-    where: { shopId, status: "ACTIVE" },
+    where: { shopId },
   });
 
   const matches = [];
@@ -200,7 +207,9 @@ export async function assertPinAvailable(
 
 export async function findEmployeeByPin(destOrDomain: string, pin: string) {
   const shop = await ensureShop(destOrDomain);
-  const matches = await findPinMatches(shop.id, pin);
+  const matches = (await findPinMatches(shop.id, pin)).filter((employee) =>
+    canUseForLogin(employee as EmployeeWithFirstLogin),
+  );
 
   if (matches.length === 0) {
     return null;
@@ -218,7 +227,33 @@ export async function findEmployeeByPin(destOrDomain: string, pin: string) {
 export async function findEmployeeByQr(destOrDomain: string, qrCode: string) {
   const shop = await ensureShop(destOrDomain);
   return prisma.employee.findFirst({
-    where: { shopId: shop.id, qrCode, status: "ACTIVE" },
+    where: {
+      shopId: shop.id,
+      qrCode,
+      OR: [{ status: "ACTIVE" }, { firstLoginAt: null }],
+    },
+  });
+}
+
+function canUseForLogin(employee: EmployeeWithFirstLogin) {
+  return employee.status === "ACTIVE" || employee.firstLoginAt === null;
+}
+
+export async function activateEmployeeOnFirstLogin(employeeId: string) {
+  const employee = (await prisma.employee.findUniqueOrThrow({
+    where: { id: employeeId },
+  })) as EmployeeWithFirstLogin;
+
+  if (employee.firstLoginAt) {
+    return employee;
+  }
+
+  return prisma.employee.update({
+    where: { id: employee.id },
+    data: {
+      status: "ACTIVE",
+      firstLoginAt: new Date(),
+    },
   });
 }
 
