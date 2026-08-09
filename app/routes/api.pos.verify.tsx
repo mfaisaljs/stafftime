@@ -26,28 +26,37 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   await seedDemoDataForShop(shop.id);
 
-  const employee = pin
-    ? await findEmployeeByPin(shop.domain, pin)
-    : qrCode
-      ? await findEmployeeByQr(shop.domain, qrCode)
-      : null;
+  try {
+    const employee = pin
+      ? await findEmployeeByPin(shop.domain, pin)
+      : qrCode
+        ? await findEmployeeByQr(shop.domain, qrCode)
+        : null;
 
-  if (!employee) {
-    return cors(errorResponse("Invalid PIN or QR code", 401));
+    if (!employee) {
+      return cors(errorResponse("Invalid PIN or QR code", 401));
+    }
+
+    const status = await buildEmployeeStatus(employee.id);
+    status.employeeName = `${employee.firstName} ${employee.lastName}`;
+
+    return cors(
+      jsonResponse({
+        employee: {
+          id: employee.id,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+        },
+        status,
+        serverTime: Date.now(),
+      }),
+    );
+  } catch (error) {
+    return cors(
+      errorResponse(
+        error instanceof Error ? error.message : "Verification failed",
+        409,
+      ),
+    );
   }
-
-  const status = await buildEmployeeStatus(employee.id);
-  status.employeeName = `${employee.firstName} ${employee.lastName}`;
-
-  return cors(
-    jsonResponse({
-      employee: {
-        id: employee.id,
-        firstName: employee.firstName,
-        lastName: employee.lastName,
-      },
-      status,
-      serverTime: Date.now(),
-    }),
-  );
 };

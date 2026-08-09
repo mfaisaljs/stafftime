@@ -58,6 +58,8 @@ export async function createEmployee(input: {
   hourlyRate?: number;
   department?: string;
 }) {
+  await assertPinAvailable(input.shopId, input.pin);
+
   return prisma.employee.create({
     data: {
       shopId: input.shopId,
@@ -137,19 +139,50 @@ export async function seedDemoDataForShop(shopId: string) {
   return { seeded: true };
 }
 
-export async function findEmployeeByPin(destOrDomain: string, pin: string) {
-  const shop = await ensureShop(destOrDomain);
+export async function findPinMatches(shopId: string, pin: string) {
   const employees = await prisma.employee.findMany({
-    where: { shopId: shop.id, status: "ACTIVE" },
+    where: { shopId, status: "ACTIVE" },
   });
 
+  const matches = [];
   for (const employee of employees) {
     if (await verifyPin(pin, employee.pinHash)) {
-      return employee;
+      matches.push(employee);
     }
   }
 
-  return null;
+  return matches;
+}
+
+export async function assertPinAvailable(
+  shopId: string,
+  pin: string,
+  excludeEmployeeId?: string,
+) {
+  const matches = await findPinMatches(shopId, pin);
+  const conflict = matches.find((employee) => employee.id !== excludeEmployeeId);
+  if (conflict) {
+    throw new Error(
+      `PIN already assigned to ${conflict.firstName} ${conflict.lastName}`,
+    );
+  }
+}
+
+export async function findEmployeeByPin(destOrDomain: string, pin: string) {
+  const shop = await ensureShop(destOrDomain);
+  const matches = await findPinMatches(shop.id, pin);
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  if (matches.length > 1) {
+    throw new Error(
+      "This PIN matches multiple employees. Ask your manager to assign unique PINs.",
+    );
+  }
+
+  return matches[0];
 }
 
 export async function findEmployeeByQr(destOrDomain: string, qrCode: string) {

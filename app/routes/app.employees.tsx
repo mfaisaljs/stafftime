@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, useLoaderData } from "react-router";
+import { Form, useActionData, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAdminShop, getEmployees } from "../services/admin.server";
@@ -19,25 +19,36 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const shop = await getAdminShop(session);
   const formData = await request.formData();
 
-  await createEmployee({
-    shopId: shop.id,
-    firstName: String(formData.get("firstName") ?? ""),
-    lastName: String(formData.get("lastName") ?? ""),
-    email: String(formData.get("email") ?? "") || undefined,
-    pin: String(formData.get("pin") ?? "0000"),
-    department: String(formData.get("department") ?? "") || undefined,
-    hourlyRate: Number(formData.get("hourlyRate") ?? 0),
-  });
+  try {
+    await createEmployee({
+      shopId: shop.id,
+      firstName: String(formData.get("firstName") ?? ""),
+      lastName: String(formData.get("lastName") ?? ""),
+      email: String(formData.get("email") ?? "") || undefined,
+      pin: String(formData.get("pin") ?? "0000"),
+      department: String(formData.get("department") ?? "") || undefined,
+      hourlyRate: Number(formData.get("hourlyRate") ?? 0),
+    });
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not add employee",
+    };
+  }
 
   return null;
 };
 
 export default function EmployeesPage() {
   const employees = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
 
   return (
     <s-page heading="Employees">
       <s-section heading="Add Employee">
+        {actionData?.error && (
+          <s-banner heading={actionData.error} tone="critical" />
+        )}
         <Form method="post">
           <s-stack direction="block" gap="base">
             <input name="firstName" placeholder="First name" required />
