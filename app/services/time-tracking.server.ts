@@ -14,6 +14,66 @@ export function minutesBetween(start: Date, end: Date): number {
   return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
 }
 
+/** Exact elapsed seconds (floor ms→s, no minute rounding). */
+export function secondsBetween(start: Date, end: Date): number {
+  return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+}
+
+export type TimeSummarySeconds = {
+  totalWorkedSeconds: number;
+  paidBreakSeconds: number;
+  unpaidBreakSeconds: number;
+  paidSeconds: number;
+};
+
+export function calculateBreakSeconds(
+  breaks: Pick<BreakEntry, "type" | "startedAt" | "endedAt">[],
+  endReference: Date,
+): { paidBreakSeconds: number; unpaidBreakSeconds: number } {
+  let paidBreakSeconds = 0;
+  let unpaidBreakSeconds = 0;
+
+  for (const breakEntry of breaks) {
+    const end = breakEntry.endedAt ?? endReference;
+    const seconds = secondsBetween(breakEntry.startedAt, end);
+    if (breakEntry.type === "PAID") {
+      paidBreakSeconds += seconds;
+    } else {
+      unpaidBreakSeconds += seconds;
+    }
+  }
+
+  return { paidBreakSeconds, unpaidBreakSeconds };
+}
+
+export function summarizeTimeEntrySeconds(
+  entry: Pick<TimeEntry, "clockInAt" | "clockOutAt"> & {
+    breaks: Pick<BreakEntry, "type" | "startedAt" | "endedAt">[];
+  },
+  referenceDate = new Date(),
+): TimeSummarySeconds {
+  const end = entry.clockOutAt ?? referenceDate;
+  const totalWorkedSeconds = secondsBetween(entry.clockInAt, end);
+  const { paidBreakSeconds, unpaidBreakSeconds } = calculateBreakSeconds(
+    entry.breaks,
+    end,
+  );
+
+  return {
+    totalWorkedSeconds,
+    paidBreakSeconds,
+    unpaidBreakSeconds,
+    paidSeconds: Math.max(0, totalWorkedSeconds - unpaidBreakSeconds),
+  };
+}
+
+export function formatDurationHms(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${mins}m ${seconds}s`;
+}
+
 export function calculateBreakMinutes(
   breaks: Pick<BreakEntry, "type" | "startedAt" | "endedAt">[],
   endReference: Date,

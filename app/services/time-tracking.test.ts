@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { BreakEntry, TimeEntry } from "@prisma/client";
 import {
   calculateBreakMinutes,
+  formatDurationHms,
   formatMinutes,
   minutesBetween,
+  secondsBetween,
   summarizeTimeEntry,
+  summarizeTimeEntrySeconds,
   summarizeWeeklyOvertime,
 } from "./time-tracking.server";
 
@@ -90,6 +93,30 @@ describe("time-tracking", () => {
     expect(summary.paidMinutes).toBe(570);
     expect(summary.overtimeMinutes).toBe(90);
     expect(formatMinutes(summary.overtimeMinutes)).toBe("1h 30m");
+  });
+
+  it("keeps exact hours minutes and seconds without minute rounding", () => {
+    const clockInAt = new Date("2026-08-09T09:00:00.000Z");
+    const clockOutAt = new Date("2026-08-09T10:30:45.000Z");
+    const entry = makeEntry(clockInAt, clockOutAt, [
+      {
+        id: "b1",
+        timeEntryId: "entry-1",
+        type: "UNPAID",
+        startedAt: new Date("2026-08-09T09:15:10.000Z"),
+        endedAt: new Date("2026-08-09T09:20:25.000Z"),
+        createdAt: clockInAt,
+        updatedAt: clockInAt,
+      },
+    ]);
+
+    expect(secondsBetween(clockInAt, clockOutAt)).toBe(5445);
+    const summary = summarizeTimeEntrySeconds(entry, clockOutAt);
+    expect(summary.totalWorkedSeconds).toBe(5445);
+    expect(summary.unpaidBreakSeconds).toBe(315);
+    expect(summary.paidSeconds).toBe(5130);
+    expect(formatDurationHms(summary.totalWorkedSeconds)).toBe("1h 30m 45s");
+    expect(formatDurationHms(summary.paidSeconds)).toBe("1h 25m 30s");
   });
 
   it("calculates weekly overtime using the higher of daily and weekly thresholds", () => {

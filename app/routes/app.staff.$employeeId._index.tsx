@@ -31,8 +31,8 @@ import {
   getEmployeeTimeEntries,
 } from "../services/admin.server";
 import {
-  calculateBreakMinutes,
-  summarizeTimeEntry,
+  formatDurationHms,
+  summarizeTimeEntrySeconds,
 } from "../services/time-tracking.server";
 import prisma from "../db.server";
 
@@ -60,25 +60,22 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     endDate,
   );
 
-  const settings = {
-    overtimeDailyHours: shop.settings?.overtimeDailyHours ?? 8,
-  };
-
+  const reportEnd = new Date();
   const summaries = timeEntries.map((entry) =>
-    summarizeTimeEntry(entry, settings),
+    summarizeTimeEntrySeconds(entry, reportEnd),
   );
-  const totalWorkedMinutes = summaries.reduce(
-    (sum, item) => sum + item.totalWorkedMinutes,
+  const totalWorkedSeconds = summaries.reduce(
+    (sum, item) => sum + item.totalWorkedSeconds,
     0,
   );
-  const paidMinutes = summaries.reduce((sum, item) => sum + item.paidMinutes, 0);
-  const breakMinutes = summaries.reduce(
-    (sum, item) => sum + item.paidBreakMinutes + item.unpaidBreakMinutes,
+  const paidSeconds = summaries.reduce((sum, item) => sum + item.paidSeconds, 0);
+  const breakSeconds = summaries.reduce(
+    (sum, item) => sum + item.paidBreakSeconds + item.unpaidBreakSeconds,
     0,
   );
   const paidEarnings = timeEntries.reduce((sum, entry, index) => {
     const hourlyRate = entry.hourlyRateSnapshot ?? employee.hourlyRate;
-    return sum + (summaries[index].paidMinutes / 60) * hourlyRate;
+    return sum + (summaries[index].paidSeconds / 3600) * hourlyRate;
   }, 0);
 
   const commissionPrograms = await prisma.commissionProgram.findMany({
@@ -116,14 +113,9 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     }>,
   };
 
-  const attendanceRows = timeEntries.map((entry) => {
-    const summary = summarizeTimeEntry(entry, settings);
-    const end = entry.clockOutAt ?? new Date();
-    const { paidBreakMinutes, unpaidBreakMinutes } = calculateBreakMinutes(
-      entry.breaks,
-      end,
-    );
-    const breakTotal = paidBreakMinutes + unpaidBreakMinutes;
+  const attendanceRows = timeEntries.map((entry, index) => {
+    const summary = summaries[index];
+    const breakTotal = summary.paidBreakSeconds + summary.unpaidBreakSeconds;
 
     return {
       id: entry.id,
@@ -133,7 +125,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       breakTime: formatDurationHms(breakTotal),
       firstIn: formatTime(entry.clockInAt),
       lastOut: entry.clockOutAt ? formatTime(entry.clockOutAt) : "—",
-      totalHours: formatDurationHms(summary.totalWorkedMinutes),
+      totalHours: formatDurationHms(summary.totalWorkedSeconds),
     };
   });
 
@@ -145,9 +137,9 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     endDate: endDate.toISOString(),
     metrics: {
       totalEarnings: paidEarnings,
-      totalHours: formatDurationHms(totalWorkedMinutes),
-      workingHours: formatDurationHms(paidMinutes),
-      totalBreakTime: formatDurationHms(breakMinutes),
+      totalHours: formatDurationHms(totalWorkedSeconds),
+      workingHours: formatDurationHms(paidSeconds),
+      totalBreakTime: formatDurationHms(breakSeconds),
       totalCommission: commissionEarnings.total,
       paid: paidEarnings,
       unpaid: 0,
@@ -762,12 +754,6 @@ function TabLink({
       {children}
     </Link>
   );
-}
-
-function formatDurationHms(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.floor(minutes % 60);
-  return `${hours}h ${mins}m 0s`;
 }
 
 function formatCurrency(amount: number, whole = false): string {
