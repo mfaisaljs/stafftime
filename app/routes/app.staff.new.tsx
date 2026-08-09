@@ -3,8 +3,8 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import type { InputHTMLAttributes, ReactNode } from "react";
-import { useState } from "react";
+import type { ForwardedRef, InputHTMLAttributes, ReactNode } from "react";
+import { forwardRef, useRef, useState } from "react";
 import { Form, useActionData, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -26,7 +26,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
 
   try {
-    const position = String(formData.get("position") ?? "Employee");
+    const position = String(formData.get("position") ?? "Staff");
     const locationAccess = String(formData.get("locationAccess") ?? "ALL");
     const weeklyAvailability = formData.getAll("weeklyAvailability").join(",");
 
@@ -77,6 +77,7 @@ export default function StaffPage() {
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState("HOURLY");
   const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
+  const pinInputRef = useRef<HTMLInputElement>(null);
   const rateFieldName = payrollType === "HOURLY" ? "hourlyRate" : "salaryAmount";
   const rateFieldLabel =
     payrollType === "HOURLY"
@@ -91,19 +92,35 @@ export default function StaffPage() {
   const showNoPaymentFields = NO_DETAIL_PAYMENT_METHODS.includes(paymentMethod);
 
   const generatePin = () => {
-    setPin(String(Math.floor(1000 + Math.random() * 9000)));
+    const newPin = String(Math.floor(1000 + Math.random() * 9000));
+    setPin(newPin);
+    if (pinInputRef.current) {
+      pinInputRef.current.value = newPin;
+      notifySaveBar(pinInputRef.current);
+    }
+  };
+
+  const handleDiscard = () => {
+    setPin("");
+    setPayrollType("HOURLY");
+    setPaymentMethod("PAYPAL");
   };
 
   return (
     <s-page heading="Add Shopify Staff">
-      <s-section heading="Add Shopify Staff">
-        {actionData?.error && (
-          <s-banner heading={actionData.error} tone="critical" />
-        )}
-        {actionData?.success && (
-          <s-banner heading={actionData.success} tone="success" />
-        )}
-        <Form method="post" data-save-bar>
+      {actionData?.error && (
+        <s-banner heading={actionData.error} tone="critical" />
+      )}
+      {actionData?.success && (
+        <s-banner heading={actionData.success} tone="success" />
+      )}
+      <Form
+        method="post"
+        data-save-bar
+        data-discard-confirmation
+        onReset={handleDiscard}
+      >
+        <s-section heading="Add Shopify Staff">
           <s-stack direction="block" gap="large">
             <FormSection
               title="Basic Information"
@@ -120,7 +137,7 @@ export default function StaffPage() {
             <FormSection title="Position" description="Permissions.">
               <label className="staff-label">
                 Position
-                <select name="position" defaultValue="Owner">
+                <select name="position" defaultValue="Staff">
                   {POSITION_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -136,12 +153,16 @@ export default function StaffPage() {
               </p>
               <div className="staff-inline">
                 <Field
+                  ref={pinInputRef}
                   label="PIN Code"
                   name="pin"
                   minLength={4}
                   required
                   value={pin}
-                  onChange={(event) => setPin(event.currentTarget.value)}
+                  onChange={(event) => {
+                    setPin(event.currentTarget.value);
+                    notifySaveBar(event.currentTarget);
+                  }}
                 />
                 <button type="button" className="secondary" onClick={generatePin}>
                   Generate Random
@@ -196,7 +217,10 @@ export default function StaffPage() {
                   <select
                     name="payrollType"
                     value={payrollType}
-                    onChange={(event) => setPayrollType(event.currentTarget.value)}
+                    onChange={(event) => {
+                      setPayrollType(event.currentTarget.value);
+                      notifySaveBar(event.currentTarget);
+                    }}
                   >
                     {PAYROLL_TYPE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -247,7 +271,10 @@ export default function StaffPage() {
                 <select
                   name="paymentMethod"
                   value={paymentMethod}
-                  onChange={(event) => setPaymentMethod(event.currentTarget.value)}
+                  onChange={(event) => {
+                    setPaymentMethod(event.currentTarget.value);
+                    notifySaveBar(event.currentTarget);
+                  }}
                 >
                   {PAYMENT_METHOD_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -309,25 +336,29 @@ export default function StaffPage() {
             </FormSection>
 
           </s-stack>
-        </Form>
-      </s-section>
+        </s-section>
+      </Form>
 
       <style>{EMPLOYEE_FORM_STYLES}</style>
     </s-page>
   );
 }
 
-function Field({
-  label,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+function notifySaveBar(element: HTMLInputElement | HTMLSelectElement) {
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+const Field = forwardRef(function Field(
+  { label, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string },
+  ref: ForwardedRef<HTMLInputElement>,
+) {
   return (
     <label className="staff-label">
       {label}
-      <input placeholder={label} {...props} />
+      <input ref={ref} placeholder={label} {...props} />
     </label>
   );
-}
+});
 
 function FormSection({
   title,
@@ -353,28 +384,14 @@ function roleFromPosition(position: string) {
   switch (position) {
     case "Owner":
       return "OWNER" as const;
-    case "Regional Manager":
-      return "REGIONAL_MANAGER" as const;
-    case "Store Manager":
+    case "Manager":
       return "STORE_MANAGER" as const;
-    case "Supervisor":
-      return "SUPERVISOR" as const;
     default:
       return "EMPLOYEE" as const;
   }
 }
 
-const POSITION_OPTIONS = [
-  "Owner",
-  "Regional Manager",
-  "Store Manager",
-  "Supervisor",
-  "Manager",
-  "Cashier",
-  "Sales Associate",
-  "Inventory Associate",
-  "Employee",
-];
+const POSITION_OPTIONS = ["Owner", "Staff", "Manager"];
 
 const CURRENCY_OPTIONS = [
   { value: "USD", label: "US Dollar (USD)" },

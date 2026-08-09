@@ -38,7 +38,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const formData = await request.formData();
 
   try {
-    const position = String(formData.get("position") ?? "Employee");
+    const position = String(formData.get("position") ?? "Staff");
     const locationAccess = String(formData.get("locationAccess") ?? "ALL");
     const pin = String(formData.get("pin") ?? "").trim();
 
@@ -154,7 +154,10 @@ export default function EditStaffPage() {
             <FormSection title="Position" description="Permissions.">
               <label className="staff-label">
                 Position
-                <select name="position" defaultValue={employee.position ?? "Employee"}>
+                <select
+                  name="position"
+                  defaultValue={normalizePosition(employee.position)}
+                >
                   {POSITION_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -402,28 +405,19 @@ function roleFromPosition(position: string) {
   switch (position) {
     case "Owner":
       return "OWNER" as const;
-    case "Regional Manager":
-      return "REGIONAL_MANAGER" as const;
-    case "Store Manager":
+    case "Manager":
       return "STORE_MANAGER" as const;
-    case "Supervisor":
-      return "SUPERVISOR" as const;
     default:
       return "EMPLOYEE" as const;
   }
 }
 
-const POSITION_OPTIONS = [
-  "Owner",
-  "Regional Manager",
-  "Store Manager",
-  "Supervisor",
-  "Manager",
-  "Cashier",
-  "Sales Associate",
-  "Inventory Associate",
-  "Employee",
-];
+function normalizePosition(position: string | null) {
+  const value = position ?? "Staff";
+  return POSITION_OPTIONS.includes(value) ? value : "Staff";
+}
+
+const POSITION_OPTIONS = ["Owner", "Staff", "Manager"];
 
 const CURRENCY_OPTIONS = [
   { value: "USD", label: "US Dollar (USD)" },
