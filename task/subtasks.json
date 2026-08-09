@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:19:52.000Z",
+  "lastUpdated": "2026-08-09T18:28:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -656,7 +656,11 @@
         "Schedule view dropdown supports Weekly, Monthly, and Yearly",
         "Selecting any date expands the schedule range to the full selected week, month, or year based on the dropdown",
         "Past dates cannot be used to add or edit shifts",
-        "Monthly schedule view renders as a calendar grid instead of a single horizontal staff row"
+        "Monthly schedule view renders as a calendar grid instead of a single horizontal staff row",
+        "Yearly schedule view hides the calendar picker and uses month/year dropdowns to show the selected full month",
+        "Yearly schedule year dropdown does not include years before the current year",
+        "Yearly schedule year dropdown is capped to 10 years including the current year",
+        "Switching to Yearly auto-populates month and year from the current date"
       ],
       "files": [
         "app/routes/app.schedules.tsx"

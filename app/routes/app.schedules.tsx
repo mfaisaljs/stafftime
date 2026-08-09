@@ -54,14 +54,33 @@ const SCHEDULE_PERIODS: Array<{ value: SchedulePeriod; label: string }> = [
   { value: "yearly", label: "Yearly" },
 ];
 
+const MONTH_OPTIONS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
   const url = new URL(request.url);
   const period = normalizePeriod(url.searchParams.get("period"));
-  const selectedDate = parseDateKey(
+  const rawSelectedDate = parseDateKey(
     url.searchParams.get("date") ?? url.searchParams.get("week"),
   );
+  const selectedDate =
+    period === "yearly" && rawSelectedDate.getFullYear() < new Date().getFullYear()
+      ? new Date(new Date().getFullYear(), rawSelectedDate.getMonth(), 1)
+      : rawSelectedDate;
   const range = rangeForPeriod(selectedDate, period);
 
   const [employees, shifts, locations] = await Promise.all([
@@ -278,6 +297,11 @@ export default function SchedulesPage() {
   const selectedAvailabilityEmployee = employees.find(
     (employee) => employee.id === availabilityEmployeeId,
   );
+  const selectedDateObject = dateFromKey(selectedDate);
+  const selectedMonth = selectedDateObject.getMonth();
+  const selectedYear = selectedDateObject.getFullYear();
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 10 }, (_, index) => currentYear + index);
 
   const selectAnchorDate = (date: string) => {
     const range = rangeForPeriod(dateFromKey(date), period);
@@ -299,11 +323,24 @@ export default function SchedulesPage() {
   };
 
   const changePeriod = (nextPeriod: SchedulePeriod) => {
-    const range = rangeForPeriod(dateFromKey(selectedDate), nextPeriod);
+    const anchorDate = nextPeriod === "yearly" ? new Date() : dateFromKey(selectedDate);
+    const anchorDateKey = toDateKey(anchorDate);
+    const range = rangeForPeriod(anchorDate, nextPeriod);
     setDraftRange(`${toDateKey(range.start)}--${toDateKey(range.end)}`);
     const params = new URLSearchParams(searchParams);
     params.set("period", nextPeriod);
-    params.set("date", selectedDate);
+    params.set("date", anchorDateKey);
+    params.delete("week");
+    setSearchParams(params);
+  };
+
+  const changeMonthYear = (month: number, year: number) => {
+    const nextDate = toDateKey(new Date(year, month, 1));
+    const range = rangeForPeriod(dateFromKey(nextDate), "yearly");
+    setDraftRange(`${toDateKey(range.start)}--${toDateKey(range.end)}`);
+    const params = new URLSearchParams(searchParams);
+    params.set("period", "yearly");
+    params.set("date", nextDate);
     params.delete("week");
     setSearchParams(params);
   };
@@ -347,29 +384,62 @@ export default function SchedulesPage() {
             </actionFetcher.Form>
           </div>
           <div className="toolbar-right">
-            <div className="schedule-date-wrap">
-              <button
-                className="week-range"
-                type="button"
-                aria-haspopup="dialog"
-                aria-expanded={datePickerOpen}
-                onClick={() => setDatePickerOpen((value) => !value)}
-              >
-                <CalendarDays aria-hidden="true" size={16} />
-                {formatDateRange(weekStart, weekEnd)}
-              </button>
-              {datePickerOpen && (
-                <div className="schedule-date-popover">
-                  <s-date-picker
-                    type="range"
-                    value={draftRange}
-                    view={selectedDate.slice(0, 7)}
-                    onInput={(event) => selectDateRange(pickerValue(event))}
-                    onChange={(event) => selectDateRange(pickerValue(event))}
-                  ></s-date-picker>
-                </div>
-              )}
-            </div>
+            {period === "yearly" ? (
+              <>
+                <select
+                  className="toolbar-select period-select"
+                  aria-label="Schedule month"
+                  value={selectedMonth}
+                  onChange={(event) =>
+                    changeMonthYear(Number(event.currentTarget.value), selectedYear)
+                  }
+                >
+                  {MONTH_OPTIONS.map((month, index) => (
+                    <option key={month} value={index}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="toolbar-select year-select"
+                  aria-label="Schedule year"
+                  value={selectedYear}
+                  onChange={(event) =>
+                    changeMonthYear(selectedMonth, Number(event.currentTarget.value))
+                  }
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <div className="schedule-date-wrap">
+                <button
+                  className="week-range"
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={datePickerOpen}
+                  onClick={() => setDatePickerOpen((value) => !value)}
+                >
+                  <CalendarDays aria-hidden="true" size={16} />
+                  {formatDateRange(weekStart, weekEnd)}
+                </button>
+                {datePickerOpen && (
+                  <div className="schedule-date-popover">
+                    <s-date-picker
+                      type="range"
+                      value={draftRange}
+                      view={selectedDate.slice(0, 7)}
+                      onInput={(event) => selectDateRange(pickerValue(event))}
+                      onChange={(event) => selectDateRange(pickerValue(event))}
+                    ></s-date-picker>
+                  </div>
+                )}
+              </div>
+            )}
             <select
               className="toolbar-select"
               aria-label="Schedule view"
@@ -388,7 +458,7 @@ export default function SchedulesPage() {
         </div>
 
         <section className="schedule-card">
-          {period === "monthly" ? (
+          {period === "monthly" || period === "yearly" ? (
             <MonthlySchedule
               days={monthlyDays}
               shiftsByDay={shiftsByDay}
@@ -940,17 +1010,10 @@ function normalizePeriod(value: string | null): SchedulePeriod {
 }
 
 function rangeForPeriod(value: Date, period: SchedulePeriod) {
-  if (period === "monthly") {
+  if (period === "monthly" || period === "yearly") {
     return {
       start: startOfMonth(value),
       end: endOfDay(new Date(value.getFullYear(), value.getMonth() + 1, 0)),
-    };
-  }
-
-  if (period === "yearly") {
-    return {
-      start: startOfYear(value),
-      end: endOfDay(new Date(value.getFullYear(), 11, 31)),
     };
   }
 
@@ -1057,10 +1120,6 @@ function startOfMonth(value: Date) {
   return startOfDay(new Date(value.getFullYear(), value.getMonth(), 1));
 }
 
-function startOfYear(value: Date) {
-  return startOfDay(new Date(value.getFullYear(), 0, 1));
-}
-
 function endOfDay(value: Date) {
   const next = new Date(value);
   next.setHours(23, 59, 59, 999);
@@ -1144,6 +1203,14 @@ const SCHEDULE_STYLES = `
 
   .toolbar-button.danger {
     color: #8e1f0b;
+  }
+
+  .period-select {
+    min-width: 132px;
+  }
+
+  .year-select {
+    min-width: 112px;
   }
 
   .week-range {
