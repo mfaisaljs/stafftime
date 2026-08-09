@@ -892,6 +892,10 @@ const CREATE_COMMISSION_STYLES = `
     min-height: 34px;
   }
 
+  .form-card input:not([type="radio"]):not([type="checkbox"]) {
+    padding-left: 12px;
+  }
+
   .form-card > p,
   .indented-help {
     color: #616161;
@@ -1294,6 +1298,7 @@ const CREATE_COMMISSION_STYLES = `
     flex: 1;
     min-height: 32px;
     outline: 0;
+    padding-left: 8px;
   }
 
   .search-field {
