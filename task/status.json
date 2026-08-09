@@ -33,6 +33,7 @@
     "ST040 complete: staff list search, status tabs, select-all, and row selection on Staff Management.",
     "ST041 complete: bulk Archive all and Delete all for selected staff; ARCHIVED status added to schema.",
     "Updated: bulk delete uses Polaris modal instead of browser confirm alert.",
+    "Fixed: bulk archive/delete uses useFetcher so URL stays on /app/staff without blank ?index= page.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

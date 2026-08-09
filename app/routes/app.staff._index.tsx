@@ -1,18 +1,10 @@
-import type {
-  ActionFunctionArgs,
-  HeadersFunction,
-  LoaderFunctionArgs,
-} from "react-router";
-import { Form, Link, useActionData, useLoaderData } from "react-router";
+import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { Link, useFetcher, useLoaderData } from "react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { getAdminShop, getEmployees } from "../services/admin.server";
-import {
-  bulkArchiveEmployees,
-  bulkDeleteEmployees,
-} from "../services/workforce.server";
+import { getEmployees } from "../services/admin.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -24,50 +16,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
-  const shop = await getAdminShop(session);
-  const formData = await request.formData();
-  const intent = String(formData.get("intent") ?? "");
-  const employeeIds = formData
-    .getAll("employeeIds")
-    .map((value) => String(value))
-    .filter(Boolean);
-
-  if (employeeIds.length === 0) {
-    return { error: "Select at least one staff member" };
-  }
-
-  try {
-    if (intent === "archive") {
-      const { count } = await bulkArchiveEmployees(shop.id, employeeIds);
-      return { success: `Archived ${count} staff member(s)` };
-    }
-
-    if (intent === "delete") {
-      const { count } = await bulkDeleteEmployees(shop.id, employeeIds);
-      return { success: `Deleted ${count} staff member(s)` };
-    }
-
-    return { error: "Unknown action" };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : "Could not update staff selection",
-    };
-  }
-};
+type BulkActionResult = { success?: string; error?: string };
 
 type StatusFilter = "all" | "active" | "inactive" | "missing_payment" | "archived";
 
 export default function StaffManagementPage() {
   const { employees, staffLimit } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+  const fetcher = useFetcher<BulkActionResult>();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
-  const deleteFormRef = useRef<HTMLFormElement>(null);
+  const isBulkSubmitting = fetcher.state !== "idle";
 
   const filteredEmployees = useMemo(() => {
     let list = employees;
@@ -126,10 +86,19 @@ export default function StaffManagementPage() {
   }, [someVisibleSelected, allVisibleSelected]);
 
   useEffect(() => {
-    if (actionData?.success) {
+    if (fetcher.data?.success) {
       setSelectedIds(new Set());
     }
-  }, [actionData?.success]);
+  }, [fetcher.data?.success]);
+
+  const submitBulkAction = (intent: "archive" | "delete") => {
+    const formData = new FormData();
+    formData.set("intent", intent);
+    for (const employeeId of selectedIds) {
+      formData.append("employeeIds", employeeId);
+    }
+    fetcher.submit(formData, { method: "post", action: "/app/staff" });
+  };
 
   const toggleSelectAll = () => {
     setSelectedIds((previous) => {
@@ -242,28 +211,27 @@ export default function StaffManagementPage() {
           Staff automatically active when they first clock in at POS or Web Portal.
         </s-tooltip>
 
-        {actionData?.error && (
-          <s-banner heading={actionData.error} tone="critical" />
+        {fetcher.data?.error && (
+          <s-banner heading={fetcher.data.error} tone="critical" />
         )}
-        {actionData?.success && (
-          <s-banner heading={actionData.success} tone="success" />
+        {fetcher.data?.success && (
+          <s-banner heading={fetcher.data.success} tone="success" />
         )}
 
         {selectedCount > 0 && (
           <div className="bulk-actions">
             <span className="bulk-count">{selectedCount} selected</span>
-            <Form method="post" className="bulk-form">
-              {Array.from(selectedIds).map((employeeId) => (
-                <input key={employeeId} type="hidden" name="employeeIds" value={employeeId} />
-              ))}
-              <input type="hidden" name="intent" value="archive" />
-              <s-button type="submit" variant="secondary">
-                <span className="button-with-icon">
-                  <Archive aria-hidden="true" size={16} />
-                  Archive all
-                </span>
-              </s-button>
-            </Form>
+            <s-button
+              type="button"
+              variant="secondary"
+              loading={isBulkSubmitting}
+              onClick={() => submitBulkAction("archive")}
+            >
+              <span className="button-with-icon">
+                <Archive aria-hidden="true" size={16} />
+                Archive all
+              </span>
+            </s-button>
             <s-button
               type="button"
               variant="primary"
@@ -276,12 +244,6 @@ export default function StaffManagementPage() {
                 Delete all
               </span>
             </s-button>
-            <Form ref={deleteFormRef} method="post" className="bulk-form-hidden">
-              {Array.from(selectedIds).map((employeeId) => (
-                <input key={employeeId} type="hidden" name="employeeIds" value={employeeId} />
-              ))}
-              <input type="hidden" name="intent" value="delete" />
-            </Form>
           </div>
         )}
 
@@ -302,9 +264,10 @@ export default function StaffManagementPage() {
             slot="primary-action"
             variant="primary"
             tone="critical"
+            loading={isBulkSubmitting}
             commandFor="bulk-delete-modal"
             command="--hide"
-            onClick={() => deleteFormRef.current?.requestSubmit()}
+            onClick={() => submitBulkAction("delete")}
           >
             Delete all
           </s-button>
@@ -763,14 +726,6 @@ const STAFF_MANAGEMENT_STYLES = `
     color: #303030;
     font-size: 13px;
     font-weight: 600;
-  }
-
-  .bulk-form {
-    display: inline-flex;
-  }
-
-  .bulk-form-hidden {
-    display: none;
   }
 
   .button-with-icon {
