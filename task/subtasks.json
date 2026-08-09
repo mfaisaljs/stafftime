@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:36:03.000Z",
+  "lastUpdated": "2026-08-09T18:38:01.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -663,7 +663,8 @@
         "Switching to Yearly auto-populates month and year from the current date",
         "Clear All Shifts opens a warning dialog with staff selection before deleting shifts",
         "Clear All Shifts confirmation uses Shopify Polaris s-modal actions",
-        "Clear All Shifts staff selectors use native checkbox styling"
+        "Clear All Shifts staff selectors use native checkbox styling",
+        "Schedule dialogs use smaller consistent widths with larger headers"
       ],
       "files": [
         "app/routes/app.schedules.tsx"

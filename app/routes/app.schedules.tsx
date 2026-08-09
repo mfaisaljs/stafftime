@@ -985,7 +985,7 @@ function ClearShiftsDialog({
   };
 
   return (
-    <s-modal id="clear-shifts-modal" heading="Delete All Shifts" size="large">
+    <s-modal id="clear-shifts-modal" heading="Delete All Shifts" size="base">
       <fetcher.Form id="clear-shifts-form" method="post" className="clear-body">
         <input type="hidden" name="intent" value="clearWeek" />
         {Array.from(selectedIds).map((employeeId) => (
@@ -1638,15 +1638,15 @@ const SCHEDULE_STYLES = `
   .schedule-dialog,
   .availability-dialog {
     background: #fff;
-    border-radius: 18px;
+    border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
-    max-height: min(760px, calc(100vh - 48px));
+    max-height: min(720px, calc(100vh - 48px));
     overflow: auto;
-    width: min(760px, calc(100vw - 48px));
+    width: min(680px, calc(100vw - 48px));
   }
 
   .availability-dialog {
-    width: min(620px, calc(100vw - 48px));
+    width: min(560px, calc(100vw - 48px));
   }
 
   .dialog-header {
@@ -1654,11 +1654,12 @@ const SCHEDULE_STYLES = `
     border-bottom: 1px solid #e3e3e3;
     display: flex;
     justify-content: space-between;
-    padding: 20px 24px;
+    padding: 22px 24px;
   }
 
   .dialog-header h2 {
-    font-size: 20px;
+    font-size: 24px;
+    font-weight: 750;
     margin: 0;
   }
 
