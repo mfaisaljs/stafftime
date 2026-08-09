@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T21:28:30.000Z",
+  "lastUpdated": "2026-08-09T21:30:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -681,7 +681,8 @@
         "Customize Colors shows current color, palette, and preview after a location or staff member is selected",
         "Updating a schedule color persists the choice and applies it to matching shift cards",
         "Schedule toolbar keeps the Color by Location or Color by Staff dropdown next to Customize Colors",
-        "Customize Colors preview text switches between light and dark for selected color contrast"
+        "Customize Colors preview text switches between light and dark for selected color contrast",
+        "Shift hover action overlay uses the same solid color as the schedule card"
       ],
       "files": [
         "app/routes/app.schedules.tsx",

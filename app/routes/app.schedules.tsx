@@ -1938,7 +1938,7 @@ const SCHEDULE_STYLES = `
 
   .shift-actions {
     align-items: center;
-    background: #000;
+    background: inherit;
     border-radius: inherit;
     display: none;
     gap: 4px;
