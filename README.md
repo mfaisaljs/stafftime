@@ -121,7 +121,7 @@ POS routes:
 - `/app/schedules` — create and review shifts
 - `/app/payroll` — timesheets and CSV export
 - `/app/missed-punches` — approval queue
-- `/app/employees` — team management
+- `/app/staff` — staff management
 
 ## Task tracking
 

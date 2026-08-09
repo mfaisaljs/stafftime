@@ -31,7 +31,7 @@
       "status": "completed",
       "priority": "high",
       "dependencies": ["ST001"],
-      "acceptanceCriteria": ["Dashboard, Attendance, Schedules, Payroll, Approvals, Employees links visible"],
+      "acceptanceCriteria": ["Dashboard, Attendance, Schedules, Payroll, Approvals, Staff links visible"],
       "files": ["app/routes/app.tsx"]
     },
     {
@@ -274,7 +274,7 @@
       "priority": "high",
       "dependencies": ["ST008"],
       "acceptanceCriteria": ["Duplicate PIN shows error in Admin and POS", "QR remains unique identifier"],
-      "files": ["app/services/workforce.server.ts", "app/routes/app.employees.tsx", "app/routes/api.pos.verify.tsx"]
+      "files": ["app/services/workforce.server.ts", "app/routes/app.staff.tsx", "app/routes/api.pos.verify.tsx"]
     },
     {
       "id": "ST026",
@@ -285,7 +285,7 @@
       "priority": "high",
       "dependencies": ["ST025"],
       "acceptanceCriteria": ["Manager can edit employee and change PIN with uniqueness check"],
-      "files": ["app/routes/app.employees.tsx", "app/services/workforce.server.ts"]
+      "files": ["app/routes/app.staff.tsx", "app/services/workforce.server.ts"]
     },
     {
       "id": "ST027",
@@ -340,7 +340,7 @@
       "priority": "medium",
       "dependencies": ["ST026"],
       "acceptanceCriteria": ["Each employee has visible QR code in Admin"],
-      "files": ["app/routes/app.employees.tsx"]
+      "files": ["app/routes/app.staff.tsx"]
     },
     {
       "id": "ST032",
@@ -359,7 +359,7 @@
         "PIN uniqueness remains enforced"
       ],
       "files": [
-        "app/routes/app.employees.tsx",
+        "app/routes/app.staff.tsx",
         "app/services/workforce.server.ts",
         "app/services/admin.server.ts",
         "prisma/schema.prisma",

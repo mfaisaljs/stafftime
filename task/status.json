@@ -14,7 +14,7 @@
     "Fixed: unique PIN enforcement — duplicate PINs blocked in Admin and rejected on POS.",
     "POS tile must be manually added to Smart Grid in Settings → Point of sale.",
     "ST028 complete: POS workflow integration tests (6), Android QA checklist, dev:pos script for ngrok.",
-    "ST032 complete: Employees add form expanded to match competitor staff profile flow with payroll, availability, and payment method fields.",
+    "ST032 complete: Staff add form expanded to match competitor staff profile flow with payroll, availability, and payment method fields.",
     "Fixed: payment method detail fields now render conditionally based on selected method.",
     "Fixed: employee form fields wrap cleanly; payroll type is hourly, weekly, or monthly with one matching amount field.",
     "Next priorities: employee edit/PIN change, missed punch create form, production hosting, App Store prep.",

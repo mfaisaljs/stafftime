@@ -72,10 +72,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     };
   }
 
-  return { success: "Employee added" };
+  return { success: "Staff member added" };
 };
 
-export default function EmployeesPage() {
+export default function StaffPage() {
   const { employees, locations } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const [pin, setPin] = useState("");
@@ -99,7 +99,7 @@ export default function EmployeesPage() {
   };
 
   return (
-    <s-page heading="Employees">
+    <s-page heading="Staff">
       <s-section heading="Add Shopify Staff">
         {actionData?.error && (
           <s-banner heading={actionData.error} tone="critical" />
@@ -319,7 +319,7 @@ export default function EmployeesPage() {
         </Form>
       </s-section>
 
-      <s-section heading="Team">
+      <s-section heading="Staff">
         <s-stack direction="block" gap="base">
           {employees.map((employee) => (
             <s-box key={employee.id} padding="base" background="subdued">

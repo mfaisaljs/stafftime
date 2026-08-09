@@ -73,7 +73,7 @@ Open StaffTime in Shopify Admin (embedded app) in a browser.
 
 | Step | Action | Expected | Pass |
 |------|--------|----------|------|
-| 14 | Admin → Employees → add duplicate PIN | Error about PIN already assigned | ☐ |
+| 14 | Admin → Staff → add duplicate PIN | Error about PIN already assigned | ☐ |
 | 15 | POS verify with ambiguous PIN (if duplicated in DB) | Error about multiple employees | ☐ |
 
 ## Automated coverage
