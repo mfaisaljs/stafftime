@@ -7,7 +7,7 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shopHandle = session.shop.replace(/\.myshopify\.com$/i, "");
-  const posEditorUrl = `https://admin.shopify.com/store/${shopHandle}/settings/point-of-sale/channel`;
+  const posEditorUrl = `https://admin.shopify.com/store/${shopHandle}/apps/point-of-sale-channel/editor`;
 
   // Targets persistence lands in a follow-up; empty list for the initial route.
   return {
