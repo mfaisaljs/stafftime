@@ -23,6 +23,7 @@ export default function App() {
         <s-link href="/app/attendance">Attendance</s-link>
         <s-link href="/app/schedules">Schedules</s-link>
         <s-link href="/app/payroll">Payroll</s-link>
+        <s-link href="/app/reports">Reports</s-link>
         <s-link href="/app/missed-punches">Approvals</s-link>
       </s-app-nav>
       <Outlet />

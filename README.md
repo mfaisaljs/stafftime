@@ -117,6 +117,7 @@ POS routes:
 - `/app/attendance` — late/absent views
 - `/app/schedules` — create and review shifts
 - `/app/payroll` — timesheets and CSV export
+- `/app/reports` — overview, daily activity report, and staff activity log
 - `/app/missed-punches` — approval queue
 - `/app/staff` — staff management
 - `/app/staff/new` — add Shopify staff form

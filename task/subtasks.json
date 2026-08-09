@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T15:59:00.000Z",
+  "lastUpdated": "2026-08-09T16:46:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -549,6 +549,27 @@
         "app/services/workforce.server.ts",
         "prisma/schema.prisma",
         "prisma/migrations/20260809155840_employee_archived_status/migration.sql"
+      ]
+    },
+    {
+      "id": "ST042",
+      "taskId": "T010",
+      "title": "Build Reports route",
+      "description": "Add /app/reports with Overview, Daily Activity Report, and Staff Activity Log tabs inspired by competitor screenshots.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST012", "ST033"],
+      "acceptanceCriteria": [
+        "Reports nav link opens /app/reports",
+        "Overview tab shows report metric cards and staff summary table",
+        "Daily Activity Report tab shows position filter and staff-by-day activity table",
+        "Staff Activity Log tab shows staff selector, export action, and empty/activity states",
+        "Report values use real staff and time entry data from the last 30 days"
+      ],
+      "files": [
+        "app/routes/app.reports.tsx",
+        "app/routes/app.tsx",
+        "README.md"
       ]
     }
   ]
