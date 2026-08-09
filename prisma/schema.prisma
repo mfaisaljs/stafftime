@@ -1,34 +1,282 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "sqlite"
-  url      = "file:dev.sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum EmployeeRole {
+  OWNER
+  REGIONAL_MANAGER
+  STORE_MANAGER
+  SUPERVISOR
+  EMPLOYEE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TimeEntryStatus {
+  OPEN
+  CLOSED
+  PENDING_APPROVAL
+}
+
+enum BreakType {
+  PAID
+  UNPAID
+  LUNCH
+}
+
+enum MissedPunchType {
+  CLOCK_IN
+  CLOCK_OUT
+  BREAK_START
+  BREAK_END
+}
+
+enum MissedPunchStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayrollExportFormat {
+  CSV
+  EXCEL
 }
 
 model Session {
-  id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
   refreshToken        String?
   refreshTokenExpires DateTime?
+}
+
+model Shop {
+  id        String   @id @default(cuid())
+  domain    String   @unique
+  name      String?
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations      StoreLocation[]
+  employees      Employee[]
+  shifts         Shift[]
+  timeEntries    TimeEntry[]
+  missedPunches  MissedPunchRequest[]
+  auditLogs      AuditLog[]
+  devices        Device[]
+  payrollExports PayrollExport[]
+  settings       Setting?
+}
+
+model StoreLocation {
+  id               String   @id @default(cuid())
+  shopId           String
+  shopifyLocationId String
+  name             String
+  timezone         String   @default("UTC")
+  latitude         Float?
+  longitude        Float?
+  geofenceRadiusM  Int      @default(100)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  shop        Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  employees   Employee[]
+  shifts      Shift[]
+  timeEntries TimeEntry[]
+  devices     Device[]
+
+  @@unique([shopId, shopifyLocationId])
+}
+
+model Employee {
+  id               String         @id @default(cuid())
+  shopId           String
+  locationId       String?
+  firstName        String
+  lastName         String
+  email            String?
+  pinHash          String
+  qrCode           String         @unique
+  role             EmployeeRole   @default(EMPLOYEE)
+  status           EmployeeStatus @default(ACTIVE)
+  hourlyRate       Float          @default(0)
+  department       String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  shop          Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  location      StoreLocation?       @relation(fields: [locationId], references: [id])
+  shifts        Shift[]
+  timeEntries   TimeEntry[]
+  missedPunches MissedPunchRequest[]
+
+  @@index([shopId, status])
+}
+
+model Shift {
+  id         String   @id @default(cuid())
+  shopId     String
+  locationId String
+  employeeId String
+  startsAt   DateTime
+  endsAt     DateTime
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  shop     Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  location StoreLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  employee Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, startsAt])
+  @@index([employeeId, startsAt])
+}
+
+model TimeEntry {
+  id         String          @id @default(cuid())
+  shopId     String
+  locationId String
+  employeeId String
+  clockInAt  DateTime
+  clockOutAt DateTime?
+  status     TimeEntryStatus @default(OPEN)
+  source     String          @default("POS")
+  deviceId   String?
+  latitude   Float?
+  longitude  Float?
+  photoUrl   String?
+  notes      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  shop     Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  location StoreLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  employee Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  breaks   BreakEntry[]
+
+  @@index([shopId, clockInAt])
+  @@index([employeeId, status])
+}
+
+model BreakEntry {
+  id          String    @id @default(cuid())
+  timeEntryId String
+  type        BreakType @default(UNPAID)
+  startedAt   DateTime
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  timeEntry TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([timeEntryId, endedAt])
+}
+
+model MissedPunchRequest {
+  id              String            @id @default(cuid())
+  shopId          String
+  employeeId      String
+  type            MissedPunchType
+  requestedAt     DateTime
+  reason          String?
+  status          MissedPunchStatus @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  shopId     String
+  actorId    String?
+  actorType  String   @default("system")
+  action     String
+  entityType String
+  entityId   String
+  previous   String?
+  next       String?
+  ipAddress  String?
+  deviceId   String?
+  createdAt  DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
+}
+
+model Device {
+  id         String   @id @default(cuid())
+  shopId     String
+  locationId String?
+  name       String
+  deviceKey  String   @unique
+  approved   Boolean  @default(false)
+  locked     Boolean  @default(false)
+  lastSeenAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  shop     Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  location StoreLocation? @relation(fields: [locationId], references: [id])
+
+  @@index([shopId, approved])
+}
+
+model PayrollExport {
+  id        String              @id @default(cuid())
+  shopId    String
+  format    PayrollExportFormat @default(CSV)
+  periodStart DateTime
+  periodEnd   DateTime
+  filePath  String?
+  createdAt DateTime            @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  id                    String  @id @default(cuid())
+  shopId                String  @unique
+  overtimeDailyHours    Float   @default(8)
+  overtimeWeeklyHours   Float   @default(40)
+  maxHoursPerDay        Float   @default(12)
+  maxHoursPerWeek       Float   @default(60)
+  mandatoryBreakHours   Float   @default(6)
+  mandatoryBreakMinutes Int     @default(30)
+  requireGps            Boolean @default(false)
+  requirePhoto          Boolean @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }

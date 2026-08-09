@@ -1,0 +1,8 @@
+name = "StaffTime"
+roles = ["frontend", "backend"]
+webhooks_path = "/webhooks/app/uninstalled"
+port = 3458
+
+[commands]
+predev = "npm exec prisma generate"
+dev = "npm exec prisma migrate deploy && npm exec react-router dev"

@@ -1,5 +1,6 @@
-# StaffTime — Workforce OS for Shopify POS
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration
+# Local dev config — no webhook subscriptions (localhost cannot receive webhooks).
+# Use: npm run dev
+# Production webhooks remain in shopify.app.toml for deploy.
 
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
 name = "StaffTime"
@@ -19,15 +20,7 @@ redirect_urls = [
 [webhooks]
 api_version = "2026-10"
 
-  [[webhooks.subscriptions]]
-  uri = "/webhooks/app/uninstalled"
-  topics = ["app/uninstalled"]
-
-  [[webhooks.subscriptions]]
-  topics = ["app/scopes_update"]
-  uri = "/webhooks/app/scopes_update"
-
 [build]
 automatically_update_urls_on_dev = true
 dev_store_url = "spaceraceplayground.myshopify.com"
-include_config_on_deploy = true
+include_config_on_deploy = false

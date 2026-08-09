@@ -1,0 +1,157 @@
+{
+  "projectName": "StaffTime — Workforce OS for Shopify POS",
+  "version": "0.1.0",
+  "lastUpdated": "2026-08-09T12:00:00.000Z",
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Project setup",
+      "description": "Scaffold Shopify app, configure repo, dependencies, and environment.",
+      "status": "completed",
+      "priority": "critical",
+      "phase": "foundation",
+      "progressPercent": 100,
+      "dependencies": []
+    },
+    {
+      "id": "T002",
+      "title": "Shopify app foundation",
+      "description": "React Router app shell, auth, scopes, navigation, and shop bootstrap.",
+      "status": "completed",
+      "priority": "critical",
+      "phase": "foundation",
+      "progressPercent": 100,
+      "dependencies": ["T001"]
+    },
+    {
+      "id": "T003",
+      "title": "Workforce data model",
+      "description": "Prisma schema for employees, locations, shifts, time entries, breaks, approvals, audit logs.",
+      "status": "completed",
+      "priority": "critical",
+      "phase": "foundation",
+      "progressPercent": 100,
+      "dependencies": ["T001"]
+    },
+    {
+      "id": "T004",
+      "title": "POS clock workflow",
+      "description": "POS smart grid tile and modal for PIN/QR verify, clock in/out, and breaks.",
+      "status": "completed",
+      "priority": "critical",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T002", "T003"]
+    },
+    {
+      "id": "T005",
+      "title": "Time tracking engine",
+      "description": "Worked hours, paid hours, unpaid breaks, overtime, and summaries.",
+      "status": "completed",
+      "priority": "high",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T003"]
+    },
+    {
+      "id": "T006",
+      "title": "Scheduling",
+      "description": "Manager shift creation and upcoming shift visibility.",
+      "status": "completed",
+      "priority": "high",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T003", "T002"]
+    },
+    {
+      "id": "T007",
+      "title": "Attendance dashboard",
+      "description": "Live working, on break, late, absent, and upcoming shift views.",
+      "status": "completed",
+      "priority": "high",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T005", "T002"]
+    },
+    {
+      "id": "T008",
+      "title": "Payroll export",
+      "description": "CSV export for timesheets and labor cost fields.",
+      "status": "completed",
+      "priority": "high",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T005", "T002"]
+    },
+    {
+      "id": "T009",
+      "title": "Approval workflow",
+      "description": "Missed punch requests with manager approve/reject and audit trail.",
+      "status": "completed",
+      "priority": "high",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T003", "T002"]
+    },
+    {
+      "id": "T010",
+      "title": "Reporting",
+      "description": "Daily attendance metrics, labor cost snapshot, and timesheet summaries.",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T005", "T007"]
+    },
+    {
+      "id": "T011",
+      "title": "Multi-store and RBAC",
+      "description": "Role-based permissions and multi-location management.",
+      "status": "planned",
+      "priority": "medium",
+      "phase": "enterprise",
+      "progressPercent": 20,
+      "dependencies": ["T003"]
+    },
+    {
+      "id": "T012",
+      "title": "Verification and anti-buddy-punching",
+      "description": "GPS geofence, photo verification, and device registration.",
+      "status": "planned",
+      "priority": "medium",
+      "phase": "enterprise",
+      "progressPercent": 10,
+      "dependencies": ["T004"]
+    },
+    {
+      "id": "T013",
+      "title": "Offline sync",
+      "description": "Queue POS clock events offline and sync when connectivity returns.",
+      "status": "planned",
+      "priority": "high",
+      "phase": "enterprise",
+      "progressPercent": 15,
+      "dependencies": ["T004"]
+    },
+    {
+      "id": "T014",
+      "title": "Notifications",
+      "description": "Email, SMS, and push alerts for shifts, approvals, and reminders.",
+      "status": "planned",
+      "priority": "medium",
+      "phase": "enterprise",
+      "progressPercent": 0,
+      "dependencies": ["T006", "T009"]
+    },
+    {
+      "id": "T015",
+      "title": "Documentation and launch readiness",
+      "description": "README, setup docs, tests, and App Store prep.",
+      "status": "completed",
+      "priority": "high",
+      "phase": "launch",
+      "progressPercent": 100,
+      "dependencies": ["T004", "T007", "T008"]
+    }
+  ]
+}

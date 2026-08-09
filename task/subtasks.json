@@ -1,0 +1,225 @@
+{
+  "lastUpdated": "2026-08-09T12:00:00.000Z",
+  "subtasks": [
+    {
+      "id": "ST001",
+      "taskId": "T001",
+      "title": "Clone Shopify React Router template",
+      "description": "Initialize app from official Shopify template in empty repo.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [],
+      "acceptanceCriteria": ["package.json exists", "shopify.app.toml exists"],
+      "files": ["package.json", "shopify.app.toml"]
+    },
+    {
+      "id": "ST002",
+      "taskId": "T001",
+      "title": "Install dependencies",
+      "description": "Install npm packages including bcryptjs and vitest.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST001"],
+      "acceptanceCriteria": ["npm install succeeds"],
+      "files": ["package.json"]
+    },
+    {
+      "id": "ST003",
+      "taskId": "T002",
+      "title": "Configure app navigation",
+      "description": "Replace template nav with workforce sections.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST001"],
+      "acceptanceCriteria": ["Dashboard, Attendance, Schedules, Payroll, Approvals, Employees links visible"],
+      "files": ["app/routes/app.tsx"]
+    },
+    {
+      "id": "ST004",
+      "taskId": "T003",
+      "title": "Define Prisma workforce schema",
+      "description": "Add all core workforce tables and enums.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST001"],
+      "acceptanceCriteria": ["Employees, Shifts, TimeEntries, Breaks, AuditLogs models exist"],
+      "files": ["prisma/schema.prisma"]
+    },
+    {
+      "id": "ST005",
+      "taskId": "T003",
+      "title": "Run initial migration",
+      "description": "Generate and apply Prisma migration for workforce schema.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST004"],
+      "acceptanceCriteria": ["prisma migrate dev succeeds"],
+      "files": ["prisma/migrations"]
+    },
+    {
+      "id": "ST006",
+      "taskId": "T004",
+      "title": "Create POS extension config",
+      "description": "Add workforce-clock POS UI extension with offline support.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST001"],
+      "acceptanceCriteria": ["shopify.extension.toml defines tile and modal targets"],
+      "files": ["extensions/workforce-clock/shopify.extension.toml"]
+    },
+    {
+      "id": "ST007",
+      "taskId": "T004",
+      "title": "Build POS tile and modal UI",
+      "description": "PIN/QR verify, clock actions, timer, and schedule display.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST006"],
+      "acceptanceCriteria": ["Tile opens modal", "Employee can clock in/out and manage breaks"],
+      "files": ["extensions/workforce-clock/src/Tile.tsx", "extensions/workforce-clock/src/Modal.tsx"]
+    },
+    {
+      "id": "ST008",
+      "taskId": "T004",
+      "title": "Implement POS API routes",
+      "description": "Authenticated POS endpoints for verify, clock, and break actions.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST005"],
+      "acceptanceCriteria": ["authenticate.pos used on all POS routes"],
+      "files": ["app/routes/api.pos.verify.tsx", "app/routes/api.pos.clock-in.tsx", "app/utils/pos-api.server.ts"]
+    },
+    {
+      "id": "ST009",
+      "taskId": "T005",
+      "title": "Implement time calculation utilities",
+      "description": "Paid hours, unpaid breaks, overtime, and formatting helpers.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST004"],
+      "acceptanceCriteria": ["Unit tests cover overtime and break math"],
+      "files": ["app/services/time-tracking.server.ts", "app/services/time-tracking.test.ts"]
+    },
+    {
+      "id": "ST010",
+      "taskId": "T006",
+      "title": "Build schedules admin page",
+      "description": "Create and list employee shifts.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST003", "ST005"],
+      "acceptanceCriteria": ["Manager can create shift with employee and datetime"],
+      "files": ["app/routes/app.schedules.tsx"]
+    },
+    {
+      "id": "ST011",
+      "taskId": "T007",
+      "title": "Build attendance dashboard",
+      "description": "Show working, on break, late, and absent staff.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST009"],
+      "acceptanceCriteria": ["Dashboard and attendance pages render live status"],
+      "files": ["app/routes/app._index.tsx", "app/routes/app.attendance.tsx"]
+    },
+    {
+      "id": "ST012",
+      "taskId": "T008",
+      "title": "Build payroll CSV export",
+      "description": "Export recent timesheets with labor cost columns.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST009"],
+      "acceptanceCriteria": ["CSV download includes employee, hours, overtime, labor cost"],
+      "files": ["app/routes/app.payroll.tsx", "app/services/payroll-export.server.ts"]
+    },
+    {
+      "id": "ST013",
+      "taskId": "T009",
+      "title": "Build missed punch approval flow",
+      "description": "Review pending requests and apply approved corrections.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST005"],
+      "acceptanceCriteria": ["Manager can approve or reject missed punch requests"],
+      "files": ["app/routes/app.missed-punches.tsx", "app/services/workforce.server.ts"]
+    },
+    {
+      "id": "ST014",
+      "taskId": "T009",
+      "title": "Add audit logging",
+      "description": "Record clock, break, and approval actions.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST013"],
+      "acceptanceCriteria": ["AuditLog entries created for workforce actions"],
+      "files": ["app/services/workforce.server.ts"]
+    },
+    {
+      "id": "ST015",
+      "taskId": "T002",
+      "title": "Seed demo employees and shifts",
+      "description": "Bootstrap sample team on first admin visit.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST005"],
+      "acceptanceCriteria": ["John and Sarah demo accounts created with PINs"],
+      "files": ["app/services/admin.server.ts"]
+    },
+    {
+      "id": "ST016",
+      "taskId": "T015",
+      "title": "Write README setup guide",
+      "description": "Document local dev, POS testing, and roadmap.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST007", "ST008"],
+      "acceptanceCriteria": ["README covers install, dev, demo PINs, and architecture"],
+      "files": ["README.md"]
+    },
+    {
+      "id": "ST017",
+      "taskId": "T015",
+      "title": "Add unit tests",
+      "description": "Cover time math and approval workflow behavior.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST009", "ST013"],
+      "acceptanceCriteria": ["npm test passes"],
+      "files": ["app/services/time-tracking.test.ts", "app/services/approval-workflow.test.ts"]
+    },
+    {
+      "id": "ST018",
+      "taskId": "T011",
+      "title": "Implement role permissions middleware",
+      "description": "Enforce owner/manager/supervisor/employee access in admin routes.",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": ["ST004"],
+      "acceptanceCriteria": ["Routes respect EmployeeRole permissions"],
+      "files": ["app/services/permissions.server.ts"]
+    },
+    {
+      "id": "ST019",
+      "taskId": "T012",
+      "title": "Add GPS geofence validation",
+      "description": "Validate clock events against store geofence settings.",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": ["ST008"],
+      "acceptanceCriteria": ["Remote clock-ins blocked when requireGps enabled"],
+      "files": ["app/services/verification.server.ts"]
+    },
+    {
+      "id": "ST020",
+      "taskId": "T013",
+      "title": "Implement offline event queue in POS extension",
+      "description": "Persist unsynced clock events and replay on reconnect.",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": ["ST007"],
+      "acceptanceCriteria": ["Clock events queue when offline and sync later"],
+      "files": ["extensions/workforce-clock/src/offline-queue.ts"]
+    }
+  ]
+}

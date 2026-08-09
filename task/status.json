@@ -1,0 +1,42 @@
+{
+  "projectName": "StaffTime — Workforce OS for Shopify POS",
+  "currentPhase": "mvp",
+  "overallStatus": "completed",
+  "progressPercent": 100,
+  "activeTaskIds": [],
+  "blockedTaskIds": [],
+  "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T009", "T010", "T015"],
+  "lastUpdated": "2026-08-09T12:00:00.000Z",
+  "notes": [
+    "MVP core features implemented: POS clock workflow, scheduling, attendance dashboard, payroll CSV export, and missed punch approvals.",
+    "Enterprise features (RBAC, GPS/photo verification, full offline sync, payroll provider integrations) remain on roadmap.",
+    "Demo employees seed on first admin visit: John PIN 1234, Sarah PIN 5678.",
+    "Competitive reference: Zon Staff Management on Shopify App Store."
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "Foundation",
+      "status": "completed",
+      "targetDate": "2026-08-09"
+    },
+    {
+      "id": "M2",
+      "name": "POS-first MVP",
+      "status": "completed",
+      "targetDate": "2026-08-09"
+    },
+    {
+      "id": "M3",
+      "name": "Launch readiness",
+      "status": "in_progress",
+      "targetDate": "2026-08-16"
+    },
+    {
+      "id": "M4",
+      "name": "Enterprise rollout",
+      "status": "planned",
+      "targetDate": "2026-09-30"
+    }
+  ]
+}
