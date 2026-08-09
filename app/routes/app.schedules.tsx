@@ -844,17 +844,25 @@ function ShiftDialog({
   onClose: () => void;
 }) {
   const isEdit = modal.mode === "edit";
-  const employeeId =
-    modal.mode === "create" ? modal.employeeId : selectedShift?.employeeId ?? "";
+  const employeeId = isEdit ? selectedShift?.employeeId ?? "" : "";
+  const locationId = isEdit ? selectedShift?.locationId ?? "" : "";
   const dateKey = modal.mode === "create" ? modal.dateKey : selectedShift?.dateKey ?? "";
-  const firstLocationId = locations[0]?.id ?? "";
 
   return (
     <s-modal id="shift-modal" heading={isEdit ? "Edit Shift" : "Create Shift"} size="base">
       <fetcher.Form id="shift-form" method="post" className="dialog-body">
           <input type="hidden" name="intent" value={isEdit ? "updateShift" : "createShift"} />
           {isEdit && <input type="hidden" name="shiftId" value={selectedShift?.id} />}
-          <s-select label="Staff" name="employeeId" value={employeeId} required>
+          <s-select
+            label="Staff"
+            name="employeeId"
+            value={employeeId}
+            placeholder="Select a staff"
+            required
+          >
+            <s-option value="" disabled>
+              Select a staff
+            </s-option>
             {employees.map((employee) => (
               <s-option key={employee.id} value={employee.id}>
                 {employee.name}
@@ -864,9 +872,13 @@ function ShiftDialog({
           <s-select
             label="Location"
             name="locationId"
-            value={selectedShift?.locationId ?? firstLocationId}
+            value={locationId}
+            placeholder="Select a location"
             required
           >
+            <s-option value="" disabled>
+              Select a location
+            </s-option>
             {locations.map((location) => (
               <s-option key={location.id} value={location.id}>
                 {location.name}
