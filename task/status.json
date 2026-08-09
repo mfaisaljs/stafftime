@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T22:35:00.000Z",
+  "lastUpdated": "2026-08-09T22:40:00.000Z",
   "notes": [
+    "ST051 complete: Staff detail Commission Program tab shows earnings cards, order filters, and empty state.",
     "ST050 complete: Commission program list rows open edit/details at /app/commission-programs/:id; status toggle stays on the list.",
     "ST049 complete: CommissionProgramForm extracted as reusable create/edit component; parseCommissionProgramForm shared validator added.",
     "Fixed: Commission Programs index restores POS banner, create header, and empty state; only the programs list uses the table layout.",

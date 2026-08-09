@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import {
   AlertCircle,
@@ -12,11 +13,13 @@ import {
   Coins,
   DollarSign,
   Download,
+  FileText,
   MinusCircle,
   Pencil,
   PiggyBank,
   Plus,
   Settings,
+  Target,
   Upload,
   UserCog,
 } from "lucide-react";
@@ -31,6 +34,7 @@ import {
   calculateBreakMinutes,
   summarizeTimeEntry,
 } from "../services/time-tracking.server";
+import prisma from "../db.server";
 
 type StaffTab = "overview" | "commission" | "payroll";
 
@@ -77,6 +81,41 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     return sum + (summaries[index].paidMinutes / 60) * hourlyRate;
   }, 0);
 
+  const commissionPrograms = await prisma.commissionProgram.findMany({
+    where: { shopId: shop.id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true, employeeIds: true, active: true },
+  });
+  const assignedPrograms = commissionPrograms
+    .filter((program) => {
+      try {
+        const ids = JSON.parse(program.employeeIds) as unknown;
+        return Array.isArray(ids) && ids.includes(employeeId);
+      } catch {
+        return false;
+      }
+    })
+    .map((program) => ({
+      id: program.id,
+      name: program.name,
+      active: program.active,
+    }));
+
+  // Commission order earnings are not persisted yet — show zeroed totals/empty list.
+  const commissionEarnings = {
+    total: 0,
+    paid: 0,
+    unpaid: 0,
+    orders: [] as Array<{
+      id: string;
+      programId: string;
+      programName: string;
+      status: "paid" | "unpaid";
+      amount: number;
+      createdAt: string;
+    }>,
+  };
+
   const attendanceRows = timeEntries.map((entry) => {
     const summary = summarizeTimeEntry(entry, settings);
     const end = entry.clockOutAt ?? new Date();
@@ -98,6 +137,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     };
   });
 
+  const activeAssigned = assignedPrograms.filter((program) => program.active);
+
   return {
     employee,
     startDate: startDate.toISOString(),
@@ -107,10 +148,15 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       totalHours: formatDurationHms(totalWorkedMinutes),
       workingHours: formatDurationHms(paidMinutes),
       totalBreakTime: formatDurationHms(breakMinutes),
-      totalCommission: 0,
+      totalCommission: commissionEarnings.total,
       paid: paidEarnings,
       unpaid: 0,
-      commissionPlan: "No Active Plan",
+      commissionPlan:
+        activeAssigned.length === 0
+          ? "No Active Plan"
+          : activeAssigned.length === 1
+            ? activeAssigned[0].name
+            : `${activeAssigned.length} Active Plans`,
       totalAbsents: 0,
       unpaidSalary: 0,
       totalTransactions: timeEntries.length,
@@ -119,12 +165,16 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       paidLeaves: 0,
       unpaidLeaves: 0,
     },
+    commission: {
+      ...commissionEarnings,
+      programs: assignedPrograms,
+    },
     attendanceRows,
   };
 };
 
 export default function StaffDetailPage() {
-  const { employee, startDate, endDate, metrics, attendanceRows } =
+  const { employee, startDate, endDate, metrics, commission, attendanceRows } =
     useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -180,7 +230,7 @@ export default function StaffDetailPage() {
           />
         )}
 
-        {tab === "commission" && <div className="commission-empty" />}
+        {tab === "commission" && <CommissionTab commission={commission} />}
 
         {tab === "payroll" && (
           <PayrollTab metrics={metrics} transactionCount={metrics.totalTransactions} />
@@ -425,6 +475,155 @@ function OverviewTab({
         </div>
       </section>
     </>
+  );
+}
+
+function CommissionTab({
+  commission,
+}: {
+  commission: {
+    total: number;
+    paid: number;
+    unpaid: number;
+    programs: Array<{ id: string; name: string; active: boolean }>;
+    orders: Array<{
+      id: string;
+      programId: string;
+      programName: string;
+      status: "paid" | "unpaid";
+      amount: number;
+      createdAt: string;
+    }>;
+  };
+}) {
+  const [programFilter, setProgramFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortFilter, setSortFilter] = useState("recent");
+
+  const filteredOrders = useMemo(() => {
+    let orders = [...commission.orders];
+    if (programFilter !== "all") {
+      orders = orders.filter((order) => order.programId === programFilter);
+    }
+    if (statusFilter !== "all") {
+      orders = orders.filter((order) => order.status === statusFilter);
+    }
+    orders.sort((a, b) => {
+      if (sortFilter === "amount-high") return b.amount - a.amount;
+      if (sortFilter === "amount-low") return a.amount - b.amount;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return orders;
+  }, [commission.orders, programFilter, statusFilter, sortFilter]);
+
+  return (
+    <div className="commission-tab">
+      <div className="commission-metrics">
+        <MetricCard
+          icon={<Target size={18} />}
+          tone="blue"
+          label="Total Commission"
+          value={formatCurrency(commission.total)}
+        />
+        <MetricCard
+          icon={<CheckCircle size={18} />}
+          tone="green"
+          label="Paid Commission"
+          value={formatCurrency(commission.paid)}
+        />
+        <MetricCard
+          icon={<AlertCircle size={18} />}
+          tone="yellow"
+          label="Unpaid Commission"
+          value={formatCurrency(commission.unpaid)}
+        />
+      </div>
+
+      <section className="commission-orders-card">
+        <div className="commission-orders-header">
+          <Briefcase aria-hidden="true" size={18} />
+          <strong>Commission Orders</strong>
+        </div>
+
+        <div className="commission-filters">
+          <label>
+            <span className="visually-hidden">Commission Programs</span>
+            <select
+              value={programFilter}
+              onChange={(event) => setProgramFilter(event.currentTarget.value)}
+            >
+              <option value="all">All Programs</option>
+              {commission.programs.map((program) => (
+                <option key={program.id} value={program.id}>
+                  {program.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="visually-hidden">Status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.currentTarget.value)}
+            >
+              <option value="all">All Orders</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </label>
+          <label>
+            <span className="visually-hidden">Sort</span>
+            <select
+              value={sortFilter}
+              onChange={(event) => setSortFilter(event.currentTarget.value)}
+            >
+              <option value="recent">Most Recent</option>
+              <option value="amount-high">Highest Amount</option>
+              <option value="amount-low">Lowest Amount</option>
+            </select>
+          </label>
+        </div>
+
+        <p className="commission-results-count">
+          Showing {filteredOrders.length} order
+          {filteredOrders.length === 1 ? "" : "s"}
+        </p>
+
+        {filteredOrders.length === 0 ? (
+          <div className="commission-empty-state">
+            <div className="commission-empty-icon" aria-hidden="true">
+              <FileText size={56} />
+              <span />
+            </div>
+            <strong>No commission orders found</strong>
+            <p>No commission orders match your current filters.</p>
+          </div>
+        ) : (
+          <div className="detail-table-wrap">
+            <table className="detail-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Program</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td>{formatTableDate(order.createdAt)}</td>
+                    <td>{order.programName}</td>
+                    <td>{order.status === "paid" ? "Paid" : "Unpaid"}</td>
+                    <td>{formatCurrency(order.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -941,8 +1140,103 @@ const STAFF_DETAIL_STYLES = `
     cursor: not-allowed;
   }
 
-  .commission-empty {
-    min-height: 120px;
+  .commission-tab {
+    display: grid;
+    gap: 16px;
+  }
+
+  .commission-metrics {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .commission-orders-card {
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .commission-orders-header {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px 4px;
+  }
+
+  .commission-orders-header strong {
+    font-size: 15px;
+  }
+
+  .commission-filters {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 12px 20px;
+  }
+
+  .commission-filters select {
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-radius: 8px;
+    color: #303030;
+    font-size: 13px;
+    min-height: 36px;
+    padding: 8px 12px;
+    width: 100%;
+  }
+
+  .commission-results-count {
+    color: #616161;
+    font-size: 13px;
+    margin: 0;
+    padding: 0 20px 8px;
+  }
+
+  .commission-empty-state {
+    align-items: center;
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    min-height: 260px;
+    padding: 40px 24px 48px;
+    text-align: center;
+  }
+
+  .commission-empty-state p {
+    color: #616161;
+    margin: 0;
+  }
+
+  .commission-empty-icon {
+    color: #d0d0d0;
+    display: grid;
+    margin-bottom: 8px;
+    place-items: center;
+    position: relative;
+  }
+
+  .commission-empty-icon span {
+    background: #f5b63b;
+    border-radius: 2px;
+    height: 16px;
+    left: 18px;
+    position: absolute;
+    top: 12px;
+    width: 16px;
+  }
+
+  .visually-hidden {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
   }
 
   @media (max-width: 1100px) {
@@ -954,8 +1248,13 @@ const STAFF_DETAIL_STYLES = `
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .payroll-metrics {
+    .payroll-metrics,
+    .commission-metrics {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .commission-filters {
+      grid-template-columns: 1fr;
     }
   }
 
@@ -966,7 +1265,8 @@ const STAFF_DETAIL_STYLES = `
     }
 
     .metrics-grid,
-    .payroll-metrics {
+    .payroll-metrics,
+    .commission-metrics {
       grid-template-columns: 1fr;
     }
 

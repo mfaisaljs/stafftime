@@ -818,6 +818,25 @@
         "app/components/commission-programs/hydrateCommissionProducts.server.ts"
       ],
       "lastUpdated": "2026-08-09T22:35:00.000Z"
+    },
+    {
+      "id": "ST051",
+      "taskId": "T017",
+      "title": "Staff Commission Program earnings tab",
+      "description": "Show commission earnings summary and Commission Orders filters/empty state on the staff detail Commission Program tab.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST037", "ST047"],
+      "acceptanceCriteria": [
+        "Commission Program tab shows Total, Paid, and Unpaid Commission metric cards",
+        "Commission Orders card includes All Programs, All Orders, and Most Recent filters",
+        "Empty state shows No commission orders found with filter-matching copy",
+        "Assigned commission programs populate the Programs filter for the staff member"
+      ],
+      "files": [
+        "app/routes/app.staff.$employeeId._index.tsx"
+      ],
+      "lastUpdated": "2026-08-09T22:40:00.000Z"
     }
   ]
 }
