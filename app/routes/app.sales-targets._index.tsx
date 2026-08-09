@@ -23,10 +23,6 @@ function currentYearMonth() {
   return `${now.getFullYear()}-${month}`;
 }
 
-function checkboxChecked(event: { currentTarget: unknown }) {
-  return Boolean((event.currentTarget as unknown as { checked: boolean }).checked);
-}
-
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
@@ -42,6 +38,54 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }),
   ]);
 
+  const employeeNameById = new Map(
+    employees.map((employee) => [
+      employee.id,
+      `${employee.firstName} ${employee.lastName}`.trim(),
+    ]),
+  );
+  const locationNameById = new Map(
+    locations.map((location) => [location.id, location.name]),
+  );
+  const activeLocationCount = locations.length;
+
+  const targetRows = targets.flatMap((target) => {
+    const employeeIds = parseIds(target.employeeIds);
+    const locationIds = parseIds(target.locationIds);
+    const locationLabel =
+      locationIds.length === 0 ||
+      (activeLocationCount > 0 && locationIds.length >= activeLocationCount) ||
+      locationIds.length > 1
+        ? "All locations"
+        : (locationNameById.get(locationIds[0]) ?? "All locations");
+
+    // Sold tracking is not wired yet — show zero progress for the current month.
+    const sold = 0;
+    const remaining = Math.max(0, target.amount - sold);
+    const progressPercent =
+      target.amount > 0
+        ? Math.min(100, Math.round((sold / target.amount) * 100))
+        : 0;
+    const status =
+      progressPercent >= 100 ? "Met" : progressPercent >= 50 ? "On track" : "Behind";
+
+    return employeeIds.map((employeeId) => ({
+      id: `${target.id}:${employeeId}`,
+      targetId: target.id,
+      employeeId,
+      staffName: employeeNameById.get(employeeId) ?? "Unknown staff",
+      locationLabel,
+      amount: target.amount,
+      currency: target.currency,
+      sold,
+      remaining,
+      progressPercent,
+      status,
+      employeeIds,
+      locationIds,
+    }));
+  });
+
   return {
     posEditorUrl,
     appName: "Trubuild: Staff Management",
@@ -55,14 +99,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       id: location.id,
       name: location.name,
     })),
-    targets: targets.map((target) => ({
-      id: target.id,
-      yearMonth: target.yearMonth,
-      amount: target.amount,
-      currency: target.currency,
-      employeeCount: parseIds(target.employeeIds).length,
-      locationCount: parseIds(target.locationIds).length,
-    })),
+    targetRows,
   };
 };
 
@@ -72,7 +109,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = String(formData.get("intent") || "");
 
-  if (intent !== "createTarget") {
+  if (intent === "deleteTarget") {
+    const targetId = String(formData.get("targetId") || "");
+    const employeeId = String(formData.get("employeeId") || "");
+    if (!targetId) return { ok: false, error: "Target not found." };
+
+    const existing = await prisma.salesTarget.findFirst({
+      where: { id: targetId, shopId: shop.id },
+    });
+    if (!existing) return { ok: false, error: "Target not found." };
+
+    const employeeIds = parseIds(existing.employeeIds).filter((id) => id !== employeeId);
+    if (employeeIds.length === 0) {
+      await prisma.salesTarget.delete({ where: { id: targetId } });
+    } else {
+      await prisma.salesTarget.update({
+        where: { id: targetId },
+        data: { employeeIds: JSON.stringify(employeeIds) },
+      });
+    }
+    return { ok: true };
+  }
+
+  if (intent !== "createTarget" && intent !== "updateTarget") {
     return { ok: false, error: "Unknown action." };
   }
 
@@ -80,6 +139,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const locationIds = formData.getAll("locationIds").map(String).filter(Boolean);
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const amount = Number(amountRaw);
+  const targetId = String(formData.get("targetId") || "");
 
   if (employeeIds.length === 0) {
     return { ok: false, error: "Select at least one staff member." };
@@ -91,22 +151,63 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return { ok: false, error: "Enter a valid monthly target amount." };
   }
 
-  await prisma.salesTarget.create({
-    data: {
+  if (intent === "updateTarget") {
+    if (!targetId) return { ok: false, error: "Target not found." };
+
+    const existing = await prisma.salesTarget.findFirst({
+      where: { id: targetId, shopId: shop.id },
+    });
+    if (!existing) return { ok: false, error: "Target not found." };
+
+    // Keep a single list row for this target (one primary staff), matching edit UI.
+    await prisma.salesTarget.update({
+      where: { id: targetId },
+      data: {
+        amount,
+        employeeIds: JSON.stringify(employeeIds.slice(0, 1)),
+        locationIds: JSON.stringify(locationIds),
+      },
+    });
+
+    // If edit selected additional staff, create rows for the new ones only.
+    const extraStaff = employeeIds.slice(1);
+    if (extraStaff.length > 0) {
+      await prisma.salesTarget.createMany({
+        data: extraStaff.map((employeeId) => ({
+          shopId: shop.id,
+          yearMonth: existing.yearMonth,
+          amount,
+          currency: existing.currency,
+          employeeIds: JSON.stringify([employeeId]),
+          locationIds: JSON.stringify(locationIds),
+        })),
+      });
+    }
+
+    return { ok: true };
+  }
+
+  // One row per staff member in the list view.
+  await prisma.salesTarget.createMany({
+    data: employeeIds.map((employeeId) => ({
       shopId: shop.id,
       yearMonth: currentYearMonth(),
       amount,
       currency: "USD",
-      employeeIds: JSON.stringify(employeeIds),
+      employeeIds: JSON.stringify([employeeId]),
       locationIds: JSON.stringify(locationIds),
-    },
+    })),
   });
 
   return { ok: true };
 };
 
+function formatMoney(currency: string, amount: number) {
+  return `${currency} ${amount.toFixed(2)}`;
+}
+
 export default function SalesTargetsIndex() {
-  const { targets, posEditorUrl, appName, employees, locations } =
+  const { targetRows, posEditorUrl, appName, employees, locations } =
     useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -118,6 +219,7 @@ export default function SalesTargetsIndex() {
   );
   const [amount, setAmount] = useState("");
   const [formError, setFormError] = useState("");
+  const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
 
   const saving = fetcher.state !== "idle";
   const saveDisabled =
@@ -125,16 +227,30 @@ export default function SalesTargetsIndex() {
     selectedLocationIds.size === 0 ||
     !amount.trim() ||
     saving;
+  const isEditing = Boolean(editingTargetId);
+
+  const resetTargetForm = () => {
+    setSelectedStaffIds(new Set());
+    setSelectedLocationIds(new Set());
+    setAmount("");
+    setFormError("");
+    setEditingTargetId(null);
+  };
+
+  const openCreateModal = () => {
+    resetTargetForm();
+    const modal = document.getElementById("set-sales-target-modal") as
+      | (HTMLElement & { showOverlay?: () => void })
+      | null;
+    modal?.showOverlay?.();
+  };
 
   useEffect(() => {
     if (fetcher.data && "error" in fetcher.data && fetcher.data.error) {
       setFormError(fetcher.data.error);
     }
     if (fetcher.data && "ok" in fetcher.data && fetcher.data.ok) {
-      setSelectedStaffIds(new Set());
-      setSelectedLocationIds(new Set());
-      setAmount("");
-      setFormError("");
+      resetTargetForm();
       const modal = document.getElementById("set-sales-target-modal") as
         | (HTMLElement & { hideOverlay?: () => void })
         | null;
@@ -197,7 +313,8 @@ export default function SalesTargetsIndex() {
 
     setFormError("");
     const formData = new FormData();
-    formData.set("intent", "createTarget");
+    formData.set("intent", isEditing ? "updateTarget" : "createTarget");
+    if (editingTargetId) formData.set("targetId", editingTargetId);
     formData.set("amount", amount.trim());
     for (const id of selectedStaffIds) formData.append("employeeIds", id);
     for (const id of selectedLocationIds) formData.append("locationIds", id);
@@ -207,6 +324,14 @@ export default function SalesTargetsIndex() {
   return (
     <s-page heading="Sales Targets" inlineSize="large">
       <div className="sales-targets-page">
+        {targetRows.length > 0 && (
+          <div className="targets-toolbar">
+            <s-button variant="primary" onClick={openCreateModal}>
+              Set target
+            </s-button>
+          </div>
+        )}
+
         {!bannerDismissed && (
           <div className="sales-targets-banner">
             <div className="banner-title">
@@ -248,7 +373,7 @@ export default function SalesTargetsIndex() {
           </div>
         )}
 
-        {targets.length === 0 ? (
+        {targetRows.length === 0 ? (
           <section className="empty-card">
             <strong>No sales targets yet</strong>
             <p>
@@ -256,47 +381,108 @@ export default function SalesTargetsIndex() {
               tracking progress. Sales are credited when a sale is assigned to the
               staff member at POS.
             </p>
-            <s-button
-              variant="primary"
-              commandFor="set-sales-target-modal"
-              command="--show"
-            >
-              Set target
-            </s-button>
-          </section>
-        ) : (
-          <section className="targets-card">
-            <div className="targets-header">
-              <strong>Sales targets</strong>
-              <s-button
-                variant="primary"
-                commandFor="set-sales-target-modal"
-                command="--show"
-              >
+            <div className="empty-action">
+              <s-button variant="primary" onClick={openCreateModal}>
                 Set target
               </s-button>
             </div>
-            <div className="targets-list">
-              {targets.map((target) => (
-                <div className="target-row" key={target.id}>
-                  <div>
-                    <strong>
-                      {target.currency} {target.amount.toFixed(2)}
-                    </strong>
-                    <span>
-                      {target.yearMonth} · {target.employeeCount} staff ·{" "}
-                      {target.locationCount} location
-                      {target.locationCount === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
           </section>
+        ) : (
+          <>
+            <section className="targets-card">
+              <div className="targets-table-wrap">
+                <table className="targets-table">
+                  <thead>
+                    <tr>
+                      <th>Staff</th>
+                      <th>Location</th>
+                      <th>Target</th>
+                      <th>Sold (this month)</th>
+                      <th>Progress</th>
+                      <th>Remaining</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {targetRows.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.staffName}</td>
+                        <td>{row.locationLabel}</td>
+                        <td>{formatMoney(row.currency, row.amount)}</td>
+                        <td>{formatMoney(row.currency, row.sold)}</td>
+                        <td>
+                          <div className="progress-cell">
+                            <span>{row.progressPercent}%</span>
+                            <div
+                              className="progress-bar"
+                              aria-label={`${row.progressPercent}% complete`}
+                            >
+                              <span style={{ width: `${row.progressPercent}%` }} />
+                            </div>
+                          </div>
+                        </td>
+                        <td>{formatMoney(row.currency, row.remaining)}</td>
+                        <td>
+                          <span
+                            className={`status-pill status-${row.status
+                              .toLowerCase()
+                              .replace(/\s+/g, "-")}`}
+                          >
+                            {row.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="action-link"
+                              onClick={() => {
+                                setEditingTargetId(row.targetId);
+                                setSelectedStaffIds(new Set([row.employeeId]));
+                                setSelectedLocationIds(new Set(row.locationIds));
+                                setAmount(String(row.amount));
+                                setFormError("");
+                                const modal = document.getElementById(
+                                  "set-sales-target-modal",
+                                ) as (HTMLElement & { showOverlay?: () => void }) | null;
+                                modal?.showOverlay?.();
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button type="button" className="action-link" disabled>
+                              History
+                            </button>
+                            <fetcher.Form method="post" className="inline-form">
+                              <input type="hidden" name="intent" value="deleteTarget" />
+                              <input type="hidden" name="targetId" value={row.targetId} />
+                              <input
+                                type="hidden"
+                                name="employeeId"
+                                value={row.employeeId}
+                              />
+                              <button type="submit" className="action-link danger">
+                                Delete
+                              </button>
+                            </fetcher.Form>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
         )}
       </div>
 
-      <s-modal id="set-sales-target-modal" heading="Set monthly sales target" size="large">
+      <s-modal
+        id="set-sales-target-modal"
+        heading={isEditing ? "Edit monthly sales target" : "Set monthly sales target"}
+        size="base"
+      >
         <div className="target-modal-body">
           {formError && <p className="target-form-error">{formError}</p>}
 
@@ -316,17 +502,28 @@ export default function SalesTargetsIndex() {
               {employees.length === 0 ? (
                 <p className="selection-empty">No staff members available.</p>
               ) : (
-                employees.map((employee) => (
-                  <label className="selection-row" key={employee.id}>
-                    <s-checkbox
-                      checked={selectedStaffIds.has(employee.id)}
-                      onChange={(event) =>
-                        toggleStaff(employee.id, checkboxChecked(event))
-                      }
-                    ></s-checkbox>
-                    <span>{employee.name}</span>
-                  </label>
-                ))
+                employees.map((employee) => {
+                  const checked = selectedStaffIds.has(employee.id);
+                  return (
+                    <div
+                      className="selection-row"
+                      key={employee.id}
+                      role="checkbox"
+                      aria-checked={checked}
+                      tabIndex={0}
+                      onClick={() => toggleStaff(employee.id, !checked)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          toggleStaff(employee.id, !checked);
+                        }
+                      }}
+                    >
+                      <s-checkbox checked={checked}></s-checkbox>
+                      <span>{employee.name}</span>
+                    </div>
+                  );
+                })
               )}
             </div>
             <p className="selection-count">{selectedStaffIds.size} selected</p>
@@ -348,17 +545,28 @@ export default function SalesTargetsIndex() {
               {locations.length === 0 ? (
                 <p className="selection-empty">No locations available.</p>
               ) : (
-                locations.map((location) => (
-                  <label className="selection-row" key={location.id}>
-                    <s-checkbox
-                      checked={selectedLocationIds.has(location.id)}
-                      onChange={(event) =>
-                        toggleLocation(location.id, checkboxChecked(event))
-                      }
-                    ></s-checkbox>
-                    <span>{location.name}</span>
-                  </label>
-                ))
+                locations.map((location) => {
+                  const checked = selectedLocationIds.has(location.id);
+                  return (
+                    <div
+                      className="selection-row"
+                      key={location.id}
+                      role="checkbox"
+                      aria-checked={checked}
+                      tabIndex={0}
+                      onClick={() => toggleLocation(location.id, !checked)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          toggleLocation(location.id, !checked);
+                        }
+                      }}
+                    >
+                      <s-checkbox checked={checked}></s-checkbox>
+                      <span>{location.name}</span>
+                    </div>
+                  );
+                })
               )}
             </div>
             <p className="selection-count">{selectedLocationIds.size} selected</p>
@@ -368,11 +576,12 @@ export default function SalesTargetsIndex() {
             <label className="amount-field">
               <strong>Monthly target (USD)</strong>
               <input
-                type="text"
+                type="number"
                 inputMode="decimal"
+                min="0"
+                step="0.01"
                 value={amount}
                 onChange={(event) => setAmount(event.currentTarget.value)}
-                placeholder=""
               />
             </label>
           </div>
@@ -383,6 +592,7 @@ export default function SalesTargetsIndex() {
           variant="secondary"
           commandFor="set-sales-target-modal"
           command="--hide"
+          onClick={resetTargetForm}
         >
           Cancel
         </s-button>
@@ -392,7 +602,7 @@ export default function SalesTargetsIndex() {
           disabled={saveDisabled}
           onClick={submitTarget}
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? "Saving..." : isEditing ? "Update" : "Save"}
         </s-button>
       </s-modal>
 
@@ -470,10 +680,9 @@ const SALES_TARGETS_STYLES = `
   .empty-card {
     align-items: center;
     display: grid;
-    gap: 10px;
+    gap: 8px;
     justify-items: center;
-    min-height: 280px;
-    padding: 48px 32px;
+    padding: 40px 32px;
     text-align: center;
   }
 
@@ -484,35 +693,132 @@ const SALES_TARGETS_STYLES = `
   .empty-card p {
     color: #616161;
     line-height: 1.45;
-    margin: 0 0 8px;
+    margin: 0;
     max-width: 520px;
   }
 
-  .targets-header {
-    align-items: center;
-    border-bottom: 1px solid #ececec;
+  .empty-card s-button,
+  .empty-card .empty-action {
+    margin-top: 4px;
+  }
+
+  .targets-toolbar {
     display: flex;
-    justify-content: space-between;
-    padding: 14px 16px;
+    justify-content: flex-end;
   }
 
-  .target-row {
+  .targets-card {
+    overflow: hidden;
+  }
+
+  .targets-table-wrap {
+    overflow-x: auto;
+  }
+
+  .targets-table {
+    border-collapse: collapse;
+    min-width: 960px;
+    width: 100%;
+  }
+
+  .targets-table th,
+  .targets-table td {
     border-bottom: 1px solid #ececec;
-    padding: 14px 16px;
+    color: #303030;
+    font-size: 13px;
+    padding: 12px 14px;
+    text-align: left;
+    vertical-align: middle;
   }
 
-  .target-row:last-child {
+  .targets-table th {
+    background: #f6f6f7;
+    color: #616161;
+    font-weight: 600;
+  }
+
+  .targets-table tr:last-child td {
     border-bottom: 0;
   }
 
-  .target-row strong,
-  .target-row span {
-    display: block;
+  .progress-cell {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    min-width: 140px;
   }
 
-  .target-row span {
-    color: #616161;
-    margin-top: 4px;
+  .progress-cell span {
+    flex-shrink: 0;
+    min-width: 28px;
+  }
+
+  .progress-bar {
+    background: #e4e5e7;
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .progress-bar > span {
+    background: #008060;
+    display: block;
+    height: 100%;
+    min-width: 0;
+  }
+
+  .status-pill {
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 10px;
+  }
+
+  .status-behind {
+    background: #ffea8a;
+    color: #5c4400;
+  }
+
+  .status-on-track {
+    background: #e0f0ff;
+    color: #00527c;
+  }
+
+  .status-met {
+    background: #cdfee1;
+    color: #0c5132;
+  }
+
+  .row-actions {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    white-space: nowrap;
+  }
+
+  .inline-form {
+    display: inline;
+    margin: 0;
+  }
+
+  .action-link {
+    background: transparent;
+    border: 0;
+    color: #2c6ecb;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+  }
+
+  .action-link:disabled {
+    color: #8c9196;
+    cursor: default;
+  }
+
+  .action-link.danger {
+    color: #d72c0d;
   }
 
   .target-modal-body {
@@ -561,6 +867,10 @@ const SALES_TARGETS_STYLES = `
     padding: 10px 12px;
   }
 
+  .selection-row s-checkbox {
+    pointer-events: none;
+  }
+
   .selection-row:last-child {
     border-bottom: 0;
   }
@@ -579,14 +889,16 @@ const SALES_TARGETS_STYLES = `
   .amount-field {
     display: grid;
     gap: 8px;
+    max-width: 220px;
   }
 
   .amount-field input {
-    border: 1px solid #d9d9d9;
+    border: 1px solid #c9cccf;
     border-radius: 8px;
-    font-size: 14px;
-    min-height: 40px;
-    padding: 8px 12px;
+    box-sizing: border-box;
+    font-size: 13px;
+    min-height: 34px;
+    padding: 6px 10px 6px 12px;
     width: 100%;
   }
 

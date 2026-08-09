@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T22:56:00.000Z",
+  "lastUpdated": "2026-08-09T23:02:00.000Z",
   "notes": [
+    "Updated: Sales Targets list matches Staff/Location/Target/Sold/Progress/Remaining/Status/Actions table.",
     "Updated: Set target opens Polaris modal with staff/location selection and monthly USD target save.",
     "ST052 complete: Sales Targets route added with POS setup banner, empty state, Set target CTA, and nav link.",
     "Fixed: root / now redirects to /app so Admin never shows the template marketing login page.",
