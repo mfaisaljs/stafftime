@@ -244,6 +244,69 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return { success: "Selected staff shifts deleted." };
     }
 
+    if (intent === "copyWeek") {
+      const sourceDate = String(formData.get("sourceDate") ?? "");
+      const targetDate = String(formData.get("targetDate") ?? "");
+      const clearTarget = formData.get("clearTarget") === "true";
+      if (!isDateKey(sourceDate) || !isDateKey(targetDate)) {
+        return { error: "Choose a valid target week." };
+      }
+
+      const sourceWeekStart = startOfWeek(dateTimeFromInputs(sourceDate, "00:00"));
+      const sourceWeekEnd = endOfDay(addDays(sourceWeekStart, 6));
+      const targetWeekStart = startOfWeek(dateTimeFromInputs(targetDate, "00:00"));
+      const targetWeekEnd = endOfDay(addDays(targetWeekStart, 6));
+      if (toDateKey(sourceWeekStart) === toDateKey(targetWeekStart)) {
+        return { error: "Choose a different target week." };
+      }
+      if (isPastDateKey(toDateKey(targetWeekStart))) {
+        return { error: "You cannot copy shifts to a past week." };
+      }
+
+      const sourceShifts = await prisma.shift.findMany({
+        where: {
+          shopId: shop.id,
+          startsAt: { gte: sourceWeekStart, lte: sourceWeekEnd },
+        },
+      });
+      if (sourceShifts.length === 0) {
+        return { error: "There are no shifts to copy from this week." };
+      }
+
+      await prisma.$transaction(async (tx) => {
+        if (clearTarget) {
+          await tx.shift.deleteMany({
+            where: {
+              shopId: shop.id,
+              startsAt: { gte: targetWeekStart, lte: targetWeekEnd },
+            },
+          });
+        }
+
+        await tx.shift.createMany({
+          data: sourceShifts.map((shift) => {
+            const dayOffset = daysBetween(sourceWeekStart, shift.startsAt);
+            const targetDay = addDays(targetWeekStart, dayOffset);
+            const targetStartsAt = dateTimeFromInputs(
+              toDateKey(targetDay),
+              timeValue(shift.startsAt),
+            );
+            const durationMs = shift.endsAt.getTime() - shift.startsAt.getTime();
+            return {
+              shopId: shop.id,
+              locationId: shift.locationId,
+              employeeId: shift.employeeId,
+              startsAt: targetStartsAt,
+              endsAt: new Date(targetStartsAt.getTime() + durationMs),
+              notes: shift.notes,
+            };
+          }),
+        });
+      });
+
+      return { success: "Weekly schedule copied." };
+    }
+
     if (intent === "updateAvailability") {
       const employeeId = String(formData.get("employeeId") ?? "");
       await assertEmployee(shop.id, employeeId);
@@ -477,7 +540,11 @@ export default function SchedulesPage() {
                 <s-option value="staff">Color by Staff</s-option>
               </s-select>
             </div>
-            <s-button variant="secondary">
+            <s-button
+              variant="secondary"
+              commandFor="copy-week-modal"
+              command="--show"
+            >
               <span className="toolbar-button-content">
                 <Copy aria-hidden="true" size={15} />
                 Copy Week
@@ -719,6 +786,8 @@ export default function SchedulesPage() {
         locations={locations}
         scheduleColors={scheduleColors}
       />
+
+      <CopyWeekDialog sourceDate={selectedDate} />
 
       <ClearShiftsDialog
         employees={employees}
@@ -1270,6 +1339,84 @@ function CustomizeColorsDialog({
   );
 }
 
+function CopyWeekDialog({ sourceDate }: { sourceDate: string }) {
+  const fetcher = useFetcher<ScheduleActionResult>();
+  const sourceWeekStart = toDateKey(startOfWeek(dateFromKey(sourceDate)));
+  const defaultTargetDate = toDateKey(addDays(dateFromKey(sourceWeekStart), 7));
+  const [targetDate, setTargetDate] = useState(defaultTargetDate);
+  const [clearTarget, setClearTarget] = useState(true);
+
+  useEffect(() => {
+    setTargetDate(defaultTargetDate);
+  }, [defaultTargetDate]);
+
+  useEffect(() => {
+    if (fetcher.data?.success) {
+      void hideShopifyModal("copy-week-modal");
+    }
+  }, [fetcher.data]);
+
+  return (
+    <s-modal id="copy-week-modal" heading="Copy Weekly Schedule" size="base">
+      <fetcher.Form id="copy-week-form" method="post" className="dialog-body">
+        <input type="hidden" name="intent" value="copyWeek" />
+        <input type="hidden" name="sourceDate" value={sourceDate} />
+        <input type="hidden" name="clearTarget" value={String(clearTarget)} />
+        {fetcher.data?.error && (
+          <s-banner tone="critical" heading={fetcher.data.error} />
+        )}
+        <p>
+          Copying shifts from week of <strong>{formatUsDate(sourceWeekStart)}</strong>.
+        </p>
+        <label>
+          Select target week (any date within week)
+          <input
+            name="targetDate"
+            type="date"
+            value={targetDate}
+            min={toDateKey(new Date())}
+            onChange={(event) => setTargetDate(event.currentTarget.value)}
+            required
+          />
+          <span className="form-help">
+            Shifts will be copied to the week containing this date
+          </span>
+        </label>
+        <s-checkbox
+          label="Clear existing shifts in target week before copying"
+          checked={clearTarget}
+          onChange={(event) => setClearTarget(checkboxChecked(event))}
+        ></s-checkbox>
+        <p className="copy-week-note">
+          If unchecked, new shifts will be added alongside existing ones
+        </p>
+      </fetcher.Form>
+      <s-button
+        slot="secondary-actions"
+        variant="secondary"
+        commandFor="copy-week-modal"
+        command="--hide"
+      >
+        Cancel
+      </s-button>
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        type="button"
+        disabled={!targetDate}
+        commandFor="copy-week-modal"
+        command="--hide"
+        onClick={() =>
+          (document.getElementById("copy-week-form") as HTMLFormElement | null)
+            ?.requestSubmit()
+        }
+      >
+        Copy Shifts
+      </s-button>
+    </s-modal>
+  );
+}
+
 function ClearShiftsDialog({
   employees,
   selectedIds,
@@ -1426,6 +1573,21 @@ function readableTextColor(backgroundColor: string) {
   const blue = Number.parseInt(hex.slice(4, 6), 16);
   const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
   return luminance > 0.62 ? "#111111" : "#ffffff";
+}
+
+function daysBetween(start: Date, end: Date) {
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.round((endDay.getTime() - startDay.getTime()) / 86400000);
+}
+
+function formatUsDate(dateKey: string) {
+  const date = dateFromKey(dateKey);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
 }
 
 function dayTotals(
@@ -2093,6 +2255,11 @@ const SCHEDULE_STYLES = `
   .form-help {
     color: #616161;
     margin: 0;
+  }
+
+  .copy-week-note {
+    color: #616161;
+    margin: -4px 0 0 32px;
   }
 
   .color-current,
