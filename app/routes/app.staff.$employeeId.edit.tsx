@@ -120,7 +120,7 @@ export default function EditStaffPage() {
         {actionData?.success && (
           <s-banner heading={actionData.success} tone="success" />
         )}
-        <Form method="post">
+        <Form method="post" data-save-bar>
           <s-stack direction="block" gap="large">
             <FormSection title="Basic Information" description="Update contact information.">
               <div className="staff-grid two">
@@ -165,11 +165,15 @@ export default function EditStaffPage() {
             </FormSection>
 
             <FormSection title="PIN Code" description="Leave blank to keep current PIN.">
+              <p className="staff-help">
+                Leave blank to keep the current PIN. Enter a new PIN or generate one to replace it.
+              </p>
               <div className="staff-inline">
                 <Field
                   label="New PIN Code"
                   name="pin"
                   minLength={4}
+                  placeholder="Leave blank to keep current PIN"
                   value={pin}
                   onChange={(event) => setPin(event.currentTarget.value)}
                 />
@@ -354,14 +358,6 @@ export default function EditStaffPage() {
               )}
             </FormSection>
 
-            <div className="form-actions">
-              <a className="secondary-link" href="/app/staff">
-                Back to Staff
-              </a>
-              <s-button type="submit" variant="primary">
-                Save Staff
-              </s-button>
-            </div>
           </s-stack>
         </Form>
       </s-section>
@@ -615,29 +611,12 @@ const STAFF_EDIT_STYLES = `
     color: #fff;
   }
 
-  .form-actions {
-    align-items: center;
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-  }
-
-  .secondary-link {
-    color: #303030;
-    text-decoration: none;
-  }
-
   @media (max-width: 768px) {
     .form-section,
     .staff-grid.two,
     .staff-grid.three,
     .staff-inline {
       grid-template-columns: 1fr;
-    }
-
-    .form-actions {
-      align-items: stretch;
-      flex-direction: column;
     }
   }
 `;

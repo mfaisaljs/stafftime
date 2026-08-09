@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T016", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010"],
-  "lastUpdated": "2026-08-09T17:35:00.000Z",
+  "lastUpdated": "2026-08-09T17:40:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -23,6 +23,7 @@
     "Updated: Staff Management table actions use Lucide icons instead of text controls.",
     "ST026 complete: Staff edit route supports profile updates and optional PIN changes with uniqueness enforcement.",
     "Updated: Staff edit form now has the same random PIN generator as add staff.",
+    "Updated: Staff add/edit forms now use Shopify save/discard via data-save-bar; added a Cursor rule for future route forms.",
     "Cleaned up /app/staff/new so it only renders the add staff form, not the staff list.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

@@ -103,7 +103,7 @@ export default function StaffPage() {
         {actionData?.success && (
           <s-banner heading={actionData.success} tone="success" />
         )}
-        <Form method="post">
+        <Form method="post" data-save-bar>
           <s-stack direction="block" gap="large">
             <FormSection
               title="Basic Information"
@@ -308,9 +308,6 @@ export default function StaffPage() {
               )}
             </FormSection>
 
-            <s-button type="submit" variant="primary">
-              Add Shopify Staff
-            </s-button>
           </s-stack>
         </Form>
       </s-section>

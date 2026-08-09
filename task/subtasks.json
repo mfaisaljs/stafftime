@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:35:00.000Z",
+  "lastUpdated": "2026-08-09T17:40:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -286,7 +286,8 @@
       "dependencies": ["ST025"],
       "acceptanceCriteria": [
         "Manager can edit staff and change PIN with uniqueness check",
-        "Edit form includes the same random PIN generator as add staff"
+        "Edit form includes the same random PIN generator as add staff",
+        "Edit form uses Shopify save/discard instead of custom save buttons"
       ],
       "files": [
         "app/routes/app.staff.$employeeId.edit.tsx",
@@ -294,7 +295,8 @@
         "app/routes/app.staff.tsx",
         "app/services/workforce.server.ts",
         "app/services/admin.server.ts",
-        "app/services/pos-workflow.test.ts"
+        "app/services/pos-workflow.test.ts",
+        ".cursor/rules/shopify-save-bar.mdc"
       ]
     },
     {
@@ -362,6 +364,7 @@
       "dependencies": ["ST025"],
       "acceptanceCriteria": [
         "Form includes screenshot-matched sections and options",
+        "Add form uses Shopify save/discard instead of custom save buttons",
         "Form fields wrap without overlapping or squeezing",
         "Add staff route does not render the staff list section",
         "Payroll type supports hourly, weekly, and monthly with one matching amount field",

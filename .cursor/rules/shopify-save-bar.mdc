@@ -1,0 +1,14 @@
+---
+description: Use Shopify save/discard for admin route forms
+globs: app/routes/**/*.tsx
+alwaysApply: false
+---
+
+# Shopify Save Bar For Forms
+
+For Shopify Admin route forms, use the Polaris/App Bridge save bar pattern when the page edits merchant data.
+
+- Prefer automatic save bar integration: add `data-save-bar` to the React Router `<Form>`.
+- Do not add custom bottom `Save`, `Discard`, or duplicated submit buttons when the save bar applies.
+- Keep non-form navigation separate from save/discard behavior.
+- Use a custom submit button only when the route is not an edit/create form or the save bar is not applicable.
