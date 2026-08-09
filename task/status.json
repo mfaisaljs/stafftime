@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T17:21:00.000Z",
+  "lastUpdated": "2026-08-09T17:23:00.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -40,6 +40,7 @@
     "Updated: Daily Activity Report horizontal scrolling is contained inside the report card/list.",
     "Updated: Reports Position and Staff Member filters use custom dropdown styling matching the reference design.",
     "Updated: Reports dropdown chevrons use Lucide ChevronDown icons.",
+    "Updated: Reports Last 30 Days control uses visible Lucide CalendarDays icon.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

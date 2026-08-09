@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import {
   Briefcase,
-  Calendar,
+  CalendarDays,
   ChevronDown,
   Clock,
   DollarSign,
@@ -170,7 +170,7 @@ export default function ReportsPage() {
     <s-page heading="Reports">
       <div className="reports-page">
         <button className="date-filter" type="button">
-          <Calendar aria-hidden="true" size={16} />
+          <CalendarDays aria-hidden="true" size={16} />
           Last 30 Days
         </button>
 
@@ -791,6 +791,12 @@ const REPORT_STYLES = `
   .date-filter {
     cursor: pointer;
     font-weight: 600;
+  }
+
+  .date-filter svg {
+    color: #303030;
+    display: block;
+    flex-shrink: 0;
   }
 
   .report-tabs {
