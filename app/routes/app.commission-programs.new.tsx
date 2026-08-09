@@ -62,13 +62,12 @@ export default function CreateCommissionProgram() {
   };
 
   return (
-    <s-page inlineSize="large">
+    <s-page heading="Create Commission Program">
       <div className="commission-create-page">
         <div className="create-heading">
           <Link to="/app/commission-programs" aria-label="Back to commission programs">
             <ArrowLeft aria-hidden="true" size={18} />
           </Link>
-          <h1>Create Commission Program</h1>
         </div>
 
         <div className="create-layout">
@@ -213,8 +212,6 @@ const CREATE_COMMISSION_STYLES = `
   .commission-create-page {
     display: grid;
     gap: 26px;
-    margin: 0 auto;
-    max-width: 1040px;
   }
 
   .create-heading {
@@ -227,11 +224,6 @@ const CREATE_COMMISSION_STYLES = `
     color: #303030;
     display: inline-flex;
     text-decoration: none;
-  }
-
-  .create-heading h1 {
-    font-size: 24px;
-    margin: 0;
   }
 
   .create-layout {
@@ -277,7 +269,7 @@ const CREATE_COMMISSION_STYLES = `
     border: 1px solid #8c9196;
     border-radius: 8px;
     font: inherit;
-    min-height: 42px;
+    min-height: 34px;
   }
 
   .form-card > p,
@@ -319,7 +311,7 @@ const CREATE_COMMISSION_STYLES = `
   .money-input input {
     border: 0;
     flex: 1;
-    min-height: 40px;
+    min-height: 32px;
     outline: 0;
   }
 
@@ -329,7 +321,7 @@ const CREATE_COMMISSION_STYLES = `
     border-radius: 8px;
     display: flex;
     gap: 8px;
-    min-height: 42px;
+    min-height: 36px;
     padding: 0 12px;
   }
 

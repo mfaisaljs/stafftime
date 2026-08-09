@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T21:47:30.000Z",
+  "lastUpdated": "2026-08-09T21:56:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -88,7 +88,12 @@
     "Updated: Schedule now appears immediately below Reports in app navigation.",
     "ST047 complete: Commission Programs routes added with empty state, create-program form, and staff selection UI.",
     "Updated: Commission Programs banner Learn More action now has proper card padding.",
-    "Updated: Commission Programs Create Program buttons now use React Router navigation to /app/commission-programs/new.",
+    "Updated: Commission Programs Create Program buttons now use React Router links around Polaris buttons to open /app/commission-programs/new.",
+    "Updated: Commission Programs route split into parent Outlet plus index route so /app/commission-programs/new renders correctly.",
+    "Updated: Create Commission Program text inputs now use compact heights matching the reference.",
+    "Updated: Commission Programs pages now use the default app page width; Schedule remains the large-width route.",
+    "Updated: Commission Programs and Create Commission Program visible page headings removed.",
+    "Updated: Commission Program routes now set Shopify page heading metadata instead of falling back to the app name.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
