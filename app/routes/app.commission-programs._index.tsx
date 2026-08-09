@@ -3,6 +3,7 @@ import {
   Link,
   useFetcher,
   useLoaderData,
+  useNavigate,
   useRouteError,
   useSearchParams,
 } from "react-router";
@@ -81,13 +82,18 @@ export default function CommissionProgramsIndex() {
   const { programs } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const created = searchParams.get("created") === "1";
+  const updated = searchParams.get("updated") === "1";
   const fetcher = useFetcher();
+  const navigate = useNavigate();
 
   return (
     <s-page heading="Commission Programs" inlineSize="large">
       <div className="commission-page">
         {created && (
           <s-banner tone="success" heading="Commission program created." />
+        )}
+        {updated && (
+          <s-banner tone="success" heading="Commission program updated." />
         )}
 
         <div className="commission-header">
@@ -173,8 +179,24 @@ export default function CommissionProgramsIndex() {
                 String(fetcher.formData?.get("id") || "") === program.id;
 
               return (
-                <div className="programs-table-row" key={program.id}>
-                  <div>
+                <div
+                  className="programs-table-row is-clickable"
+                  key={program.id}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => navigate(`/app/commission-programs/${program.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/app/commission-programs/${program.id}`);
+                    }
+                  }}
+                >
+                  <div
+                    className="status-cell"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
                     <fetcher.Form method="post">
                       <input type="hidden" name="intent" value="toggleActive" />
                       <input type="hidden" name="id" value={program.id} />
@@ -338,6 +360,18 @@ const COMMISSION_STYLES = `
     gap: 12px;
     grid-template-columns: 100px minmax(160px, 1.4fr) 150px 130px 110px;
     padding: 14px 16px;
+  }
+
+  .programs-table-row.is-clickable {
+    cursor: pointer;
+  }
+
+  .programs-table-row.is-clickable:hover {
+    background: #fafafa;
+  }
+
+  .status-cell {
+    display: inline-flex;
   }
 
   .programs-table-header {

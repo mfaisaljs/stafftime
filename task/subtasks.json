@@ -776,6 +776,48 @@
         "prisma/migrations/20260809222400_commission_program_active/migration.sql"
       ],
       "lastUpdated": "2026-08-09T22:25:00.000Z"
+    },
+    {
+      "id": "ST049",
+      "taskId": "T017",
+      "title": "Extract reusable CommissionProgramForm",
+      "description": "Refactor the create-route form copy into a reusable create/edit form component and shared FormData parser.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST047"],
+      "acceptanceCriteria": [
+        "CommissionProgramForm is a props-driven React component without route loader/action exports",
+        "Form supports create and edit modes with initialProgram prefill and discard reset",
+        "parseCommissionProgramForm validates FormData and returns typed success or error results",
+        "commissionType select is controlled from initial/state instead of hardcoded fixed"
+      ],
+      "files": [
+        "app/components/commission-programs/CommissionProgramForm.tsx",
+        "app/components/commission-programs/parseCommissionProgramForm.ts"
+      ],
+      "lastUpdated": "2026-08-09T22:33:01.000Z"
+    },
+    {
+      "id": "ST050",
+      "taskId": "T017",
+      "title": "Open commission program details from list",
+      "description": "Make commission program list rows navigate to an edit/details page at /app/commission-programs/:id.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST048", "ST049"],
+      "acceptanceCriteria": [
+        "Clicking a commission program list row opens /app/commission-programs/:programId",
+        "Status toggle does not navigate when clicked",
+        "Detail route loads and prefills the shared CommissionProgramForm for edit",
+        "Saving updates the program and redirects back to the list"
+      ],
+      "files": [
+        "app/routes/app.commission-programs._index.tsx",
+        "app/routes/app.commission-programs.new.tsx",
+        "app/routes/app.commission-programs.$programId.tsx",
+        "app/components/commission-programs/hydrateCommissionProducts.server.ts"
+      ],
+      "lastUpdated": "2026-08-09T22:35:00.000Z"
     }
   ]
 }
