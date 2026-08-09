@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:40:00.000Z",
+  "lastUpdated": "2026-08-09T15:52:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -352,7 +352,7 @@
       "priority": "medium",
       "dependencies": ["ST026"],
       "acceptanceCriteria": ["Each employee has visible QR code in Admin"],
-      "files": ["app/routes/app.staff.tsx"]
+      "files": ["app/routes/app.staff.$employeeId._index.tsx", "app/routes/app.staff.tsx"]
     },
     {
       "id": "ST032",
@@ -422,6 +422,93 @@
         "app/services/pos-workflow.test.ts",
         "prisma/schema.prisma",
         "prisma/migrations/20260809145907_employee_first_login_activation/migration.sql"
+      ]
+    },
+    {
+      "id": "ST035",
+      "taskId": "T017",
+      "title": "Inactive staff status info tooltip",
+      "description": "Show Polaris tooltip on inactive badge explaining staff activate on first POS or Web Portal clock-in.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST034"],
+      "acceptanceCriteria": [
+        "Inactive badge shows info icon with tooltip on staff table",
+        "Tooltip text matches competitor inactive staff messaging"
+      ],
+      "files": [
+        "app/routes/app.staff._index.tsx"
+      ]
+    },
+    {
+      "id": "ST036",
+      "taskId": "T017",
+      "title": "Fix embedded admin navigation for staff routes",
+      "description": "Use Polaris s-button href and React Router Link so staff routes load without blank iframe navigation.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST033"],
+      "acceptanceCriteria": [
+        "Add Shopify Staff opens /app/staff/new without blank page",
+        "Internal staff links use App Bridge–compatible navigation",
+        "Add Shopify Staff uses Polaris primary button not plain anchor"
+      ],
+      "files": [
+        "app/routes/app.staff._index.tsx"
+      ]
+    },
+    {
+      "id": "ST037",
+      "taskId": "T017",
+      "title": "Build staff detail page",
+      "description": "Staff profile at /app/staff/:id with Overview metrics, staff info sidebar, attendance table, and Payroll tab; Commission tab empty for now.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST033", "ST026"],
+      "acceptanceCriteria": [
+        "Clicking staff name opens detail page",
+        "Overview tab matches competitor layout with metric cards and staff info",
+        "Payroll tab shows summary cards and transactions table shell",
+        "Commission Program tab renders no content yet",
+        "Inactive tooltip on detail page header",
+        "Attendance data loads from time entries for date range"
+      ],
+      "files": [
+        "app/routes/app.staff.$employeeId._index.tsx",
+        "app/routes/app.staff._index.tsx",
+        "app/services/admin.server.ts"
+      ]
+    },
+    {
+      "id": "ST038",
+      "taskId": "T017",
+      "title": "Staff Management UI polish",
+      "description": "Lucide star on plan card and clickable staff names linking to detail page.",
+      "status": "completed",
+      "priority": "low",
+      "dependencies": ["ST033", "ST037"],
+      "acceptanceCriteria": [
+        "Current Plan card shows Lucide star instead of asterisk",
+        "Staff table name cell links to staff detail route"
+      ],
+      "files": [
+        "app/routes/app.staff._index.tsx"
+      ]
+    },
+    {
+      "id": "ST039",
+      "taskId": "T015",
+      "title": "Add task tracking Cursor rule",
+      "description": "Always-on rule to update task/status/subtasks JSON after meaningful code changes.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST016"],
+      "acceptanceCriteria": [
+        ".cursor/rules/task-tracking.mdc exists with alwaysApply true",
+        "Rule documents subtasks, tasks, and status.json update workflow"
+      ],
+      "files": [
+        ".cursor/rules/task-tracking.mdc"
       ]
     }
   ]

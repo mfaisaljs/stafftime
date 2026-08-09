@@ -55,6 +55,24 @@ export async function getEmployeeById(session: Session, employeeId: string) {
   });
 }
 
+export async function getEmployeeTimeEntries(
+  session: Session,
+  employeeId: string,
+  startDate: Date,
+  endDate: Date,
+) {
+  const shop = await getAdminShop(session);
+  return prisma.timeEntry.findMany({
+    where: {
+      shopId: shop.id,
+      employeeId,
+      clockInAt: { gte: startDate, lte: endDate },
+    },
+    include: { breaks: true, location: true },
+    orderBy: { clockInAt: "desc" },
+  });
+}
+
 export async function getEmployeeLocations(session: Session) {
   const shop = await getAdminShop(session);
   return prisma.storeLocation.findMany({

@@ -153,17 +153,22 @@ export default function StaffManagementPage() {
                       />
                     </td>
                     <td>
-                      <div className="staff-person">
-                        <span className="avatar">
-                          {initials(employee.firstName, employee.lastName)}
-                        </span>
-                        <span>
-                          <strong>
-                            {employee.firstName} {employee.lastName}
-                          </strong>
-                          <small>{employee.email ?? "No email"}</small>
-                        </span>
-                      </div>
+                      <Link
+                        className="staff-person-link"
+                        to={`/app/staff/${employee.id}`}
+                      >
+                        <div className="staff-person">
+                          <span className="avatar">
+                            {initials(employee.firstName, employee.lastName)}
+                          </span>
+                          <span>
+                            <strong>
+                              {employee.firstName} {employee.lastName}
+                            </strong>
+                            <small>{employee.email ?? "No email"}</small>
+                          </span>
+                        </div>
+                      </Link>
                     </td>
                     <td>{employee.position ?? "Staff"}</td>
                     <td>{employee.location?.name ?? "Shop location"}</td>
@@ -321,6 +326,15 @@ const STAFF_MANAGEMENT_STYLES = `
     align-items: center;
     display: flex;
     gap: 8px;
+  }
+
+  .staff-person-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .staff-person-link:hover strong {
+    color: #2c6ecb;
   }
 
   .plan-copy {

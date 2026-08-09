@@ -1,0 +1,70 @@
+---
+description: Keep task/status/subtasks JSON in sync after every meaningful code change
+alwaysApply: true
+---
+
+# Task Tracking Updates
+
+After every meaningful implementation, fix, or refactor, update the project task files before ending the session.
+
+## Files (always keep in sync)
+
+| File | Purpose |
+|------|---------|
+| `task/subtasks.json` | Granular work items (`ST###`) with status, files, acceptance criteria |
+| `task/tasks.json` | Parent tasks (`T###`) with `progressPercent` and status |
+| `task/status.json` | Rollup: `progressPercent`, `activeTaskIds`, `completedTaskIds`, `notes`, `nextUp`, `lastUpdated` |
+
+## When to update
+
+Update when you:
+- Complete a feature, bug fix, or UX change
+- Add or change routes, services, schema, tests, or docs tied to a task
+- Start or finish work on a tracked subtask
+
+Skip updates for trivial edits (typos, formatting-only) with no task impact.
+
+## Workflow
+
+1. **Identify** the parent task (`T###`) and subtask (`ST###`). Create a new `ST###` if none exists.
+2. **Update `subtasks.json`**
+   - Set `status`: `pending` | `in_progress` | `completed`
+   - List touched `files`
+   - Mark `acceptanceCriteria` satisfied when done
+   - Bump `lastUpdated`
+3. **Update `tasks.json`**
+   - Recompute parent `progressPercent` from its subtasks
+   - Set parent `status` when appropriate (`in_progress` → `completed`)
+   - Bump `lastUpdated`
+4. **Update `status.json`**
+   - Recompute overall `progressPercent`
+   - Sync `activeTaskIds`, `completedTaskIds`, `blockedTaskIds`
+   - Add a short `notes` entry summarizing what changed
+   - Adjust `nextUp` if priorities shifted
+   - Set `lastUpdated` to current ISO timestamp
+
+## ID conventions
+
+- Parent tasks: `T001`–`T017` (see `task/tasks.json`)
+- Subtasks: `ST001`+ sequential (next new id = highest existing + 1)
+- Map subtasks to parent via `taskId`
+
+## Progress rules
+
+- Subtask `completed` → parent progress = `round(completedSubtasks / totalSubtasks * 100)`
+- Overall `progressPercent` in `status.json` → average of in-scope parent task progress (MVP/launch phase tasks)
+- Move task id to `completedTaskIds` only when parent is fully done
+
+## Notes format
+
+Add one concise note per session change, e.g.:
+
+```text
+ST035 complete: staff detail page with Overview and Payroll tabs at /app/staff/:id.
+```
+
+## Do not
+
+- Leave task JSON stale after shipping user-visible changes
+- Mark subtasks `completed` without the code actually meeting acceptance criteria
+- Edit task files for unrelated repos or delete historical completed entries
