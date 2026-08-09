@@ -1,74 +1,76 @@
-{
-  "projectName": "StaffTime — Workforce OS for Shopify POS",
-  "currentPhase": "mvp-hardening",
-  "overallStatus": "in_progress",
-  "progressPercent": 86,
-  "activeTaskIds": ["T009", "T015", "T016", "T017"],
-  "blockedTaskIds": [],
-  "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010"],
-  "lastUpdated": "2026-08-09T16:35:00.000Z",
-  "notes": [
-    "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
-    "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
-    "Fixed: POS timer server sync, dashboard auto-refresh every 10s, open entry query, shop domain normalization.",
-    "Fixed: unique PIN enforcement — duplicate PINs blocked in Admin and rejected on POS.",
-    "POS tile must be manually added to Smart Grid in Settings → Point of sale.",
-    "ST028 complete: POS workflow integration tests (6), Android QA checklist, dev:pos script for ngrok.",
-    "Next priorities: employee edit/PIN change, missed punch create form, production hosting, App Store prep.",
-    "Competitive reference: Zon Staff Management on Shopify App Store."
-  ],
-  "milestones": [
-    {
-      "id": "M1",
-      "name": "Foundation",
-      "status": "completed",
-      "targetDate": "2026-08-09"
-    },
-    {
-      "id": "M2",
-      "name": "POS-first MVP",
-      "status": "completed",
-      "targetDate": "2026-08-09"
-    },
-    {
-      "id": "M3",
-      "name": "MVP hardening and QA",
-      "status": "in_progress",
-      "targetDate": "2026-08-12"
-    },
-    {
-      "id": "M4",
-      "name": "Launch readiness",
-      "status": "planned",
-      "targetDate": "2026-08-23"
-    },
-    {
-      "id": "M5",
-      "name": "Enterprise rollout",
-      "status": "planned",
-      "targetDate": "2026-09-30"
-    }
-  ],
-  "nextUp": [
-    {
-      "id": "ST026",
-      "title": "Employee edit and change PIN",
-      "priority": "high"
-    },
-    {
-      "id": "ST027",
-      "title": "Missed punch request create form",
-      "priority": "high"
-    },
-    {
-      "id": "ST029",
-      "title": "Production hosting (replace ngrok)",
-      "priority": "critical"
-    },
-    {
-      "id": "ST031",
-      "title": "Display employee QR codes in Admin",
-      "priority": "medium"
-    }
-  ]
-}
+{
+  "projectName": "StaffTime — Workforce OS for Shopify POS",
+  "currentPhase": "mvp-hardening",
+  "overallStatus": "in_progress",
+  "progressPercent": 88,
+  "activeTaskIds": ["T009", "T015", "T016", "T017"],
+  "blockedTaskIds": [],
+  "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010"],
+  "lastUpdated": "2026-08-09T16:55:00.000Z",
+  "notes": [
+    "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
+    "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
+    "Fixed: POS timer server sync, dashboard auto-refresh every 10s, open entry query, shop domain normalization.",
+    "Fixed: unique PIN enforcement — duplicate PINs blocked in Admin and rejected on POS.",
+    "POS tile must be manually added to Smart Grid in Settings → Point of sale.",
+    "ST028 complete: POS workflow integration tests (6), Android QA checklist, dev:pos script for ngrok.",
+    "ST032 complete: Employees add form expanded to match competitor staff profile flow with payroll, availability, and payment method fields.",
+    "Fixed: payment method detail fields now render conditionally based on selected method.",
+    "Next priorities: employee edit/PIN change, missed punch create form, production hosting, App Store prep.",
+    "Competitive reference: Zon Staff Management on Shopify App Store."
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "Foundation",
+      "status": "completed",
+      "targetDate": "2026-08-09"
+    },
+    {
+      "id": "M2",
+      "name": "POS-first MVP",
+      "status": "completed",
+      "targetDate": "2026-08-09"
+    },
+    {
+      "id": "M3",
+      "name": "MVP hardening and QA",
+      "status": "in_progress",
+      "targetDate": "2026-08-12"
+    },
+    {
+      "id": "M4",
+      "name": "Launch readiness",
+      "status": "planned",
+      "targetDate": "2026-08-23"
+    },
+    {
+      "id": "M5",
+      "name": "Enterprise rollout",
+      "status": "planned",
+      "targetDate": "2026-09-30"
+    }
+  ],
+  "nextUp": [
+    {
+      "id": "ST026",
+      "title": "Employee edit and change PIN",
+      "priority": "high"
+    },
+    {
+      "id": "ST027",
+      "title": "Missed punch request create form",
+      "priority": "high"
+    },
+    {
+      "id": "ST029",
+      "title": "Production hosting (replace ngrok)",
+      "priority": "critical"
+    },
+    {
+      "id": "ST031",
+      "title": "Display employee QR codes in Admin",
+      "priority": "medium"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T16:35:00.000Z",
+  "lastUpdated": "2026-08-09T16:55:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -341,6 +341,28 @@
       "dependencies": ["ST026"],
       "acceptanceCriteria": ["Each employee has visible QR code in Admin"],
       "files": ["app/routes/app.employees.tsx"]
+    },
+    {
+      "id": "ST032",
+      "taskId": "T017",
+      "title": "Expand Shopify staff profile form",
+      "description": "Match competitor add-staff flow with contact info, position, PIN generator, location access, payroll, weekly availability, and payment method fields.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST025"],
+      "acceptanceCriteria": [
+        "Form includes screenshot-matched sections and options",
+        "Payment method details render only for the selected method",
+        "New employee profile fields persist in Prisma",
+        "PIN uniqueness remains enforced"
+      ],
+      "files": [
+        "app/routes/app.employees.tsx",
+        "app/services/workforce.server.ts",
+        "app/services/admin.server.ts",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809144317_employee_profile_fields/migration.sql"
+      ]
     }
   ]
 }

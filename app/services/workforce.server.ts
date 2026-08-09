@@ -53,10 +53,25 @@ export async function createEmployee(input: {
   firstName: string;
   lastName: string;
   email?: string;
+  phone?: string;
   pin: string;
   role?: Employee["role"];
   hourlyRate?: number;
+  position?: string;
   department?: string;
+  locationAccess?: string;
+  currency?: string;
+  payrollType?: string;
+  salaryAmount?: number;
+  weeklyAvailability?: string;
+  paymentMethod?: string;
+  paypalEmail?: string;
+  paypalAccountName?: string;
+  bankAccountType?: string;
+  bankName?: string;
+  accountHolderName?: string;
+  accountNumber?: string;
+  routingNumber?: string;
 }) {
   await assertPinAvailable(input.shopId, input.pin);
 
@@ -67,11 +82,26 @@ export async function createEmployee(input: {
       firstName: input.firstName,
       lastName: input.lastName,
       email: input.email,
+      phone: input.phone,
       pinHash: await hashPin(input.pin),
       qrCode: randomUUID(),
       role: input.role ?? "EMPLOYEE",
       hourlyRate: input.hourlyRate ?? 0,
+      position: input.position,
       department: input.department,
+      locationAccess: input.locationAccess ?? "ALL",
+      currency: input.currency ?? "USD",
+      payrollType: input.payrollType ?? "HOURLY",
+      salaryAmount: input.salaryAmount ?? 0,
+      weeklyAvailability: input.weeklyAvailability,
+      paymentMethod: input.paymentMethod ?? "PAYPAL",
+      paypalEmail: input.paypalEmail,
+      paypalAccountName: input.paypalAccountName,
+      bankAccountType: input.bankAccountType,
+      bankName: input.bankName,
+      accountHolderName: input.accountHolderName,
+      accountNumber: input.accountNumber,
+      routingNumber: input.routingNumber,
     },
   });
 }

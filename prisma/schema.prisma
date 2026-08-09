@@ -90,19 +90,19 @@ model Shop {
 }
 
 model StoreLocation {
-  id               String   @id @default(cuid())
-  shopId           String
+  id                String   @id @default(cuid())
+  shopId            String
   shopifyLocationId String
-  name             String
-  timezone         String   @default("UTC")
-  latitude         Float?
-  longitude        Float?
-  geofenceRadiusM  Int      @default(100)
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  name              String
+  timezone          String   @default("UTC")
+  latitude          Float?
+  longitude         Float?
+  geofenceRadiusM   Int      @default(100)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  shop        Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
   employees   Employee[]
   shifts      Shift[]
   timeEntries TimeEntry[]
@@ -112,20 +112,35 @@ model StoreLocation {
 }
 
 model Employee {
-  id               String         @id @default(cuid())
-  shopId           String
-  locationId       String?
-  firstName        String
-  lastName         String
-  email            String?
-  pinHash          String
-  qrCode           String         @unique
-  role             EmployeeRole   @default(EMPLOYEE)
-  status           EmployeeStatus @default(ACTIVE)
-  hourlyRate       Float          @default(0)
-  department       String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                 String         @id @default(cuid())
+  shopId             String
+  locationId         String?
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String?
+  pinHash            String
+  qrCode             String         @unique
+  role               EmployeeRole   @default(EMPLOYEE)
+  status             EmployeeStatus @default(ACTIVE)
+  hourlyRate         Float          @default(0)
+  position           String?
+  department         String?
+  locationAccess     String         @default("ALL")
+  currency           String         @default("USD")
+  payrollType        String         @default("HOURLY")
+  salaryAmount       Float          @default(0)
+  weeklyAvailability String?
+  paymentMethod      String         @default("PAYPAL")
+  paypalEmail        String?
+  paypalAccountName  String?
+  bankAccountType    String?
+  bankName           String?
+  accountHolderName  String?
+  accountNumber      String?
+  routingNumber      String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   shop          Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
   location      StoreLocation?       @relation(fields: [locationId], references: [id])
@@ -196,18 +211,18 @@ model BreakEntry {
 }
 
 model MissedPunchRequest {
-  id              String            @id @default(cuid())
-  shopId          String
-  employeeId      String
-  type            MissedPunchType
-  requestedAt     DateTime
-  reason          String?
-  status          MissedPunchStatus @default(PENDING)
-  reviewedBy      String?
-  reviewedAt      DateTime?
-  reviewNotes     String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id          String            @id @default(cuid())
+  shopId      String
+  employeeId  String
+  type        MissedPunchType
+  requestedAt DateTime
+  reason      String?
+  status      MissedPunchStatus @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  reviewNotes String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -235,16 +250,16 @@ model AuditLog {
 }
 
 model Device {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   shopId     String
   locationId String?
   name       String
-  deviceKey  String   @unique
-  approved   Boolean  @default(false)
-  locked     Boolean  @default(false)
+  deviceKey  String    @unique
+  approved   Boolean   @default(false)
+  locked     Boolean   @default(false)
   lastSeenAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   shop     Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
   location StoreLocation? @relation(fields: [locationId], references: [id])
@@ -253,28 +268,28 @@ model Device {
 }
 
 model PayrollExport {
-  id        String              @id @default(cuid())
-  shopId    String
-  format    PayrollExportFormat @default(CSV)
+  id          String              @id @default(cuid())
+  shopId      String
+  format      PayrollExportFormat @default(CSV)
   periodStart DateTime
   periodEnd   DateTime
-  filePath  String?
-  createdAt DateTime            @default(now())
+  filePath    String?
+  createdAt   DateTime            @default(now())
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }
 
 model Setting {
-  id                    String  @id @default(cuid())
-  shopId                String  @unique
-  overtimeDailyHours    Float   @default(8)
-  overtimeWeeklyHours   Float   @default(40)
-  maxHoursPerDay        Float   @default(12)
-  maxHoursPerWeek       Float   @default(60)
-  mandatoryBreakHours   Float   @default(6)
-  mandatoryBreakMinutes Int     @default(30)
-  requireGps            Boolean @default(false)
-  requirePhoto          Boolean @default(false)
+  id                    String   @id @default(cuid())
+  shopId                String   @unique
+  overtimeDailyHours    Float    @default(8)
+  overtimeWeeklyHours   Float    @default(40)
+  maxHoursPerDay        Float    @default(12)
+  maxHoursPerWeek       Float    @default(60)
+  mandatoryBreakHours   Float    @default(6)
+  mandatoryBreakMinutes Int      @default(30)
+  requireGps            Boolean  @default(false)
+  requirePhoto          Boolean  @default(false)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
