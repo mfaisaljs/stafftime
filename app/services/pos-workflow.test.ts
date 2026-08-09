@@ -13,6 +13,7 @@ import {
   startBreak,
   updateEmployee,
 } from "./workforce.server";
+import { buildPayrollCsv } from "./payroll-export.server";
 
 const TEST_DOMAIN = "pos-qa-test.myshopify.com";
 
@@ -192,5 +193,34 @@ describe("POS workflow", () => {
         pin: "9876",
       }),
     ).rejects.toThrow("PIN already assigned to Taylor Second");
+  });
+
+  it("keeps historical labor cost at the rate captured on clock-in", async () => {
+    const { shop, employee } = await seedTestShop();
+    await clockIn({ shopDomain: TEST_DOMAIN, employeeId: employee.id });
+
+    const clockInAt = new Date(Date.now() - 60 * 60 * 1000);
+    const clockOutAt = new Date();
+    await prisma.timeEntry.updateMany({
+      where: { employeeId: employee.id, status: "OPEN" },
+      data: { clockInAt, clockOutAt, status: "CLOSED" },
+    });
+
+    await updateEmployee({
+      shopId: shop.id,
+      employeeId: employee.id,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      hourlyRate: 166,
+    });
+
+    const entries = await prisma.timeEntry.findMany({
+      where: { employeeId: employee.id },
+      include: { employee: true, breaks: true, location: true },
+    });
+    const csv = buildPayrollCsv(entries, { overtimeDailyHours: 8 });
+
+    expect(entries[0]?.hourlyRateSnapshot).toBe(20);
+    expect(csv).toContain(",20,20");
   });
 });

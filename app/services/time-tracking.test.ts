@@ -21,6 +21,7 @@ function makeEntry(
     clockInAt,
     clockOutAt,
     status: clockOutAt ? "CLOSED" : "OPEN",
+    hourlyRateSnapshot: null,
     source: "POS",
     deviceId: null,
     latitude: null,

@@ -180,6 +180,7 @@ model TimeEntry {
   clockInAt  DateTime
   clockOutAt DateTime?
   status     TimeEntryStatus @default(OPEN)
+  hourlyRateSnapshot Float?
   source     String          @default("POS")
   deviceId   String?
   latitude   Float?

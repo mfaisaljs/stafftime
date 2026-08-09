@@ -21,7 +21,7 @@ export async function getDashboardData(session: Session) {
   const shop = await getAdminShop(session);
 
   const laborCostToday = summary.working.reduce((total, entry) => {
-    return total + (entry.employee.hourlyRate * 8);
+    return total + ((entry.hourlyRateSnapshot ?? entry.employee.hourlyRate) * 8);
   }, 0);
 
   return {

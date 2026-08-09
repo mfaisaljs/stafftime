@@ -72,7 +72,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     (sum, item) => sum + item.paidBreakMinutes + item.unpaidBreakMinutes,
     0,
   );
-  const paidEarnings = (paidMinutes / 60) * employee.hourlyRate;
+  const paidEarnings = timeEntries.reduce((sum, entry, index) => {
+    const hourlyRate = entry.hourlyRateSnapshot ?? employee.hourlyRate;
+    return sum + (summaries[index].paidMinutes / 60) * hourlyRate;
+  }, 0);
 
   const attendanceRows = timeEntries.map((entry) => {
     const summary = summarizeTimeEntry(entry, settings);

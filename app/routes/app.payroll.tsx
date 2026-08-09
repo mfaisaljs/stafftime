@@ -23,7 +23,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       clockOut: entry.clockOutAt?.toLocaleString() ?? "Open",
       paidHours: (summary.paidMinutes / 60).toFixed(2),
       overtime: formatMinutes(summary.overtimeMinutes),
-      laborCost: ((summary.paidMinutes / 60) * entry.employee.hourlyRate).toFixed(2),
+      laborCost: (
+        (summary.paidMinutes / 60) *
+        (entry.hourlyRateSnapshot ?? entry.employee.hourlyRate)
+      ).toFixed(2),
     };
   });
 

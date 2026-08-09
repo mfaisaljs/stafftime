@@ -29,7 +29,8 @@ export function buildPayrollCsv(
   const rows: ExportRow[] = entries.map((entry) => {
     const summary = summarizeTimeEntry(entry, settings);
     const paidHours = summary.paidMinutes / 60;
-    const laborCost = paidHours * entry.employee.hourlyRate;
+    const hourlyRate = entry.hourlyRateSnapshot ?? entry.employee.hourlyRate;
+    const laborCost = paidHours * hourlyRate;
 
     return {
       employeeId: entry.employee.id,
@@ -42,7 +43,7 @@ export function buildPayrollCsv(
       paidHours: paidHours.toFixed(2),
       unpaidBreaks: formatMinutes(summary.unpaidBreakMinutes),
       overtime: formatMinutes(summary.overtimeMinutes),
-      hourlyRate: entry.employee.hourlyRate,
+      hourlyRate,
       laborCost: Number(laborCost.toFixed(2)),
     };
   });

@@ -399,6 +399,12 @@ export async function clockIn(params: {
   if (openEntry) {
     throw new Error("Employee is already clocked in");
   }
+  const employee = await prisma.employee.findFirst({
+    where: { id: params.employeeId, shopId: shop.id },
+  });
+  if (!employee) {
+    throw new Error("Staff member not found");
+  }
 
   const entry = await prisma.timeEntry.create({
     data: {
@@ -406,6 +412,7 @@ export async function clockIn(params: {
       locationId: location.id,
       employeeId: params.employeeId,
       clockInAt: new Date(),
+      hourlyRateSnapshot: employee.hourlyRate,
       source: "POS",
       latitude: params.latitude,
       longitude: params.longitude,
@@ -572,6 +579,7 @@ export async function reviewMissedPunch(params: {
           clockInAt: request.requestedAt,
           clockOutAt: null,
           status: "OPEN",
+          hourlyRateSnapshot: request.employee.hourlyRate,
           source: "MISSED_PUNCH",
           notes: request.reason,
         },

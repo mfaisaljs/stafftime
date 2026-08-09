@@ -33,7 +33,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const summaries = entries.map((entry) => {
     const summary = summarizeTimeEntrySeconds(entry, reportEnd);
-    const earnings = (summary.paidSeconds / 3600) * entry.employee.hourlyRate;
+    const earnings = (summary.paidSeconds / 3600) * hourlyRateForEntry(entry);
     return { entry, summary, earnings };
   });
 
@@ -630,6 +630,13 @@ function salaryLabel(employee: {
       ? employee.hourlyRate
       : employee.salaryAmount;
   return `${employee.currency} ${amount.toFixed(2)}`;
+}
+
+function hourlyRateForEntry(entry: {
+  hourlyRateSnapshot: number | null;
+  employee: { hourlyRate: number };
+}) {
+  return entry.hourlyRateSnapshot ?? entry.employee.hourlyRate;
 }
 
 function toDateKey(value: Date) {

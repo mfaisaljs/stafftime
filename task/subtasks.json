@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T16:54:00.000Z",
+  "lastUpdated": "2026-08-09T17:00:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -571,6 +571,33 @@
         "app/routes/app.reports.tsx",
         "app/routes/app.tsx",
         "README.md"
+      ]
+    },
+    {
+      "id": "ST043",
+      "taskId": "T010",
+      "title": "Snapshot hourly rate for historical reporting",
+      "description": "Store the employee hourly rate on each time entry so reporting and payroll keep historical labor costs after a staff rate changes.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST042"],
+      "acceptanceCriteria": [
+        "Clock-in creates time entries with hourlyRateSnapshot",
+        "Approved missed clock-in creates time entries with hourlyRateSnapshot",
+        "Reports, payroll page, payroll export, staff detail, and dashboard labor cost prefer snapshot rate",
+        "Regression test confirms changing employee hourly rate does not alter historical labor cost"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "prisma/migrations/20260809165712_time_entry_hourly_rate_snapshot/migration.sql",
+        "app/services/workforce.server.ts",
+        "app/routes/app.reports.tsx",
+        "app/routes/app.payroll.tsx",
+        "app/routes/app.staff.$employeeId._index.tsx",
+        "app/services/admin.server.ts",
+        "app/services/payroll-export.server.ts",
+        "app/services/pos-workflow.test.ts",
+        "app/services/time-tracking.test.ts"
       ]
     }
   ]
