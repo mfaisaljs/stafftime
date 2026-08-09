@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:16:53.000Z",
+  "lastUpdated": "2026-08-09T18:19:52.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -655,7 +655,8 @@
         "Schedule calendar popover shrink-wraps the Polaris picker without extra right spacing",
         "Schedule view dropdown supports Weekly, Monthly, and Yearly",
         "Selecting any date expands the schedule range to the full selected week, month, or year based on the dropdown",
-        "Past dates cannot be used to add or edit shifts"
+        "Past dates cannot be used to add or edit shifts",
+        "Monthly schedule view renders as a calendar grid instead of a single horizontal staff row"
       ],
       "files": [
         "app/routes/app.schedules.tsx"

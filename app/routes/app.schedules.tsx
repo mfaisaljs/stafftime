@@ -108,6 +108,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       employeeId: shift.employeeId,
       locationId: shift.locationId,
       locationName: shift.location.name,
+      employeeName: `${shift.employee.firstName} ${shift.employee.lastName}`,
       dateKey: toDateKey(shift.startsAt),
       startsAt: shift.startsAt.toISOString(),
       endsAt: shift.endsAt.toISOString(),
@@ -258,6 +259,17 @@ export default function SchedulesPage() {
     }
     return map;
   }, [shifts]);
+  const shiftsByDay = useMemo(() => {
+    const map = new Map<string, typeof shifts>();
+    for (const shift of shifts) {
+      map.set(shift.dateKey, [...(map.get(shift.dateKey) ?? []), shift]);
+    }
+    return map;
+  }, [shifts]);
+  const monthlyDays = useMemo(
+    () => buildMonthCalendarDays(dateFromKey(weekStart), dateFromKey(weekEnd)),
+    [weekStart, weekEnd],
+  );
 
   const selectedShift =
     shiftModal?.mode === "edit"
@@ -376,96 +388,115 @@ export default function SchedulesPage() {
         </div>
 
         <section className="schedule-card">
-          <div className="schedule-scroll">
-            <table
-              className="schedule-table"
-              style={{ minWidth: `${Math.max(1120, 110 + days.length * 145)}px` }}
-            >
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  {days.map((day) => (
-                    <th key={day.key} className={day.isToday ? "today" : ""}>
-                      <span className="day-heading">
-                        {day.label} {day.dayNumber}
-                      </span>
-                      {day.isPast && <small>Past</small>}
-                    </th>
+          {period === "monthly" ? (
+            <MonthlySchedule
+              days={monthlyDays}
+              shiftsByDay={shiftsByDay}
+              employees={employees}
+              fetcher={actionFetcher}
+              onAdd={(dateKey) => {
+                const employee = employees[0];
+                if (!employee) return;
+                setShiftModal({
+                  mode: "create",
+                  employeeId: employee.id,
+                  dateKey,
+                });
+              }}
+              onEditShift={(shiftId) => setShiftModal({ mode: "edit", shiftId })}
+            />
+          ) : (
+            <div className="schedule-scroll">
+              <table
+                className="schedule-table"
+                style={{ minWidth: `${Math.max(1120, 110 + days.length * 145)}px` }}
+              >
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    {days.map((day) => (
+                      <th key={day.key} className={day.isToday ? "today" : ""}>
+                        <span className="day-heading">
+                          {day.label} {day.dayNumber}
+                        </span>
+                        {day.isPast && <small>Past</small>}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((employee) => (
+                    <tr key={employee.id}>
+                      <th scope="row">{employee.name}</th>
+                      {days.map((day) => {
+                        const cellShifts =
+                          shiftsByEmployeeDay.get(`${employee.id}:${day.key}`) ?? [];
+                        const available = isAvailable(employee.weeklyAvailability, day.value);
+                        return (
+                          <td key={`${employee.id}-${day.key}`}>
+                            <ScheduleCell
+                              employee={employee}
+                              day={day}
+                              shifts={cellShifts}
+                              available={available}
+                              isPast={day.isPast}
+                              onAdd={() =>
+                                setShiftModal({
+                                  mode: "create",
+                                  employeeId: employee.id,
+                                  dateKey: day.key,
+                                })
+                              }
+                              onEditShift={(shiftId) =>
+                                setShiftModal({ mode: "edit", shiftId })
+                              }
+                              onEditAvailability={() =>
+                                setAvailabilityEmployeeId(employee.id)
+                              }
+                              fetcher={actionFetcher}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((employee) => (
-                  <tr key={employee.id}>
-                    <th scope="row">{employee.name}</th>
+                  {employees.length === 0 && (
+                    <tr>
+                      <td colSpan={days.length + 1} className="empty-cell">
+                        Add staff before building a schedule.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th>Totals</th>
                     {days.map((day) => {
-                      const cellShifts =
-                        shiftsByEmployeeDay.get(`${employee.id}:${day.key}`) ?? [];
-                      const available = isAvailable(employee.weeklyAvailability, day.value);
+                      const total = dayTotals(shifts, day.key, employees);
                       return (
-                        <td key={`${employee.id}-${day.key}`}>
-                          <ScheduleCell
-                            employee={employee}
-                            day={day}
-                            shifts={cellShifts}
-                            available={available}
-                            isPast={day.isPast}
-                            onAdd={() =>
-                              setShiftModal({
-                                mode: "create",
-                                employeeId: employee.id,
-                                dateKey: day.key,
-                              })
-                            }
-                            onEditShift={(shiftId) =>
-                              setShiftModal({ mode: "edit", shiftId })
-                            }
-                            onEditAvailability={() =>
-                              setAvailabilityEmployeeId(employee.id)
-                            }
-                            fetcher={actionFetcher}
-                          />
+                        <td key={day.key}>
+                          <div className="totals-cell">
+                            <span>
+                              <Clock aria-hidden="true" size={15} />
+                              {formatHours(total.hours)}
+                            </span>
+                            <span>
+                              $
+                              {total.cost.toFixed(2)}
+                            </span>
+                            <span>
+                              <User aria-hidden="true" size={15} />
+                              {total.staff}
+                            </span>
+                          </div>
                         </td>
                       );
                     })}
                   </tr>
-                ))}
-                {employees.length === 0 && (
-                  <tr>
-                    <td colSpan={days.length + 1} className="empty-cell">
-                      Add staff before building a schedule.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th>Totals</th>
-                  {days.map((day) => {
-                    const total = dayTotals(shifts, day.key, employees);
-                    return (
-                      <td key={day.key}>
-                        <div className="totals-cell">
-                          <span>
-                            <Clock aria-hidden="true" size={15} />
-                            {formatHours(total.hours)}
-                          </span>
-                          <span>
-                            $
-                            {total.cost.toFixed(2)}
-                          </span>
-                          <span>
-                            <User aria-hidden="true" size={15} />
-                            {total.staff}
-                          </span>
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </section>
 
       </div>
@@ -491,6 +522,106 @@ export default function SchedulesPage() {
 
       <style>{SCHEDULE_STYLES}</style>
     </s-page>
+  );
+}
+
+function MonthlySchedule({
+  days,
+  shiftsByDay,
+  employees,
+  fetcher,
+  onAdd,
+  onEditShift,
+}: {
+  days: Array<{
+    key: string;
+    dayNumber: number;
+    isPast: boolean;
+    isToday: boolean;
+    isOutside: boolean;
+  }>;
+  shiftsByDay: Map<
+    string,
+    Array<{
+      id: string;
+      employeeName: string;
+      startTime: string;
+      endTime: string;
+      locationName: string;
+    }>
+  >;
+  employees: Array<{ id: string }>;
+  fetcher: ReturnType<typeof useFetcher<ScheduleActionResult>>;
+  onAdd: (dateKey: string) => void;
+  onEditShift: (shiftId: string) => void;
+}) {
+  return (
+    <div className="month-schedule">
+      <div className="month-weekdays">
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((weekday) => (
+          <div key={weekday}>{weekday}</div>
+        ))}
+      </div>
+      <div className="month-grid">
+        {days.map((day) => {
+          const dayShifts = shiftsByDay.get(day.key) ?? [];
+          const canAdd = !day.isPast && !day.isOutside && employees.length > 0;
+          return (
+            <div
+              className={`month-day${day.isOutside ? " outside" : ""}${
+                day.isToday ? " today" : ""
+              }`}
+              key={day.key}
+            >
+              <div className="month-day-number">{day.dayNumber}</div>
+              <div className="month-shifts">
+                {dayShifts.map((shift) => (
+                  <div className="shift-card month-shift" key={shift.id}>
+                    <button
+                      className="shift-content"
+                      type="button"
+                      onClick={() => onEditShift(shift.id)}
+                    >
+                      <strong>
+                        {shift.startTime} - {shift.endTime}
+                      </strong>
+                      <span>{shift.employeeName}</span>
+                      <span>{shift.locationName}</span>
+                    </button>
+                    <div className="shift-actions">
+                      <button
+                        type="button"
+                        aria-label="Edit shift"
+                        onClick={() => onEditShift(shift.id)}
+                      >
+                        <Edit3 aria-hidden="true" size={14} />
+                      </button>
+                      <fetcher.Form method="post">
+                        <input type="hidden" name="intent" value="deleteShift" />
+                        <input type="hidden" name="shiftId" value={shift.id} />
+                        <button type="submit" aria-label="Delete shift">
+                          <Trash2 aria-hidden="true" size={14} />
+                        </button>
+                      </fetcher.Form>
+                    </div>
+                  </div>
+                ))}
+                {canAdd && (
+                  <button
+                    className="month-add-slot"
+                    type="button"
+                    onClick={() => onAdd(day.key)}
+                    aria-label={`Add shift on ${day.key}`}
+                  >
+                    <PlusCircle aria-hidden="true" size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -852,6 +983,29 @@ function buildRangeDays(start: Date, end: Date) {
   return result;
 }
 
+function buildMonthCalendarDays(start: Date, end: Date) {
+  const firstVisible = startOfWeek(start);
+  const lastVisible = addDays(startOfWeek(end), 6);
+  const result = [];
+  const current = new Date(firstVisible);
+
+  while (current.getTime() <= lastVisible.getTime()) {
+    const date = new Date(current);
+    result.push({
+      key: toDateKey(date),
+      dayNumber: date.getDate(),
+      isPast: startOfDay(date).getTime() < startOfDay(new Date()).getTime(),
+      isToday: toDateKey(date) === toDateKey(new Date()),
+      isOutside:
+        startOfDay(date).getTime() < startOfDay(start).getTime() ||
+        startOfDay(date).getTime() > startOfDay(end).getTime(),
+    });
+    current.setDate(current.getDate() + 1);
+  }
+
+  return result;
+}
+
 function weekdayValue(date: Date): (typeof WEEKDAY_VALUES)[number] {
   const index = date.getDay() === 0 ? 6 : date.getDay() - 1;
   return WEEKDAY_VALUES[index];
@@ -1029,6 +1183,96 @@ const SCHEDULE_STYLES = `
 
   .schedule-scroll {
     overflow-x: auto;
+  }
+
+  .month-schedule {
+    min-width: 980px;
+  }
+
+  .month-weekdays {
+    background: #fff;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .month-weekdays div {
+    border-bottom: 1px solid #e5e5e5;
+    border-right: 1px solid #e5e5e5;
+    color: #303030;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .month-weekdays div:last-child {
+    border-right: 0;
+  }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .month-day {
+    background: #fff;
+    border-bottom: 1px solid #e5e5e5;
+    border-right: 1px solid #e5e5e5;
+    min-height: 118px;
+    padding: 10px;
+    position: relative;
+  }
+
+  .month-day:nth-child(7n) {
+    border-right: 0;
+  }
+
+  .month-day.outside {
+    background: #fbfbfb;
+    color: #c1c1c1;
+  }
+
+  .month-day.today {
+    box-shadow: inset 0 0 0 2px #008060;
+  }
+
+  .month-day-number {
+    color: inherit;
+    font-size: 12px;
+    min-height: 18px;
+  }
+
+  .month-shifts {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .month-shift {
+    min-height: 54px;
+  }
+
+  .month-shift .shift-content {
+    min-height: 54px;
+    padding: 8px;
+  }
+
+  .month-add-slot {
+    align-items: center;
+    background: #fafafa;
+    border: 1px dashed #e3e3e3;
+    border-radius: 5px;
+    color: #616161;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 34px;
+    width: 100%;
+  }
+
+  .month-add-slot:hover {
+    background: #f1f1f1;
+    border-color: #c9c9c9;
   }
 
   .schedule-table {

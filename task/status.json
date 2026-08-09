@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T18:16:53.000Z",
+  "lastUpdated": "2026-08-09T18:19:52.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -57,6 +57,7 @@
     "Updated: Schedule calendar popover now shrink-wraps the Polaris picker without extra right spacing.",
     "Updated: Schedule view dropdown now supports Weekly, Monthly, and Yearly and calendar selections expand to the full selected period.",
     "Updated: Schedule past dates now hide add slots and server-side actions reject creating or editing shifts in the past.",
+    "Updated: Monthly Schedule view now renders as a month calendar grid instead of a single horizontal staff row.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
