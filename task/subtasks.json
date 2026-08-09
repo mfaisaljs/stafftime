@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T18:10:13.000Z",
+  "lastUpdated": "2026-08-09T18:16:53.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -652,7 +652,10 @@
         "Schedule page uses the large Shopify page layout for a full-width grid",
         "Schedule calendar control does not show outside previous/next chevron buttons",
         "Schedule current-day indicator dot does not overlap the day label",
-        "Schedule calendar popover shrink-wraps the Polaris picker without extra right spacing"
+        "Schedule calendar popover shrink-wraps the Polaris picker without extra right spacing",
+        "Schedule view dropdown supports Weekly, Monthly, and Yearly",
+        "Selecting any date expands the schedule range to the full selected week, month, or year based on the dropdown",
+        "Past dates cannot be used to add or edit shifts"
       ],
       "files": [
         "app/routes/app.schedules.tsx"

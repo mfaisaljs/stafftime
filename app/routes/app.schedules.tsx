@@ -4,7 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Form, useFetcher, useLoaderData, useSearchParams } from "react-router";
+import { useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
   CalendarDays,
@@ -22,6 +22,7 @@ import { getAdminShop } from "../services/admin.server";
 import prisma from "../db.server";
 
 type ScheduleActionResult = { success?: string; error?: string };
+type SchedulePeriod = "weekly" | "monthly" | "yearly";
 type ScheduleModal =
   | { mode: "create"; employeeId: string; dateKey: string }
   | { mode: "edit"; shiftId: string }
@@ -47,12 +48,21 @@ const WEEKDAY_LABELS = [
   "Sunday",
 ];
 
+const SCHEDULE_PERIODS: Array<{ value: SchedulePeriod; label: string }> = [
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+];
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
   const url = new URL(request.url);
-  const weekStart = startOfWeek(parseDateKey(url.searchParams.get("week")));
-  const weekEnd = endOfDay(addDays(weekStart, 6));
+  const period = normalizePeriod(url.searchParams.get("period"));
+  const selectedDate = parseDateKey(
+    url.searchParams.get("date") ?? url.searchParams.get("week"),
+  );
+  const range = rangeForPeriod(selectedDate, period);
 
   const [employees, shifts, locations] = await Promise.all([
     prisma.employee.findMany({
@@ -63,7 +73,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     prisma.shift.findMany({
       where: {
         shopId: shop.id,
-        startsAt: { gte: weekStart, lte: weekEnd },
+        startsAt: { gte: range.start, lte: range.end },
       },
       include: { employee: true, location: true },
       orderBy: { startsAt: "asc" },
@@ -74,26 +84,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }),
   ]);
 
-  const days = WEEKDAY_VALUES.map((value, index) => {
-    const date = addDays(weekStart, index);
-    return {
-      key: toDateKey(date),
-      label: date.toLocaleDateString(undefined, { weekday: "short" }),
-      shortLabel: date.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      }),
-      dayNumber: date.getDate(),
-      value,
-      isPast: startOfDay(date).getTime() < startOfDay(new Date()).getTime(),
-      isToday: toDateKey(date) === toDateKey(new Date()),
-    };
-  });
+  const days = buildRangeDays(range.start, range.end);
 
   return {
     days,
-    weekStart: toDateKey(weekStart),
-    weekEnd: toDateKey(weekEnd),
+    period,
+    selectedDate: toDateKey(selectedDate),
+    weekStart: toDateKey(range.start),
+    weekEnd: toDateKey(range.end),
     employees: employees.map((employee) => ({
       id: employee.id,
       name: `${employee.firstName} ${employee.lastName}`,
@@ -138,14 +136,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     if (intent === "clearWeek") {
-      const weekStart = startOfWeek(parseDateKey(String(formData.get("week") ?? "")));
+      const period = normalizePeriod(String(formData.get("period") ?? "weekly"));
+      const range = rangeForPeriod(
+        parseDateKey(String(formData.get("date") ?? "")),
+        period,
+      );
       await prisma.shift.deleteMany({
         where: {
           shopId: shop.id,
-          startsAt: { gte: weekStart, lte: endOfDay(addDays(weekStart, 6)) },
+          startsAt: { gte: range.start, lte: range.end },
         },
       });
-      return { success: "All shifts cleared for this week." };
+      return { success: "All shifts cleared for this range." };
     }
 
     if (intent === "updateAvailability") {
@@ -177,6 +179,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const startsAt = dateTimeFromInputs(date, startTime);
     const endsAt = dateTimeFromInputs(date, endTime);
+    if (isPastDateKey(date)) {
+      return { error: "You cannot add or edit shifts for past dates." };
+    }
     if (endsAt <= startsAt) {
       return { error: "End time must be after start time." };
     }
@@ -216,7 +221,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function SchedulesPage() {
-  const { shifts, employees, locations, days, weekStart, weekEnd } =
+  const {
+    shifts,
+    employees,
+    locations,
+    days,
+    period,
+    selectedDate,
+    weekStart,
+    weekEnd,
+  } =
     useLoaderData<typeof loader>();
   const actionFetcher = useFetcher<ScheduleActionResult>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -253,14 +267,33 @@ export default function SchedulesPage() {
     (employee) => employee.id === availabilityEmployeeId,
   );
 
-  const selectDateRange = (value: string) => {
-    setDraftRange(value);
-    const range = parsePickerRange(value);
-    if (!range) return;
+  const selectAnchorDate = (date: string) => {
+    const range = rangeForPeriod(dateFromKey(date), period);
+    setDraftRange(`${toDateKey(range.start)}--${toDateKey(range.end)}`);
     const params = new URLSearchParams(searchParams);
-    params.set("week", range.start);
+    params.set("date", date);
+    params.set("period", period);
+    params.delete("week");
     setSearchParams(params);
     setDatePickerOpen(false);
+  };
+
+  const selectDateRange = (value: string) => {
+    setDraftRange(value);
+    const anchorDate = pickerAnchorDate(value);
+    if (anchorDate) {
+      selectAnchorDate(anchorDate);
+    }
+  };
+
+  const changePeriod = (nextPeriod: SchedulePeriod) => {
+    const range = rangeForPeriod(dateFromKey(selectedDate), nextPeriod);
+    setDraftRange(`${toDateKey(range.start)}--${toDateKey(range.end)}`);
+    const params = new URLSearchParams(searchParams);
+    params.set("period", nextPeriod);
+    params.set("date", selectedDate);
+    params.delete("week");
+    setSearchParams(params);
   };
 
   return (
@@ -293,7 +326,8 @@ export default function SchedulesPage() {
             </button>
             <actionFetcher.Form method="post">
               <input type="hidden" name="intent" value="clearWeek" />
-              <input type="hidden" name="week" value={weekStart} />
+              <input type="hidden" name="date" value={selectedDate} />
+              <input type="hidden" name="period" value={period} />
               <button className="toolbar-button danger" type="submit">
                 <Trash2 aria-hidden="true" size={15} />
                 Clear All Shifts
@@ -317,22 +351,36 @@ export default function SchedulesPage() {
                   <s-date-picker
                     type="range"
                     value={draftRange}
-                    view={weekStart.slice(0, 7)}
-                    onInput={(event) => setDraftRange(pickerValue(event))}
+                    view={selectedDate.slice(0, 7)}
+                    onInput={(event) => selectDateRange(pickerValue(event))}
                     onChange={(event) => selectDateRange(pickerValue(event))}
                   ></s-date-picker>
                 </div>
               )}
             </div>
-            <select className="toolbar-select" aria-label="Schedule view">
-              <option>Weekly</option>
+            <select
+              className="toolbar-select"
+              aria-label="Schedule view"
+              value={period}
+              onChange={(event) =>
+                changePeriod(event.currentTarget.value as SchedulePeriod)
+              }
+            >
+              {SCHEDULE_PERIODS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
         <section className="schedule-card">
           <div className="schedule-scroll">
-            <table className="schedule-table">
+            <table
+              className="schedule-table"
+              style={{ minWidth: `${Math.max(1120, 110 + days.length * 145)}px` }}
+            >
               <thead>
                 <tr>
                   <th>Name</th>
@@ -361,6 +409,7 @@ export default function SchedulesPage() {
                             day={day}
                             shifts={cellShifts}
                             available={available}
+                            isPast={day.isPast}
                             onAdd={() =>
                               setShiftModal({
                                 mode: "create",
@@ -450,6 +499,7 @@ function ScheduleCell({
   day,
   shifts,
   available,
+  isPast,
   onAdd,
   onEditShift,
   onEditAvailability,
@@ -464,6 +514,7 @@ function ScheduleCell({
     locationName: string;
   }>;
   available: boolean;
+  isPast: boolean;
   onAdd: () => void;
   onEditShift: (shiftId: string) => void;
   onEditAvailability: () => void;
@@ -515,9 +566,15 @@ function ScheduleCell({
           </div>
         </div>
       ))}
-      <button className="empty-slot add-slot" type="button" onClick={onAdd}>
-        <PlusCircle aria-hidden="true" size={17} />
-      </button>
+      {isPast ? (
+        <button className="empty-slot muted" type="button" disabled>
+          ⊘
+        </button>
+      ) : (
+        <button className="empty-slot add-slot" type="button" onClick={onAdd}>
+          <PlusCircle aria-hidden="true" size={17} />
+        </button>
+      )}
     </div>
   );
 }
@@ -747,6 +804,59 @@ function dateTimeFromInputs(date: string, time: string) {
   return new Date(`${date}T${time}:00`);
 }
 
+function normalizePeriod(value: string | null): SchedulePeriod {
+  return value === "monthly" || value === "yearly" ? value : "weekly";
+}
+
+function rangeForPeriod(value: Date, period: SchedulePeriod) {
+  if (period === "monthly") {
+    return {
+      start: startOfMonth(value),
+      end: endOfDay(new Date(value.getFullYear(), value.getMonth() + 1, 0)),
+    };
+  }
+
+  if (period === "yearly") {
+    return {
+      start: startOfYear(value),
+      end: endOfDay(new Date(value.getFullYear(), 11, 31)),
+    };
+  }
+
+  const start = startOfWeek(value);
+  return { start, end: endOfDay(addDays(start, 6)) };
+}
+
+function buildRangeDays(start: Date, end: Date) {
+  const result = [];
+  const current = startOfDay(start);
+  const last = startOfDay(end);
+
+  while (current.getTime() <= last.getTime()) {
+    const date = new Date(current);
+    result.push({
+      key: toDateKey(date),
+      label: date.toLocaleDateString(undefined, { weekday: "short" }),
+      shortLabel: date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      }),
+      dayNumber: date.getDate(),
+      value: weekdayValue(date),
+      isPast: startOfDay(date).getTime() < startOfDay(new Date()).getTime(),
+      isToday: toDateKey(date) === toDateKey(new Date()),
+    });
+    current.setDate(current.getDate() + 1);
+  }
+
+  return result;
+}
+
+function weekdayValue(date: Date): (typeof WEEKDAY_VALUES)[number] {
+  const index = date.getDay() === 0 ? 6 : date.getDay() - 1;
+  return WEEKDAY_VALUES[index];
+}
+
 function parseDateKey(value: string | null) {
   if (value && isDateKey(value)) return dateFromKey(value);
   return new Date();
@@ -756,10 +866,15 @@ function isDateKey(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-function parsePickerRange(value: string) {
+function isPastDateKey(value: string) {
+  return startOfDay(dateFromKey(value)).getTime() < startOfDay(new Date()).getTime();
+}
+
+function pickerAnchorDate(value: string) {
   const [start, end] = value.split("--");
-  if (!isDateKey(start) || !isDateKey(end)) return null;
-  return { start, end };
+  if (isDateKey(start)) return start;
+  if (isDateKey(end)) return end;
+  return null;
 }
 
 function pickerValue(event: { currentTarget: unknown }) {
@@ -782,6 +897,14 @@ function startOfDay(value: Date) {
   const next = new Date(value);
   next.setHours(0, 0, 0, 0);
   return next;
+}
+
+function startOfMonth(value: Date) {
+  return startOfDay(new Date(value.getFullYear(), value.getMonth(), 1));
+}
+
+function startOfYear(value: Date) {
+  return startOfDay(new Date(value.getFullYear(), 0, 1));
 }
 
 function endOfDay(value: Date) {
