@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:42:03.000Z",
+  "lastUpdated": "2026-08-09T17:48:32.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -620,7 +620,10 @@
         "Today, Yesterday, Last 7, 30, 90, and 365 day presets are available",
         "Daily Activity keeps the selected date range when switching tabs",
         "Daily Activity columns match the reference pattern with day columns followed by total hours, working hours, and rate",
-        "Daily Activity keeps Staff Name fixed while Position, days, totals, and rate scroll without overlap"
+        "Daily Activity keeps Staff Name fixed while Position, days, totals, and rate scroll without overlap",
+        "Daily Activity Rate column shows mixed range label when multiple hourly rates exist in the selected period",
+        "Daily Activity summary columns have fixed widths so Working Hours does not overlap Rate",
+        "Daily Activity Working Hours header uses Polaris info icon tooltip explaining Total Hours minus Break Time"
       ],
       "files": [
         "app/routes/app.reports.tsx",

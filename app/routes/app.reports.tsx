@@ -93,7 +93,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       initials: initials(employee.firstName, employee.lastName),
       position: employee.position ?? "Staff",
       salary: salaryLabel(employee),
-      rate: rateLabel(employee),
+      rate: rateLabelForPeriod(employee, employeeSummaries),
       totalHours: formatDurationHms(employeeTotalSeconds),
       workingHours: formatDurationHms(employeeWorkingSeconds),
       totalEarnings: formatCurrency(employeeEarnings),
@@ -570,6 +570,10 @@ function DailyActivityReport({
 
   return (
     <>
+      <s-tooltip id="working-hours-tooltip">
+        Working Hours = Total Hours - Break Time
+      </s-tooltip>
+
       <div className="report-controls">
         <div className="dropdown-wrap">
           <button
@@ -622,21 +626,29 @@ function DailyActivityReport({
         <div className="table-scroll">
           <table
             className="report-table daily-table"
-            style={{ minWidth: `${Math.max(980, 640 + days.length * 88)}px` }}
+            style={{ minWidth: `${Math.max(980, 700 + days.length * 80)}px` }}
           >
             <thead>
               <tr>
                 <th>Staff Name</th>
                 <th>Position</th>
                 {days.map((day) => (
-                  <th key={day.key}>
+                  <th key={day.key} className="day-col">
                     <span>{day.weekday}</span>
                     <small>{day.label}</small>
                   </th>
                 ))}
-                <th>Total Hours</th>
-                <th>Working Hours <span className="info-dot">?</span></th>
-                <th>Rate</th>
+                <th className="summary-col total-hours-col">Total Hours</th>
+                <th className="summary-col working-hours-col">
+                  <span className="working-hours-heading">
+                    Working Hours
+                    <s-icon
+                      type="info"
+                      interestFor="working-hours-tooltip"
+                    />
+                  </span>
+                </th>
+                <th className="summary-col rate-col">Rate</th>
               </tr>
             </thead>
             <tbody>
@@ -652,11 +664,17 @@ function DailyActivityReport({
                     <span className="position-pill">{row.position}</span>
                   </td>
                   {row.days.map((value, index) => (
-                    <td key={`${row.id}-${days[index]?.key}`}>{value}</td>
+                    <td key={`${row.id}-${days[index]?.key}`} className="day-col">
+                      {value}
+                    </td>
                   ))}
-                  <td className="strong-cell">{row.totalHours}</td>
-                  <td className="strong-cell">{row.workingHours}</td>
-                  <td>{row.rate}</td>
+                  <td className="strong-cell summary-col total-hours-col">
+                    {row.totalHours}
+                  </td>
+                  <td className="strong-cell summary-col working-hours-col">
+                    {row.workingHours}
+                  </td>
+                  <td className="summary-col rate-col">{row.rate}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
@@ -1121,6 +1139,46 @@ function rateLabel(employee: {
 
   const period = employee.payrollType === "WEEKLY" ? "wk" : "mo";
   return `${employee.currency}${formatCompactAmount(employee.salaryAmount)}/${period}`;
+}
+
+function rateLabelForPeriod(
+  employee: {
+    currency: string;
+    hourlyRate: number;
+    payrollType: string;
+    salaryAmount: number;
+  },
+  summaries: Array<{
+    entry: {
+      hourlyRateSnapshot: number | null;
+      employee: { hourlyRate: number };
+    };
+    summary: { totalWorkedSeconds: number };
+  }>,
+) {
+  if (employee.payrollType !== "HOURLY") {
+    return rateLabel(employee);
+  }
+
+  const rates = new Set<number>();
+  for (const item of summaries) {
+    if (item.summary.totalWorkedSeconds > 0) {
+      rates.add(hourlyRateForEntry(item.entry));
+    }
+  }
+
+  if (rates.size === 0) {
+    return rateLabel(employee);
+  }
+
+  const sorted = Array.from(rates).sort((a, b) => a - b);
+  if (sorted.length === 1) {
+    return `${employee.currency}${formatCompactAmount(sorted[0])}/hr`;
+  }
+
+  const min = formatCompactAmount(sorted[0]);
+  const max = formatCompactAmount(sorted[sorted.length - 1]);
+  return `${employee.currency}${min}–${max}/hr`;
 }
 
 function hourlyRateForEntry(entry: {
@@ -1770,6 +1828,43 @@ const REPORT_STYLES = `
     width: 120px;
   }
 
+  .daily-table .day-col {
+    min-width: 80px;
+    width: 80px;
+  }
+
+  .daily-table .summary-col {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .daily-table .total-hours-col {
+    min-width: 112px;
+    width: 112px;
+  }
+
+  .daily-table .working-hours-col {
+    min-width: 152px;
+    width: 152px;
+  }
+
+  .daily-table .rate-col {
+    min-width: 128px;
+    width: 128px;
+  }
+
+  .working-hours-heading {
+    align-items: center;
+    display: inline-flex;
+    gap: 4px;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .working-hours-heading s-icon {
+    flex-shrink: 0;
+  }
+
   .daily-table th:first-child {
     background: #fafafa;
   }
@@ -1792,19 +1887,6 @@ const REPORT_STYLES = `
 
   .strong-cell {
     font-weight: 700;
-  }
-
-  .info-dot {
-    align-items: center;
-    background: #ebebeb;
-    border-radius: 999px;
-    color: #616161;
-    display: inline-flex;
-    font-size: 10px;
-    height: 14px;
-    justify-content: center;
-    margin-left: 4px;
-    width: 14px;
   }
 
   .position-pill {
