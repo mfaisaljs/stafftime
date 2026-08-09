@@ -1,17 +1,27 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useRouteError } from "react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Form, useLoaderData, useRouteError } from "react-router";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  FileText,
   Search,
   UserRound,
 } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import { getAdminShop } from "../services/admin.server";
 import prisma from "../db.server";
+
+type SelectedProduct = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  price: string;
+  variantCount: number;
+  commission: string;
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -40,7 +50,12 @@ export default function CreateCommissionProgram() {
   const [dateRange, setDateRange] = useState(`${todayKey}--${todayKey}`);
   const [dateRangeLabel, setDateRangeLabel] = useState("Today");
   const [calendarMonth, setCalendarMonth] = useState(() => dateFromKey(todayKey));
+  const [productScope, setProductScope] = useState<"all" | "specific">("all");
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+  const [checkedProductIds, setCheckedProductIds] = useState<Set<string>>(() => new Set());
+  const [bulkCommission, setBulkCommission] = useState("");
   const limitedDateRef = useRef<HTMLDivElement | null>(null);
+  const dirtyInputRef = useRef<HTMLInputElement | null>(null);
   const filteredStaff = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return employees;
@@ -65,6 +80,13 @@ export default function CreateCommissionProgram() {
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
   }, [dateRangeOpen]);
 
+  const markDirty = () => {
+    if (dirtyInputRef.current) {
+      dirtyInputRef.current.value = String(Date.now());
+      notifySaveBar(dirtyInputRef.current);
+    }
+  };
+
   const toggleStaff = (employeeId: string) => {
     const next = new Set(selectedStaffIds);
     if (next.has(employeeId)) {
@@ -73,6 +95,7 @@ export default function CreateCommissionProgram() {
       next.add(employeeId);
     }
     setSelectedStaffIds(next);
+    markDirty();
   };
 
   const toggleVisibleStaff = (checked: boolean) => {
@@ -85,6 +108,7 @@ export default function CreateCommissionProgram() {
       }
     }
     setSelectedStaffIds(next);
+    markDirty();
   };
 
   const selectDatePreset = (label: string, days: number) => {
@@ -93,11 +117,13 @@ export default function CreateCommissionProgram() {
     setDateRange(`${toDateKey(start)}--${toDateKey(end)}`);
     setDateRangeLabel(label);
     setCalendarMonth(start);
+    markDirty();
   };
 
   const selectDateRange = (value: string) => {
     setDateRange(value);
     setDateRangeLabel(formatDateRange(value));
+    markDirty();
   };
 
   const selectCalendarDay = (dateKey: string) => {
@@ -109,9 +135,96 @@ export default function CreateCommissionProgram() {
     selectDateRange(`${start}--${dateKey}`);
   };
 
+  const openProductPicker = async () => {
+    const selected = await shopifyResourcePicker({
+      type: "product",
+      multiple: true,
+      action: "select",
+      selectionIds: selectedProducts.map((product) => ({ id: product.id })),
+    });
+    if (!selected) return;
+    const previousCommissions = new Map(
+      selectedProducts.map((product) => [product.id, product.commission]),
+    );
+    const nextProducts = selected.map((product) => mapPickerProduct(product, previousCommissions));
+    setSelectedProducts(nextProducts);
+    setCheckedProductIds(new Set());
+    markDirty();
+  };
+
+  const toggleProductChecked = (productId: string) => {
+    const next = new Set(checkedProductIds);
+    if (next.has(productId)) {
+      next.delete(productId);
+    } else {
+      next.add(productId);
+    }
+    setCheckedProductIds(next);
+  };
+
+  const toggleAllProductsChecked = (checked: boolean) => {
+    setCheckedProductIds(
+      checked ? new Set(selectedProducts.map((product) => product.id)) : new Set(),
+    );
+  };
+
+  const updateProductCommission = (productId: string, commission: string) => {
+    setSelectedProducts((current) =>
+      current.map((product) =>
+        product.id === productId ? { ...product, commission } : product,
+      ),
+    );
+    markDirty();
+  };
+
+  const applyBulkCommission = () => {
+    if (!bulkCommission.trim() || checkedProductIds.size === 0) return;
+    setSelectedProducts((current) =>
+      current.map((product) =>
+        checkedProductIds.has(product.id)
+          ? { ...product, commission: bulkCommission.trim() }
+          : product,
+      ),
+    );
+    markDirty();
+  };
+
+  const handleDiscard = () => {
+    setQuery("");
+    setSelectedStaffIds(new Set());
+    setLimitedTime(false);
+    setDateRangeOpen(false);
+    setDateRange(`${todayKey}--${todayKey}`);
+    setDateRangeLabel("Today");
+    setCalendarMonth(dateFromKey(todayKey));
+    setProductScope("all");
+    setSelectedProducts([]);
+    setCheckedProductIds(new Set());
+    setBulkCommission("");
+  };
+
   return (
     <s-page heading="Create Commission Program">
-      <div className="commission-create-page">
+      <Form
+        method="post"
+        data-save-bar
+        data-discard-confirmation
+        onReset={handleDiscard}
+        className="commission-create-page"
+      >
+        <input ref={dirtyInputRef} type="hidden" name="formDirty" defaultValue="0" />
+        <input type="hidden" name="dateRange" value={dateRange} />
+        <input type="hidden" name="limitedTime" value={String(limitedTime)} />
+        {Array.from(selectedStaffIds).map((employeeId) => (
+          <input key={employeeId} type="hidden" name="employeeIds" value={employeeId} />
+        ))}
+        {selectedProducts.map((product) => (
+          <Fragment key={product.id}>
+            <input type="hidden" name="productIds" value={product.id} />
+            <input type="hidden" name={`commission_${product.id}`} value={product.commission} />
+          </Fragment>
+        ))}
+
         <div className="create-layout">
           <div className="form-column">
             <section className="form-card">
@@ -121,7 +234,7 @@ export default function CreateCommissionProgram() {
               </h2>
               <label>
                 Program Name
-                <input name="programName" placeholder="Enter program name" />
+                <input name="programName" placeholder="Enter program name" required />
               </label>
               <p>This name will be visible to your staff members</p>
             </section>
@@ -156,6 +269,7 @@ export default function CreateCommissionProgram() {
                     const checked = checkboxChecked(event);
                     setLimitedTime(checked);
                     setDateRangeOpen(false);
+                    markDirty();
                   }}
                 ></s-checkbox>
                 <CalendarDays aria-hidden="true" size={16} />
@@ -191,6 +305,7 @@ export default function CreateCommissionProgram() {
                                 const yesterday = addDays(new Date(), -1);
                                 setDateRange(`${toDateKey(yesterday)}--${toDateKey(yesterday)}`);
                                 setDateRangeLabel(label);
+                                markDirty();
                                 return;
                               }
                               selectDatePreset(String(label), Number(days));
@@ -244,22 +359,184 @@ export default function CreateCommissionProgram() {
             <section className="form-card">
               <h2>Product Selection</h2>
               <label className="radio-row">
-                <input type="radio" name="productScope" value="all" defaultChecked />
+                <input
+                  type="radio"
+                  name="productScope"
+                  value="all"
+                  checked={productScope === "all"}
+                  onChange={() => {
+                    setProductScope("all");
+                    markDirty();
+                  }}
+                />
                 Include All Products
               </label>
               <label className="radio-row">
-                <input type="radio" name="productScope" value="specific" />
+                <input
+                  type="radio"
+                  name="productScope"
+                  value="specific"
+                  checked={productScope === "specific"}
+                  onChange={() => {
+                    setProductScope("specific");
+                    markDirty();
+                  }}
+                />
                 Include Specific Products
               </label>
 
-              <label>
-                Commission for All Products
-                <div className="money-input">
-                  <span>$</span>
-                  <input name="commissionValue" inputMode="decimal" />
-                </div>
-              </label>
-              <p>Set a fixed commission value in fixed amount</p>
+              {productScope === "all" ? (
+                <>
+                  <label>
+                    Commission for All Products
+                    <div className="money-input">
+                      <span>$</span>
+                      <input name="commissionValue" inputMode="decimal" />
+                    </div>
+                  </label>
+                  <p>Set a fixed commission value in fixed amount</p>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="product-select-trigger"
+                    type="button"
+                    onClick={() => void openProductPicker()}
+                  >
+                    <Search aria-hidden="true" size={18} />
+                    <span>Select Products</span>
+                  </button>
+
+                  {selectedProducts.length === 0 ? (
+                    <div className="product-empty">
+                      <div className="product-empty-illustration" aria-hidden="true">
+                        <FileText size={64} />
+                        <span />
+                      </div>
+                      <strong>No products selected</strong>
+                      <p>Select specific products to set individual commission rates</p>
+                      <s-button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => void openProductPicker()}
+                      >
+                        Select Products
+                      </s-button>
+                    </div>
+                  ) : (
+                    <div className="product-manager">
+                      <div className="product-manager-header">
+                        <strong>Product Details</strong>
+                        <strong>Commission</strong>
+                      </div>
+                      <div className="product-manager-toolbar">
+                        <span>
+                          {checkedProductIds.size} of {selectedProducts.length} Products
+                          selected
+                        </span>
+                        <button
+                          type="button"
+                          className="text-action"
+                          onClick={() => toggleAllProductsChecked(true)}
+                        >
+                          Select All Products
+                        </button>
+                      </div>
+
+                      <div className="product-list-card">
+                        <div className="product-list-heading">
+                          <s-checkbox
+                            checked={
+                              selectedProducts.length > 0 &&
+                              checkedProductIds.size === selectedProducts.length
+                            }
+                            indeterminate={
+                              checkedProductIds.size > 0 &&
+                              checkedProductIds.size < selectedProducts.length
+                            }
+                            onChange={(event) =>
+                              toggleAllProductsChecked(checkboxChecked(event))
+                            }
+                          ></s-checkbox>
+                          <strong>Showing {selectedProducts.length} products</strong>
+                        </div>
+
+                        {selectedProducts.map((product) => (
+                          <div className="product-list-row" key={product.id}>
+                            <s-checkbox
+                              checked={checkedProductIds.has(product.id)}
+                              onChange={() => toggleProductChecked(product.id)}
+                            ></s-checkbox>
+                            <div className="product-thumb" aria-hidden="true">
+                              {product.imageUrl ? (
+                                <img src={product.imageUrl} alt="" />
+                              ) : (
+                                <FileText size={22} />
+                              )}
+                            </div>
+                            <div className="product-meta">
+                              <strong>{product.title}</strong>
+                              <div className="product-meta-row">
+                                <span>{product.price}</span>
+                                <span className="variant-pill">
+                                  {product.variantCount} Variant
+                                  {product.variantCount === 1 ? "" : "s"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="money-input product-commission-input">
+                              <span>$</span>
+                              <input
+                                inputMode="decimal"
+                                placeholder="Enter fixed commission"
+                                value={product.commission}
+                                onChange={(event) =>
+                                  updateProductCommission(
+                                    product.id,
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="bulk-update-card">
+                        <strong>Bulk Update Selected Products</strong>
+                        <p>Set commission for all selected products</p>
+                        <div className="bulk-update-row">
+                          <div className="money-input">
+                            <span>$</span>
+                            <input
+                              inputMode="decimal"
+                              value={bulkCommission}
+                              onChange={(event) =>
+                                setBulkCommission(event.currentTarget.value)
+                              }
+                            />
+                          </div>
+                          <s-button
+                            variant="secondary"
+                            type="button"
+                            disabled={
+                              checkedProductIds.size === 0 || !bulkCommission.trim()
+                            }
+                            onClick={applyBulkCommission}
+                          >
+                            Apply to Selected
+                          </s-button>
+                        </div>
+                        <p>Apply fixed commission value to all selected products</p>
+                        <p>
+                          This will update the commission for selected products{" "}
+                          {checkedProductIds.size} Products
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </section>
           </div>
 
@@ -318,7 +595,7 @@ export default function CreateCommissionProgram() {
             </div>
           </aside>
         </div>
-      </div>
+      </Form>
 
       <style>{CREATE_COMMISSION_STYLES}</style>
     </s-page>
@@ -406,6 +683,62 @@ function CalendarMonth({
 
 function checkboxChecked(event: { currentTarget: unknown }) {
   return Boolean((event.currentTarget as unknown as { checked: boolean }).checked);
+}
+
+function notifySaveBar(element: HTMLInputElement) {
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+type PickerProduct = {
+  id: string;
+  title?: string;
+  images?: Array<{ originalSrc?: string; src?: string; url?: string }>;
+  variants?: Array<{ id?: string; price?: string | number }>;
+};
+
+async function shopifyResourcePicker(options: {
+  type: "product";
+  multiple: boolean;
+  action: "select";
+  selectionIds: Array<{ id: string }>;
+}) {
+  const picker = (
+    window as unknown as {
+      shopify?: {
+        resourcePicker?: (options: {
+          type: "product";
+          multiple: boolean;
+          action: "select";
+          selectionIds: Array<{ id: string }>;
+        }) => Promise<PickerProduct[] | undefined>;
+      };
+    }
+  ).shopify?.resourcePicker;
+  if (!picker) return undefined;
+  return picker(options);
+}
+
+function mapPickerProduct(
+  product: PickerProduct,
+  previousCommissions: Map<string, string>,
+): SelectedProduct {
+  const id = String(product.id);
+  const image = product.images?.[0];
+  const firstVariant = product.variants?.[0];
+  const priceValue = firstVariant?.price;
+  const price =
+    priceValue === undefined || priceValue === null || priceValue === ""
+      ? "$0.00"
+      : `$${Number(priceValue).toFixed(2)}`;
+
+  return {
+    id,
+    title: String(product.title ?? "Untitled product"),
+    imageUrl: String(image?.originalSrc ?? image?.src ?? image?.url ?? ""),
+    price,
+    variantCount: product.variants?.length ?? 1,
+    commission: previousCommissions.get(id) ?? "",
+  };
 }
 
 function addDays(date: Date, days: number) {
@@ -771,7 +1104,179 @@ const CREATE_COMMISSION_STYLES = `
   }
 
   .radio-row input {
+    accent-color: #000;
     min-height: auto;
+  }
+
+  .product-select-trigger {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #8c9196;
+    border-radius: 8px;
+    color: #616161;
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 12px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .product-empty {
+    align-items: center;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    padding: 28px 12px 12px;
+    text-align: center;
+  }
+
+  .product-empty p {
+    color: #616161;
+    margin: 0 0 6px;
+  }
+
+  .product-empty-illustration {
+    color: #d8d8d8;
+    display: grid;
+    margin-bottom: 6px;
+    place-items: center;
+    position: relative;
+  }
+
+  .product-empty-illustration span {
+    background: #f5b63b;
+    border-radius: 2px;
+    height: 18px;
+    left: 18px;
+    position: absolute;
+    top: 12px;
+    width: 18px;
+  }
+
+  .product-manager {
+    display: grid;
+    gap: 14px;
+  }
+
+  .product-manager-header {
+    display: grid;
+    font-size: 13px;
+    grid-template-columns: 1fr 180px;
+    padding: 0 4px;
+  }
+
+  .product-manager-header strong:last-child {
+    text-align: right;
+  }
+
+  .product-manager-toolbar {
+    align-items: center;
+    color: #616161;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .text-action {
+    background: transparent;
+    border: 0;
+    color: #303030;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 650;
+    text-decoration: underline;
+  }
+
+  .product-list-card,
+  .bulk-update-card {
+    border: 1px solid #e3e3e3;
+    border-radius: 10px;
+    display: grid;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .product-list-heading {
+    align-items: center;
+    border-bottom: 1px solid #ececec;
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .product-list-row {
+    align-items: center;
+    border-bottom: 1px solid #ececec;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: auto 42px 1fr 180px;
+    padding: 12px 14px;
+  }
+
+  .product-list-row:last-child {
+    border-bottom: 0;
+  }
+
+  .product-thumb {
+    align-items: center;
+    background: #f4f4f4;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    color: #b5b5b5;
+    display: inline-flex;
+    height: 42px;
+    justify-content: center;
+    overflow: hidden;
+    width: 42px;
+  }
+
+  .product-thumb img {
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+  }
+
+  .product-meta {
+    display: grid;
+    gap: 4px;
+  }
+
+  .product-meta-row {
+    align-items: center;
+    color: #616161;
+    display: flex;
+    gap: 8px;
+  }
+
+  .variant-pill {
+    background: #efefef;
+    border-radius: 999px;
+    color: #616161;
+    font-size: 12px;
+    padding: 2px 8px;
+  }
+
+  .product-commission-input {
+    width: 180px;
+  }
+
+  .bulk-update-card {
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .bulk-update-card p {
+    color: #616161;
+    margin: 0;
+  }
+
+  .bulk-update-row {
+    align-items: center;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr auto;
   }
 
   .money-input {

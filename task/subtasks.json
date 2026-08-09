@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T22:06:30.000Z",
+  "lastUpdated": "2026-08-09T22:12:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -737,7 +737,11 @@
         "Limited Time Commission date selector matches the Reports date picker structure and styling with two months side by side",
         "Limited Time Commission date selector closes when clicking outside the calendar",
         "Limited Time Commission date selector shrink-wraps content without extra right-side space",
-        "Create Commission Program route does not show a back arrow"
+        "Create Commission Program route does not show a back arrow",
+        "Include Specific Products shows empty-state select UI and opens App Bridge product resource picker",
+        "Create Commission Program form uses Shopify data-save-bar for save/discard",
+        "Product Selection radio buttons use black accent color matching checkbox styling",
+        "After product resource picker selection, product manager shows details, commissions, select-all, and bulk update"
       ],
       "files": [
         "app/routes/app.commission-programs.tsx",

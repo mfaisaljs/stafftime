@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T22:06:30.000Z",
+  "lastUpdated": "2026-08-09T22:12:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -99,6 +99,10 @@
     "Updated: Limited Time Commission calendar now closes when clicking outside the selector.",
     "Updated: Limited Time Commission calendar now shrink-wraps content without extra right-side space.",
     "Updated: Create Commission Program route no longer shows a back arrow.",
+    "Updated: Include Specific Products now shows empty-state select UI and opens App Bridge product resource picker.",
+    "Updated: Create Commission Program form now uses Shopify data-save-bar for save/discard.",
+    "Updated: Product Selection radio buttons now use black accent color to match checkbox styling.",
+    "Updated: After product resource picker selection, product manager shows details, commissions, select-all, and bulk update.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."
