@@ -118,13 +118,13 @@ function WorkforceModal() {
               <s-text-field
                 label="Employee PIN"
                 value={pin}
-                onChange={(value: string) => setPin(value)}
+                onInput={(event) => setPin(event.currentTarget.value)}
               />
             ) : (
               <s-text-field
                 label="QR Code"
                 value={qrCode}
-                onChange={(value: string) => setQrCode(value)}
+                onInput={(event) => setQrCode(event.currentTarget.value)}
               />
             )}
             {error && <s-banner tone="critical">{error}</s-banner>}
@@ -220,7 +220,7 @@ function WorkforceModal() {
               </>
             )}
           </s-stack>
-          <s-button variant="tertiary" onClick={() => setVerified(null)}>
+          <s-button variant="secondary" onClick={() => setVerified(null)}>
             Switch employee
           </s-button>
         </s-stack>
@@ -235,3 +235,4 @@ function formatTime(iso: string) {
     minute: "2-digit",
   });
 }
+
