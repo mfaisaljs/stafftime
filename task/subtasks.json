@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T17:38:10.000Z",
+  "lastUpdated": "2026-08-09T17:42:03.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -619,7 +619,8 @@
         "Apply updates report data using start and end date query params",
         "Today, Yesterday, Last 7, 30, 90, and 365 day presets are available",
         "Daily Activity keeps the selected date range when switching tabs",
-        "Daily Activity columns match the reference pattern with day columns followed by total hours, working hours, and rate"
+        "Daily Activity columns match the reference pattern with day columns followed by total hours, working hours, and rate",
+        "Daily Activity keeps Staff Name fixed while Position, days, totals, and rate scroll without overlap"
       ],
       "files": [
         "app/routes/app.reports.tsx",

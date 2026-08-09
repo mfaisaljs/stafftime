@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T17:38:10.000Z",
+  "lastUpdated": "2026-08-09T17:42:03.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -44,6 +44,7 @@
     "Updated: Reports date range control opens a dropdown and refreshes data for 7, 30, or 90 days.",
     "ST044 complete: Reports date range control now opens a Polaris-style two-month calendar panel with presets and custom apply/cancel flow.",
     "Updated: Daily Activity preserves selected report date ranges across tabs and matches the reference column order with day columns before totals and rate.",
+    "Updated: Daily Activity sticky Staff Name column now has fixed width and truncation so scrollable columns no longer overlap Position.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

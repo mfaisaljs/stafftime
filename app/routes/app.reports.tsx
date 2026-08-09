@@ -622,7 +622,7 @@ function DailyActivityReport({
         <div className="table-scroll">
           <table
             className="report-table daily-table"
-            style={{ minWidth: `${Math.max(930, 500 + days.length * 84)}px` }}
+            style={{ minWidth: `${Math.max(980, 640 + days.length * 88)}px` }}
           >
             <thead>
               <tr>
@@ -645,7 +645,7 @@ function DailyActivityReport({
                   <td>
                     <span className="staff-cell">
                       <span className="avatar turquoise">{row.initials}</span>
-                      {row.name}
+                      <span className="staff-name">{row.name}</span>
                     </span>
                   </td>
                   <td>
@@ -1679,6 +1679,16 @@ const REPORT_STYLES = `
     display: inline-flex;
     gap: 8px;
     font-weight: 650;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .staff-name {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .avatar {
@@ -1744,9 +1754,20 @@ const REPORT_STYLES = `
 
   .daily-table th:first-child,
   .daily-table td:first-child {
+    box-shadow: 8px 0 12px rgba(255, 255, 255, 0.92);
+    max-width: 220px;
+    min-width: 220px;
     position: sticky;
     left: 0;
+    width: 220px;
     z-index: 1;
+  }
+
+  .daily-table th:nth-child(2),
+  .daily-table td:nth-child(2) {
+    max-width: 120px;
+    min-width: 120px;
+    width: 120px;
   }
 
   .daily-table th:first-child {
