@@ -6,7 +6,7 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-09T20:58:30.000Z",
+  "lastUpdated": "2026-08-09T20:59:30.000Z",
   "notes": [
     "MVP core built and deployed (stafftime-3) to spaceraceplayground.myshopify.com.",
     "Dev config split: shopify.app.toml (deploy/webhooks) + shopify.app.local.toml (localhost dev without webhooks).",
@@ -76,7 +76,7 @@
     "Updated: Schedule shift hover actions are centered on a solid overlay that hides shift details behind the controls.",
     "Updated: Schedule shift hover action icons and buttons are larger for better visibility.",
     "Updated: Schedule shift hover action buttons now use white backgrounds with a red delete icon.",
-    "Updated: Create Shift staff and location selects now show placeholder choices instead of default selections.",
+    "Updated: Create Shift staff and location selects now show disabled placeholder choices instead of default selections.",
     "T016 marked complete — all MVP hardening subtasks (ST021–ST028) done.",
     "Next priorities: missed punch create form, production hosting, QR display, App Store prep.",
     "Competitive reference: Zon Staff Management on Shopify App Store."

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T20:58:30.000Z",
+  "lastUpdated": "2026-08-09T20:59:30.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -675,7 +675,7 @@
         "Shift hover edit and delete controls are centered on a solid overlay that hides shift content",
         "Shift hover action icons and buttons are sized for better visibility",
         "Shift hover edit and delete buttons use white backgrounds with a red delete icon",
-        "Create Shift staff and location fields show placeholder choices instead of default selections"
+        "Create Shift staff and location fields show disabled placeholder choices instead of default selections"
       ],
       "files": [
         "app/routes/app.schedules.tsx",
