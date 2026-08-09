@@ -5,6 +5,7 @@ import { Link, useLoaderData, useSearchParams } from "react-router";
 import {
   AlertCircle,
   ArrowLeft,
+  BadgePercent,
   BarChart2,
   Briefcase,
   Calendar,
@@ -19,7 +20,6 @@ import {
   PiggyBank,
   Plus,
   Settings,
-  Target,
   Upload,
   UserCog,
 } from "lucide-react";
@@ -512,19 +512,19 @@ function CommissionTab({
     <div className="commission-tab">
       <div className="commission-metrics">
         <MetricCard
-          icon={<Target size={18} />}
+          icon={<BadgePercent size={20} />}
           tone="blue"
           label="Total Commission"
           value={formatCurrency(commission.total)}
         />
         <MetricCard
-          icon={<CheckCircle size={18} />}
+          icon={<CheckCircle size={20} />}
           tone="green"
           label="Paid Commission"
           value={formatCurrency(commission.paid)}
         />
         <MetricCard
-          icon={<AlertCircle size={18} />}
+          icon={<AlertCircle size={20} />}
           tone="yellow"
           label="Unpaid Commission"
           value={formatCurrency(commission.unpaid)}
@@ -919,7 +919,7 @@ const STAFF_DETAIL_STYLES = `
 
   .metrics-grid {
     display: grid;
-    gap: 12px;
+    gap: 14px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -929,9 +929,10 @@ const STAFF_DETAIL_STYLES = `
     border: 1px solid #e3e3e3;
     border-radius: 12px;
     display: flex;
-    gap: 12px;
+    gap: 14px;
+    min-height: 88px;
     min-width: 0;
-    padding: 14px 16px;
+    padding: 20px 22px;
   }
 
   .metric-icon {
@@ -939,9 +940,14 @@ const STAFF_DETAIL_STYLES = `
     border-radius: 999px;
     display: inline-flex;
     flex-shrink: 0;
-    height: 36px;
+    height: 44px;
     justify-content: center;
-    width: 36px;
+    width: 44px;
+  }
+
+  .metric-icon svg {
+    height: 20px;
+    width: 20px;
   }
 
   .metric-icon.blue {
@@ -961,18 +967,18 @@ const STAFF_DETAIL_STYLES = `
 
   .metric-copy {
     display: grid;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
   }
 
   .metric-copy span {
     color: #616161;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .metric-copy strong {
     color: #303030;
-    font-size: 14px;
+    font-size: 20px;
     word-break: break-word;
   }
 
@@ -1096,7 +1102,7 @@ const STAFF_DETAIL_STYLES = `
 
   .payroll-metrics {
     display: grid;
-    gap: 12px;
+    gap: 14px;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
@@ -1133,7 +1139,7 @@ const STAFF_DETAIL_STYLES = `
 
   .commission-metrics {
     display: grid;
-    gap: 12px;
+    gap: 14px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 

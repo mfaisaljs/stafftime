@@ -1537,7 +1537,7 @@ const REPORT_STYLES = `
 
   .report-metrics {
     display: grid;
-    gap: 12px;
+    gap: 14px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -1553,21 +1553,26 @@ const REPORT_STYLES = `
   .metric-card {
     align-items: center;
     display: flex;
-    min-height: 82px;
-    padding: 16px 20px;
+    min-height: 96px;
+    padding: 20px 22px;
     position: relative;
   }
 
   .metric-icon {
     align-items: center;
-    border-radius: 6px;
+    border-radius: 8px;
     display: inline-flex;
-    height: 28px;
+    height: 36px;
     justify-content: center;
     position: absolute;
-    right: 18px;
-    top: 18px;
-    width: 28px;
+    right: 20px;
+    top: 20px;
+    width: 36px;
+  }
+
+  .metric-icon svg {
+    height: 20px;
+    width: 20px;
   }
 
   .metric-icon.blue {
@@ -1593,16 +1598,17 @@ const REPORT_STYLES = `
   .metric-copy {
     display: grid;
     gap: 8px;
+    padding-right: 44px;
   }
 
   .metric-copy span {
     color: #616161;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .metric-copy strong {
     color: #303030;
-    font-size: 20px;
+    font-size: 22px;
   }
 
   .report-controls {
