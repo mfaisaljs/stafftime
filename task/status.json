@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T09:45:00.000Z",
+  "lastUpdated": "2026-08-10T09:55:00.000Z",
   "notes": [
+    "ST056 complete: TaskLists route at /app/tasklists with empty state and Create Task List CTAs; nav link added.",
     "ST055 complete: Create Payroll Payment period uses shared DateRangeSelector (presets + dual calendar).",
     "ST054 complete: Create Payroll page at /app/payroll/:employeeId/create with overview, payment details, method, proof, and PayrollPayment persistence.",
     "ST053 complete: Payroll route shows staff payroll table with hours, earnings, and Create Payroll action.",
