@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T10:35:00.000Z",
+  "lastUpdated": "2026-08-10T10:45:00.000Z",
   "notes": [
+    "ST060 complete: Attendance route matches Reports pattern with date range, metric cards, status tabs, and Working/On Break/Absent/Late staff table.",
+    "Updated: app nav order places Attendance directly below Staff.",
     "Updated: clicking a TaskLists row opens /app/tasklists/:id/edit; View Details still opens status detail.",
     "Updated: Task list detail page matches Task List Information, dated status/progress, and Tasks table with Complete Task.",
     "ST058 complete: TaskLists index rows show status toggle, timeline/assigned pills, locations, and View Details.",

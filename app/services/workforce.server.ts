@@ -748,6 +748,182 @@ export async function getAttendanceSummary(shopDomain: string) {
   };
 }
 
+export type AttendanceStatus =
+  | "working"
+  | "on_break"
+  | "absent"
+  | "late"
+  | "off";
+
+const LATE_GRACE_MS = 5 * 60 * 1000;
+
+/** Attendance board for a date range (reports-style metrics + staff rows). */
+export async function getAttendanceBoard(
+  shopDomain: string,
+  range: { start: string; end: string },
+) {
+  const shop = await ensureShop(shopDomain);
+  const rangeStart = startOfDayFromKey(range.start);
+  const rangeEnd = endOfDayFromKey(range.end);
+  const todayKey = toDateKeyLocal(new Date());
+  const refKey =
+    todayKey >= range.start && todayKey <= range.end ? todayKey : range.end;
+  const refStart = startOfDayFromKey(refKey);
+  const refEnd = endOfDayFromKey(refKey);
+  const isLive = refKey === todayKey;
+
+  const [employees, timeEntries, shifts, pendingApprovals] = await Promise.all([
+    prisma.employee.findMany({
+      where: { shopId: shop.id, status: "ACTIVE" },
+      include: { location: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    }),
+    prisma.timeEntry.findMany({
+      where: {
+        shopId: shop.id,
+        OR: [
+          {
+            clockInAt: { gte: rangeStart, lte: rangeEnd },
+          },
+          ...(isLive ? [{ status: "OPEN" as const }] : []),
+        ],
+      },
+      include: {
+        location: true,
+        breaks: { orderBy: { startedAt: "desc" } },
+      },
+      orderBy: { clockInAt: "desc" },
+    }),
+    prisma.shift.findMany({
+      where: {
+        shopId: shop.id,
+        startsAt: { gte: rangeStart, lte: rangeEnd },
+      },
+      include: { location: true },
+      orderBy: { startsAt: "asc" },
+    }),
+    prisma.missedPunchRequest.count({
+      where: { shopId: shop.id, status: "PENDING" },
+    }),
+  ]);
+
+  const rows = employees.map((employee) => {
+    const employeeShifts = shifts.filter(
+      (shift) => shift.employeeId === employee.id,
+    );
+    const refShifts = employeeShifts.filter(
+      (shift) =>
+        shift.startsAt.getTime() >= refStart.getTime() &&
+        shift.startsAt.getTime() <= refEnd.getTime(),
+    );
+    const employeeEntries = timeEntries.filter(
+      (entry) => entry.employeeId === employee.id,
+    );
+    const refEntries = employeeEntries.filter((entry) => {
+      const inRefDay =
+        entry.clockInAt.getTime() >= refStart.getTime() &&
+        entry.clockInAt.getTime() <= refEnd.getTime();
+      if (inRefDay) return true;
+      return isLive && entry.status === "OPEN";
+    });
+
+    const openEntry =
+      refEntries.find((entry) => entry.status === "OPEN") ??
+      (isLive
+        ? employeeEntries.find((entry) => entry.status === "OPEN")
+        : undefined);
+    const primaryEntry = openEntry ?? refEntries[0];
+    const shiftForLate =
+      refShifts[0] ??
+      employeeShifts.find(
+        (shift) =>
+          primaryEntry &&
+          Math.abs(shift.startsAt.getTime() - primaryEntry.clockInAt.getTime()) <
+            24 * 60 * 60 * 1000,
+      );
+    const isLate = Boolean(
+      primaryEntry &&
+        shiftForLate &&
+        primaryEntry.clockInAt.getTime() >
+          shiftForLate.startsAt.getTime() + LATE_GRACE_MS,
+    );
+
+    let status: AttendanceStatus = "off";
+    if (openEntry) {
+      const onBreak = openEntry.breaks.some((item) => item.endedAt == null);
+      status = onBreak ? "on_break" : "working";
+    } else if (refShifts.length > 0 && refEntries.length === 0) {
+      status = "absent";
+    } else if (isLate) {
+      status = "late";
+    } else if (refEntries.length > 0) {
+      status = "working";
+    }
+
+    const locationName =
+      openEntry?.location.name ??
+      primaryEntry?.location.name ??
+      refShifts[0]?.location.name ??
+      employee.location?.name ??
+      "—";
+
+    return {
+      id: employee.id,
+      name: `${employee.firstName} ${employee.lastName}`,
+      initials: initials(employee.firstName, employee.lastName),
+      position: employee.position ?? "Staff",
+      location: locationName,
+      status,
+      isLate: isLate && status !== "absent" && status !== "off",
+      clockInAt: primaryEntry?.clockInAt?.toISOString() ?? null,
+      shiftStartsAt: (refShifts[0] ?? shiftForLate)?.startsAt?.toISOString() ?? null,
+      entryStatus: primaryEntry?.status ?? null,
+    };
+  });
+
+  const workingCount = rows.filter((row) => row.status === "working").length;
+  const onBreakCount = rows.filter((row) => row.status === "on_break").length;
+  const absentCount = rows.filter((row) => row.status === "absent").length;
+  const lateCount = rows.filter(
+    (row) => row.status === "late" || row.isLate,
+  ).length;
+
+  return {
+    refDate: refKey,
+    live: isLive,
+    metrics: {
+      working: workingCount,
+      onBreak: onBreakCount,
+      absent: absentCount,
+      late: lateCount,
+      totalStaff: employees.length,
+      pendingApprovals,
+    },
+    rows,
+  };
+}
+
+function toDateKeyLocal(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function startOfDayFromKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function endOfDayFromKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999);
+}
+
+function initials(firstName: string, lastName: string) {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
 export async function resolveShopFromRequest(dest: string) {
   return ensureShop(shopFromDest(dest));
 }

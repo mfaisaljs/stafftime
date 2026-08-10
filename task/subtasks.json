@@ -1005,6 +1005,26 @@
         "prisma/migrations/20260810103000_task_list_completions/migration.sql"
       ],
       "lastUpdated": "2026-08-10T10:35:00.000Z"
+    },
+    {
+      "id": "ST060",
+      "taskId": "T017",
+      "title": "Attendance route matches Reports pattern",
+      "description": "Rebuild /app/attendance with date range filter, metric cards, status tabs, and staff table for Working, On Break, Absent, and Late.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST011"],
+      "acceptanceCriteria": [
+        "Attendance page uses date range selector like Reports",
+        "Metric cards show Working, On Break, Absent, and Late counts",
+        "Staff table lists status pills for those four statuses (plus Off)",
+        "Status tabs filter the staff table"
+      ],
+      "files": [
+        "app/routes/app.attendance.tsx",
+        "app/services/workforce.server.ts"
+      ],
+      "lastUpdated": "2026-08-10T10:45:00.000Z"
     }
   ]
 }
