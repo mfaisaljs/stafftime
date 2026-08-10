@@ -41,9 +41,8 @@ const ACCEPTED_PROOF_TYPES = [
 
 const PAYMENT_TYPE_OPTIONS = [
   { value: "SALARY", label: "Salary" },
-  { value: "HOURLY", label: "Hourly" },
-  { value: "BONUS", label: "Bonus" },
   { value: "COMMISSION", label: "Commission" },
+  { value: "BONUS", label: "Bonus" },
 ];
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -145,6 +144,13 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const amountRaw = String(formData.get("amount") ?? "").replace(/[^0-9.]/g, "");
   const amount = Number.parseFloat(amountRaw);
   const proof = formData.get("proof");
+  const allowedPaymentTypes = new Set(
+    PAYMENT_TYPE_OPTIONS.map((option) => option.value),
+  );
+
+  if (!allowedPaymentTypes.has(paymentType)) {
+    return { error: "Payment type must be Salary, Commission, or Bonus." };
+  }
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return { error: "Enter a valid payment amount greater than zero." };
