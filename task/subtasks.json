@@ -1025,6 +1025,25 @@
         "app/services/workforce.server.ts"
       ],
       "lastUpdated": "2026-08-10T10:45:00.000Z"
+    },
+    {
+      "id": "ST061",
+      "taskId": "T017",
+      "title": "Dashboard matches Attendance board",
+      "description": "Reuse the Attendance board UI on /app Dashboard so both routes share date range, metrics, status tabs, and staff table.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST060"],
+      "acceptanceCriteria": [
+        "Dashboard uses the same attendance board as /app/attendance",
+        "Shared AttendanceBoard component powers both routes"
+      ],
+      "files": [
+        "app/components/attendance/AttendanceBoard.tsx",
+        "app/routes/app._index.tsx",
+        "app/routes/app.attendance.tsx"
+      ],
+      "lastUpdated": "2026-08-10T10:50:00.000Z"
     }
   ]
 }
