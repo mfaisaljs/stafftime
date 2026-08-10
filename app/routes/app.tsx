@@ -29,6 +29,7 @@ export default function App() {
         <s-link href="/app/payroll">Payroll</s-link>
         <s-link href="/app/tasklists">TaskLists</s-link>
         <s-link href="/app/missed-punches">Approvals</s-link>
+        <s-link href="/app/settings">Settings</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

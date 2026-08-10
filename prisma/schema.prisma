@@ -481,8 +481,40 @@ model Setting {
   requirePhoto          Boolean  @default(false)
   scheduleLocationColors String   @default("{}")
   scheduleStaffColors    String   @default("{}")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+
+  // Clock event settings
+  deductBreakTime              Boolean @default(true)
+  salaryAfterFirstClockIn      Boolean @default(true)
+  blockBreakAfterEndTime       Boolean @default(false)
+  allowEarlyClockIn            Boolean @default(true)
+  earlyClockInMinutes          Int     @default(30)
+  showPayrollStatsInPos        Boolean @default(true)
+  timeFormat                   String  @default("24H")
+  hourFormat                   String  @default("STANDARD")
+
+  // Absence calculation settings
+  excludePaidLeavesFromAbsences      Boolean @default(true)
+  includeUnpaidLeavesInAbsences      Boolean @default(true)
+  autoAddPaidLeavesToSalary          Boolean @default(true)
+  autoDeductUnpaidLeavesFromSalary   Boolean @default(true)
+  autoDeductAbsencesFromSalary       Boolean @default(true)
+  defaultDailyWorkingHours           Float   @default(8)
+
+  // Holiday rules (JSON weekday list, e.g. ["SUNDAY"])
+  holidayWeekdays String @default("[\"SUNDAY\"]")
+
+  // Staff portal feature flags
+  portalClockIn        Boolean @default(true)
+  portalManagerView    Boolean @default(true)
+  portalTimeOff        Boolean @default(true)
+  portalProfileShifts  Boolean @default(true)
+  portalTaskList       Boolean @default(true)
+  portalViewShifts     Boolean @default(true)
+  portalTimesheet      Boolean @default(true)
+  portalCreateShift    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }

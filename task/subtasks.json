@@ -1130,6 +1130,27 @@
         "app/routes/app.time-off.policy._index.tsx"
       ],
       "lastUpdated": "2026-08-10T14:15:00.000Z"
+    },
+    {
+      "id": "ST066",
+      "taskId": "T017",
+      "title": "Settings route with full options",
+      "description": "Add /app/settings matching Clock Event, Absence, Holiday Rules, and Staff Portal settings with persistence and save bar.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST065"],
+      "acceptanceCriteria": [
+        "Settings page matches annotated sections from the reference",
+        "All settings options persist on Setting model",
+        "Nav includes Settings link"
+      ],
+      "files": [
+        "app/routes/app.settings.tsx",
+        "app/routes/app.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260810143000_settings_page_options/migration.sql"
+      ],
+      "lastUpdated": "2026-08-10T14:20:00.000Z"
     }
   ]
 }
