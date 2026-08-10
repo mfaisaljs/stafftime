@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T19:10:00.000Z",
+  "lastUpdated": "2026-08-10T19:34:53.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -1278,6 +1278,25 @@
         "app/routes/app.time-off.new.tsx"
       ],
       "lastUpdated": "2026-08-10T19:10:00.000Z"
+    },
+    {
+      "id": "ST073",
+      "taskId": "T017",
+      "title": "Fix break deduction setting persistence",
+      "description": "Ensure deductBreakTime stays enabled when intended and working hours subtract unpaid breaks after clock-in → break → clock-out.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST070"],
+      "acceptanceCriteria": [
+        "Shop setting deductBreakTime is true when Deduct break time is enabled and saved",
+        "Working hours = total hours − unpaid break for clock-in → break → clock-out",
+        "Settings checkboxes post explicit true/false so Save cannot drop checked toggles"
+      ],
+      "files": [
+        "app/routes/app.settings.tsx",
+        "app/services/time-tracking.test.ts"
+      ],
+      "lastUpdated": "2026-08-10T19:34:53.000Z"
     }
   ]
 }

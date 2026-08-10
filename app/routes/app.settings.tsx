@@ -4,7 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
@@ -136,6 +136,9 @@ export default function SettingsPage() {
   const [allowEarlyClockIn, setAllowEarlyClockIn] = useState(
     settings.allowEarlyClockIn,
   );
+  useEffect(() => {
+    setAllowEarlyClockIn(settings.allowEarlyClockIn);
+  }, [settings.allowEarlyClockIn]);
   const [copied, setCopied] = useState(false);
   const isSubmitting = navigation.state === "submitting";
 
@@ -200,11 +203,14 @@ export default function SettingsPage() {
             />
 
             <div className="setting-row inline-row">
+              <input
+                type="hidden"
+                name="allowEarlyClockIn"
+                value={allowEarlyClockIn ? "true" : "false"}
+              />
               <label className="check-label">
                 <input
                   type="checkbox"
-                  name="allowEarlyClockIn"
-                  value="true"
                   checked={allowEarlyClockIn}
                   onChange={(event) => {
                     setAllowEarlyClockIn(event.currentTarget.checked);
@@ -517,15 +523,23 @@ function SettingCheckbox({
   defaultChecked: boolean;
   onChange: () => void;
 }) {
+  const [checked, setChecked] = useState(defaultChecked);
+  useEffect(() => {
+    setChecked(defaultChecked);
+  }, [defaultChecked]);
+
   return (
     <div className="setting-row">
+      {/* Hidden field always posts true/false so Save never drops checked toggles. */}
+      <input type="hidden" name={name} value={checked ? "true" : "false"} />
       <label className="check-label">
         <input
           type="checkbox"
-          name={name}
-          value="true"
-          defaultChecked={defaultChecked}
-          onChange={onChange}
+          checked={checked}
+          onChange={(event) => {
+            setChecked(event.currentTarget.checked);
+            onChange();
+          }}
         />
         <span>{label}</span>
       </label>
@@ -547,14 +561,21 @@ function PortalFeature({
   defaultChecked: boolean;
   onChange: () => void;
 }) {
+  const [checked, setChecked] = useState(defaultChecked);
+  useEffect(() => {
+    setChecked(defaultChecked);
+  }, [defaultChecked]);
+
   return (
     <label className="portal-feature">
+      <input type="hidden" name={name} value={checked ? "true" : "false"} />
       <input
         type="checkbox"
-        name={name}
-        value="true"
-        defaultChecked={defaultChecked}
-        onChange={onChange}
+        checked={checked}
+        onChange={(event) => {
+          setChecked(event.currentTarget.checked);
+          onChange();
+        }}
       />
       <span>
         <strong>{title}</strong>

@@ -159,6 +159,32 @@ describe("time-tracking", () => {
     expect(summary.paidSeconds).toBe(summary.totalWorkedSeconds);
   });
 
+  it("deducts unpaid break when clock-in → break → clock-out without ending break first", () => {
+    const clockInAt = new Date("2026-08-10T19:09:22.191Z");
+    const breakStartedAt = new Date("2026-08-10T19:09:26.482Z");
+    const breakEndedAt = new Date("2026-08-10T19:25:35.862Z");
+    const clockOutAt = new Date("2026-08-10T19:25:43.407Z");
+    const entry = makeEntry(clockInAt, clockOutAt, [
+      {
+        id: "b1",
+        timeEntryId: "entry-1",
+        type: "UNPAID",
+        startedAt: breakStartedAt,
+        endedAt: breakEndedAt,
+        createdAt: clockInAt,
+        updatedAt: clockInAt,
+      },
+    ]);
+
+    const summary = summarizeTimeEntrySeconds(entry, clockOutAt, {
+      deductBreakTime: true,
+    });
+    expect(summary.totalWorkedSeconds).toBe(981);
+    expect(summary.unpaidBreakSeconds).toBe(969);
+    expect(summary.paidSeconds).toBe(12);
+    expect(formatDurationHms(summary.paidSeconds)).toBe("0h 0m 12s");
+  });
+
   it("formats durations in decimal hour format", () => {
     expect(formatDuration(5400, "DECIMAL")).toBe("1.50h");
     expect(formatDurationHms(5400, "DECIMAL")).toBe("1.50h");
