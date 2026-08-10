@@ -94,6 +94,7 @@ model Shop {
   salesTargetSnapshots SalesTargetSnapshot[]
   taskLists           TaskList[]
   taskListCompletions TaskListCompletion[]
+  timeOffPolicies     TimeOffPolicy[]
 }
 
 model StoreLocation {
@@ -426,6 +427,23 @@ model TaskListCompletion {
   @@unique([taskItemId, dateKey])
   @@index([taskListId, dateKey])
   @@index([shopId, dateKey])
+}
+
+model TimeOffPolicy {
+  id              String   @id @default(cuid())
+  shopId          String
+  name            String
+  policyType      String   @default("TIME_OFF")
+  compensation    String   @default("UNPAID")
+  fullDayDuration Float    @default(8)
+  employeeIds     String   @default("[]")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
 }
 
 model Setting {

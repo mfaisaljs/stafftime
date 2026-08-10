@@ -1064,6 +1064,28 @@
         "app/routes/app.tsx"
       ],
       "lastUpdated": "2026-08-10T13:55:00.000Z"
+    },
+    {
+      "id": "ST063",
+      "taskId": "T017",
+      "title": "Time Off policy list and create form",
+      "description": "Policy Management list at /app/time-off/policy and Create Policy annotated form with persistence.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST062"],
+      "acceptanceCriteria": [
+        "View Policy opens Policy Management table with Create Policy action",
+        "Create Policy opens annotated form for name, type, paid status, duration, and staff",
+        "Saving a policy persists TimeOffPolicy and returns to the policy list"
+      ],
+      "files": [
+        "app/routes/app.time-off.policy.tsx",
+        "app/routes/app.time-off.policy._index.tsx",
+        "app/routes/app.time-off.policy.new.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260810140000_time_off_policies/migration.sql"
+      ],
+      "lastUpdated": "2026-08-10T14:00:00.000Z"
     }
   ]
 }
