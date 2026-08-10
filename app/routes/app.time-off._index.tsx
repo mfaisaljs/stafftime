@@ -1,21 +1,60 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import type { ReactNode } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useLoaderData, useNavigate, useSearchParams } from "react-router";
 import { ArrowUpDown, Search } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
+import { getAdminShop, getEmployees } from "../services/admin.server";
+import prisma from "../db.server";
 
 type StatusTab = "all" | "approved" | "pending" | "declined";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return { timeOffs: [] as Array<{ id: string }> };
+  const { session } = await authenticate.admin(request);
+  const shop = await getAdminShop(session);
+  const url = new URL(request.url);
+  const status = statusTab(url.searchParams.get("status"));
+
+  const [employees, requests] = await Promise.all([
+    getEmployees(session),
+    prisma.timeOffRequest.findMany({
+      where: {
+        shopId: shop.id,
+        ...(status === "all" ? {} : { status: status.toUpperCase() }),
+      },
+      include: { policy: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const employeeNameById = new Map(
+    employees.map((employee) => [
+      employee.id,
+      `${employee.firstName} ${employee.lastName}`.trim(),
+    ]),
+  );
+
+  return {
+    created: url.searchParams.get("created") === "1",
+    status,
+    timeOffs: requests.map((request) => ({
+      id: request.id,
+      staffName: employeeNameById.get(request.employeeId) ?? "Unknown staff",
+      policyName: request.policy.name,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      status: request.status.toLowerCase() as StatusTab,
+      reason: request.reason ?? "",
+    })),
+  };
 };
 
 export default function TimeOffIndexPage() {
+  const { timeOffs, created, status } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const tab = statusTab(searchParams.get("status"));
+  const tab = statusTab(searchParams.get("status") ?? status);
+  const isEmpty = timeOffs.length === 0;
 
   return (
     <s-page heading="Time Off Management" inlineSize="large">
@@ -35,6 +74,8 @@ export default function TimeOffIndexPage() {
       >
         Create Time Off
       </s-button>
+
+      {created && <s-banner tone="success" heading="Time off request created." />}
 
       <section className="timeoff-card">
         <div className="timeoff-toolbar">
@@ -84,11 +125,44 @@ export default function TimeOffIndexPage() {
           </div>
         </div>
 
-        <div className="timeoff-empty">
-          <Search aria-hidden="true" size={56} strokeWidth={1.25} />
-          <strong>No Time Offs found</strong>
-          <p>Try changing the filters or search term</p>
-        </div>
+        {isEmpty ? (
+          <div className="timeoff-empty">
+            <Search aria-hidden="true" size={56} strokeWidth={1.25} />
+            <strong>No Time Offs found</strong>
+            <p>Try changing the filters or search term</p>
+          </div>
+        ) : (
+          <div className="table-scroll">
+            <table className="timeoff-table">
+              <thead>
+                <tr>
+                  <th>Staff</th>
+                  <th>Policy</th>
+                  <th>Dates</th>
+                  <th>Status</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timeOffs.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.staffName}</td>
+                    <td>{item.policyName}</td>
+                    <td>
+                      {formatDate(item.startDate)} – {formatDate(item.endDate)}
+                    </td>
+                    <td>
+                      <span className={`status-pill ${item.status}`}>
+                        {statusLabel(item.status)}
+                      </span>
+                    </td>
+                    <td>{item.reason || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <p className="knowledge-link">
@@ -112,6 +186,7 @@ function StatusTabLink({
   children: ReactNode;
 }) {
   const next = new URLSearchParams(searchParams);
+  next.delete("created");
   if (status === "all") {
     next.delete("status");
   } else {
@@ -135,6 +210,28 @@ function statusTab(value: string | null): StatusTab {
     return value;
   }
   return "all";
+}
+
+function statusLabel(status: StatusTab) {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "declined":
+      return "Declined";
+    case "pending":
+      return "Pending";
+    default:
+      return "All";
+  }
+}
+
+function formatDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export const headers: HeadersFunction = (headersArgs) => {
@@ -256,6 +353,57 @@ const TIME_OFF_STYLES = `
     color: #616161;
     font-size: 14px;
     margin: 0;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  .timeoff-table {
+    border-collapse: collapse;
+    min-width: 720px;
+    width: 100%;
+  }
+
+  .timeoff-table th,
+  .timeoff-table td {
+    border-bottom: 1px solid #ebebeb;
+    color: #303030;
+    padding: 14px 16px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .timeoff-table th {
+    background: #fafafa;
+    color: #616161;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .status-pill {
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 4px 10px;
+  }
+
+  .status-pill.pending {
+    background: #fff4d6;
+    color: #8a5700;
+  }
+
+  .status-pill.approved {
+    background: #e3f8e8;
+    color: #0b6b32;
+  }
+
+  .status-pill.declined {
+    background: #fde8e8;
+    color: #b91c1c;
   }
 
   .knowledge-link {

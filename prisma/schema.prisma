@@ -95,6 +95,7 @@ model Shop {
   taskLists           TaskList[]
   taskListCompletions TaskListCompletion[]
   timeOffPolicies     TimeOffPolicy[]
+  timeOffRequests     TimeOffRequest[]
 }
 
 model StoreLocation {
@@ -441,9 +442,30 @@ model TimeOffPolicy {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop     Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  requests TimeOffRequest[]
 
   @@index([shopId, createdAt])
+}
+
+model TimeOffRequest {
+  id         String   @id @default(cuid())
+  shopId     String
+  employeeId String
+  policyId   String
+  locationId String?
+  startDate  String
+  endDate    String
+  reason     String?
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  shop     Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  policy   TimeOffPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status, createdAt])
+  @@index([employeeId, startDate])
 }
 
 model Setting {

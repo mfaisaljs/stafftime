@@ -1086,6 +1086,28 @@
         "prisma/migrations/20260810140000_time_off_policies/migration.sql"
       ],
       "lastUpdated": "2026-08-10T14:00:00.000Z"
+    },
+    {
+      "id": "ST064",
+      "taskId": "T017",
+      "title": "Create Time Off form with date range",
+      "description": "Create Time Off annotated form at /app/time-off/new with staff/policy/location selects, inline date range calendar, reason, and TimeOffRequest persistence.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST063"],
+      "acceptanceCriteria": [
+        "Create Time Off opens annotated form matching Select Staff/Policy/Location/Dates/Reason",
+        "Select Dates uses a start–end date range calendar",
+        "Submitting creates a PENDING TimeOffRequest and returns to the Time Off list"
+      ],
+      "files": [
+        "app/routes/app.time-off.new.tsx",
+        "app/routes/app.time-off._index.tsx",
+        "app/components/InlineDateRangeCalendar.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260810141000_time_off_requests/migration.sql"
+      ],
+      "lastUpdated": "2026-08-10T14:05:00.000Z"
     }
   ]
 }
