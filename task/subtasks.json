@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T10:20:00.000Z",
+  "lastUpdated": "2026-08-10T10:35:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -985,6 +985,26 @@
         "prisma/migrations/20260810101500_task_list_active/migration.sql"
       ],
       "lastUpdated": "2026-08-10T10:20:00.000Z"
+    },
+    {
+      "id": "ST059",
+      "taskId": "T017",
+      "title": "Task list detail status page",
+      "description": "Rebuild task list detail with information card, date-filtered progress, tasks table, and complete action.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST058"],
+      "acceptanceCriteria": [
+        "Detail page shows Task List Information, Task status for date with progress, and Tasks table",
+        "Select Date filters completions for that day",
+        "Complete Task persists completion for the selected date"
+      ],
+      "files": [
+        "app/routes/app.tasklists.$listId.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260810103000_task_list_completions/migration.sql"
+      ],
+      "lastUpdated": "2026-08-10T10:35:00.000Z"
     }
   ]
 }

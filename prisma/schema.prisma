@@ -93,6 +93,7 @@ model Shop {
   salesTargets        SalesTarget[]
   salesTargetSnapshots SalesTargetSnapshot[]
   taskLists           TaskList[]
+  taskListCompletions TaskListCompletion[]
 }
 
 model StoreLocation {
@@ -384,8 +385,9 @@ model TaskList {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  shop  Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  items TaskListItem[]
+  shop         Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  items        TaskListItem[]
+  completions  TaskListCompletion[]
 
   @@index([shopId, createdAt])
 }
@@ -399,9 +401,31 @@ model TaskListItem {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  taskList TaskList @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  taskList    TaskList             @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  completions TaskListCompletion[]
 
   @@index([taskListId, sortOrder])
+}
+
+model TaskListCompletion {
+  id          String   @id @default(cuid())
+  shopId      String
+  taskListId  String
+  taskItemId  String
+  dateKey     String
+  performedBy String?
+  performedAt DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shop     Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  taskList TaskList     @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  taskItem TaskListItem @relation(fields: [taskItemId], references: [id], onDelete: Cascade)
+
+  @@unique([taskItemId, dateKey])
+  @@index([taskListId, dateKey])
+  @@index([shopId, dateKey])
 }
 
 model Setting {
