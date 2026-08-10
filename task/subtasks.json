@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-09T22:23:30.000Z",
+  "lastUpdated": "2026-08-10T09:20:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -862,6 +862,48 @@
         "prisma/migrations/20260809225500_sales_targets/migration.sql"
       ],
       "lastUpdated": "2026-08-09T22:56:00.000Z"
+    },
+    {
+      "id": "ST053",
+      "taskId": "T008",
+      "title": "Payroll staff table UI",
+      "description": "Show Payroll page as a staff table with payment type, rate, hours, earnings, paid/remaining, and Create Payroll action.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "/app/payroll shows a table with Name, Payment Type, Rate, Total Hours, Working Hours, Total Break Time, Total Earnings, Total Paid, Remaining, and Action",
+        "Name column shows avatar, staff name, and email",
+        "Hours use exact h/m/s formatting from time entries",
+        "Action column includes Create Payroll button"
+      ],
+      "files": [
+        "app/routes/app.payroll.tsx",
+        "app/routes/app.payroll._index.tsx"
+      ],
+      "lastUpdated": "2026-08-10T09:20:00.000Z"
+    },
+    {
+      "id": "ST054",
+      "taskId": "T008",
+      "title": "Create Payroll payment page",
+      "description": "Open Create Payroll from the payroll table and capture staff payment overview, details, method, and proof.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST053"],
+      "acceptanceCriteria": [
+        "Create Payroll navigates to /app/payroll/:employeeId/create",
+        "Page shows Staff Payment Overview, Payment Details, Payment Method, and Payment Proof sections",
+        "Submitting creates a PayrollPayment and returns to /app/payroll with updated Total Paid/Remaining"
+      ],
+      "files": [
+        "app/routes/app.payroll.tsx",
+        "app/routes/app.payroll._index.tsx",
+        "app/routes/app.payroll.$employeeId.create.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260810090500_payroll_payments/migration.sql"
+      ],
+      "lastUpdated": "2026-08-10T09:20:00.000Z"
     }
   ]
 }

@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T06:42:00.000Z",
+  "lastUpdated": "2026-08-10T09:20:00.000Z",
   "notes": [
+    "ST054 complete: Create Payroll page at /app/payroll/:employeeId/create with overview, payment details, method, proof, and PayrollPayment persistence.",
+    "ST053 complete: Payroll route shows staff payroll table with hours, earnings, and Create Payroll action.",
     "Fixed: permanently deleting staff also removes them from commission programs and sales targets/snapshots.",
     "Updated: Staff row delete opens remove_staff modal with Archive or Permanently Delete options.",
     "Updated: Sales Target History modal shows last 6 months with snapshotted monthly goal amounts.",

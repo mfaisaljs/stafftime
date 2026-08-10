@@ -87,6 +87,7 @@ model Shop {
   auditLogs           AuditLog[]
   devices             Device[]
   payrollExports      PayrollExport[]
+  payrollPayments     PayrollPayment[]
   settings            Setting?
   commissionPrograms  CommissionProgram[]
   salesTargets        SalesTarget[]
@@ -149,9 +150,10 @@ model Employee {
 
   shop          Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
   location      StoreLocation?       @relation(fields: [locationId], references: [id])
-  shifts        Shift[]
-  timeEntries   TimeEntry[]
-  missedPunches MissedPunchRequest[]
+  shifts          Shift[]
+  timeEntries     TimeEntry[]
+  missedPunches   MissedPunchRequest[]
+  payrollPayments PayrollPayment[]
 
   @@index([shopId, status])
 }
@@ -339,6 +341,28 @@ model PayrollExport {
   createdAt   DateTime            @default(now())
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model PayrollPayment {
+  id            String   @id @default(cuid())
+  shopId        String
+  employeeId    String
+  paymentType   String   @default("SALARY")
+  amount        Float
+  currency      String   @default("USD")
+  paymentMethod String   @default("PAYPAL")
+  notes         String?
+  proofFileName String?
+  periodLabel   String?
+  periodStart   String?
+  periodEnd     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, employeeId, createdAt])
 }
 
 model Setting {
