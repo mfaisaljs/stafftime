@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T10:35:00.000Z",
+  "lastUpdated": "2026-08-10T16:10:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -1168,6 +1168,72 @@
         "app/routes/app.staff.$employeeId._index.tsx"
       ],
       "lastUpdated": "2026-08-10T15:50:00.000Z"
+    },
+    {
+      "id": "ST068",
+      "taskId": "T012",
+      "title": "Enforce selfie and GPS verification on POS clock",
+      "description": "Capture selfie/GPS on POS clock in/out and reject when requirePhoto or requireGps settings are enabled.",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": ["ST066"],
+      "acceptanceCriteria": [
+        "POS extension captures photo and GPS when settings require them",
+        "Server rejects clock actions missing required verification data"
+      ],
+      "files": [
+        "extensions/workforce-clock/src/Modal.tsx",
+        "app/utils/pos-api.server.ts",
+        "app/services/workforce.server.ts"
+      ],
+      "lastUpdated": "2026-08-10T16:10:00.000Z"
+    },
+    {
+      "id": "ST069",
+      "taskId": "T017",
+      "title": "Enforce Staff Portal feature toggles",
+      "description": "Gate Staff Portal routes and POS-as-portal features using portal settings persisted on Setting.",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": ["ST066"],
+      "acceptanceCriteria": [
+        "Portal feature toggles hide or block disabled portal capabilities",
+        "Settings remain persisted when portal enforcement is deferred"
+      ],
+      "files": [
+        "app/routes/app.settings.tsx"
+      ],
+      "lastUpdated": "2026-08-10T16:10:00.000Z"
+    },
+    {
+      "id": "ST070",
+      "taskId": "T017",
+      "title": "Wire settings enforcement across workforce",
+      "description": "Enforce clock/break, absence/holiday, salary adjustments, time formats, and POS manager payroll stats from Setting.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST066"],
+      "acceptanceCriteria": [
+        "getShopSettings helper used by clock, time math, attendance, and payroll",
+        "Early clock-in and block-break-after-end enforced on POS clock actions",
+        "deductBreakTime threads through summarizeTimeEntry* call sites",
+        "Holiday and leave flags affect attendance board and report metrics",
+        "Salary leave/absence adjustments use defaultDailyWorkingHours",
+        "timeFormat/hourFormat and showPayrollStatsInPos wired in admin and POS"
+      ],
+      "files": [
+        "app/services/settings.server.ts",
+        "app/services/time-tracking.server.ts",
+        "app/services/workforce.server.ts",
+        "app/routes/app.staff.$employeeId._index.tsx",
+        "app/routes/app.payroll._index.tsx",
+        "app/routes/app.payroll.$employeeId.create.tsx",
+        "app/routes/app.reports.tsx",
+        "extensions/workforce-clock/src/Modal.tsx",
+        "app/services/pos-workflow.test.ts",
+        "app/services/time-tracking.test.ts"
+      ],
+      "lastUpdated": "2026-08-10T16:10:00.000Z"
     }
   ]
 }

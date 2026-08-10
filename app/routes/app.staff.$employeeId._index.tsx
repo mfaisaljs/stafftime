@@ -30,9 +30,21 @@ import {
   getEmployeeTimeEntries,
 } from "../services/admin.server";
 import {
+  formatClockTime,
   formatDurationHms,
   summarizeTimeEntrySeconds,
+  type HourFormat,
+  type TimeFormat,
 } from "../services/time-tracking.server";
+import {
+  clampRangeStartForSalary,
+  computeSalaryAdjustments,
+  countAbsentDays,
+  countLeaveDays,
+  enumerateDateKeys,
+  getApprovedTimeOffForRange,
+  getShopSettings,
+} from "../services/settings.server";
 import {
   DateRangeSelector,
   defaultDateRangeValue,
@@ -52,21 +64,34 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   if (!employee) throw new Response("Staff member not found", { status: 404 });
 
   const shop = await getAdminShop(session);
+  const settings = await getShopSettings(shop.id);
   const url = new URL(request.url);
   const dateRange = resolveDateRange(url.searchParams);
-  const startDate = startOfDayFromKey(dateRange.start);
+  let startDate = startOfDayFromKey(dateRange.start);
   const endDate = endOfDayFromKey(dateRange.end);
-
-  const timeEntries = await getEmployeeTimeEntries(
-    session,
+  startDate = await clampRangeStartForSalary(
+    shop.id,
     employeeId,
     startDate,
-    endDate,
+    settings,
   );
 
+  const [timeEntries, shifts, timeOffRequests] = await Promise.all([
+    getEmployeeTimeEntries(session, employeeId, startDate, endDate),
+    prisma.shift.findMany({
+      where: {
+        shopId: shop.id,
+        employeeId,
+        startsAt: { gte: startDate, lte: endDate },
+      },
+    }),
+    getApprovedTimeOffForRange(shop.id, dateRange.start, dateRange.end),
+  ]);
+
   const reportEnd = new Date();
+  const summarizeOptions = { deductBreakTime: settings.deductBreakTime };
   const summaries = timeEntries.map((entry) =>
-    summarizeTimeEntrySeconds(entry, reportEnd),
+    summarizeTimeEntrySeconds(entry, reportEnd, summarizeOptions),
   );
   const totalWorkedSeconds = summaries.reduce(
     (sum, item) => sum + item.totalWorkedSeconds,
@@ -77,10 +102,39 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     (sum, item) => sum + item.paidBreakSeconds + item.unpaidBreakSeconds,
     0,
   );
-  const paidEarnings = timeEntries.reduce((sum, entry, index) => {
+  const baseEarnings = timeEntries.reduce((sum, entry, index) => {
     const hourlyRate = entry.hourlyRateSnapshot ?? employee.hourlyRate;
     return sum + (summaries[index].paidSeconds / 3600) * hourlyRate;
   }, 0);
+
+  const dateKeys = enumerateDateKeys(dateRange.start, dateRange.end);
+  const shiftsByDate = new Map<string, boolean>();
+  for (const shift of shifts) {
+    shiftsByDate.set(toDateKeyLocal(shift.startsAt), true);
+  }
+  const clockedDates = new Set(
+    timeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
+  );
+  const totalAbsents = countAbsentDays(
+    dateKeys,
+    shiftsByDate,
+    clockedDates,
+    timeOffRequests,
+    settings,
+  );
+  const paidLeaves = countLeaveDays(dateKeys, timeOffRequests, "PAID");
+  const unpaidLeaves = countLeaveDays(dateKeys, timeOffRequests, "UNPAID");
+  const salaryAdjustment = computeSalaryAdjustments({
+    employee,
+    dateKeys,
+    shiftsByDate,
+    clockedDates,
+    requests: timeOffRequests,
+    settings,
+  });
+  const paidEarnings = baseEarnings + salaryAdjustment;
+  const hourFormat = settings.hourFormat as HourFormat;
+  const timeFormat = settings.timeFormat as TimeFormat;
 
   const commissionPrograms = await prisma.commissionProgram.findMany({
     where: { shopId: shop.id },
@@ -126,10 +180,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       date: entry.clockInAt.toISOString(),
       status: entry.status,
       location: entry.location.name,
-      breakTime: formatDurationHms(breakTotal),
-      firstIn: formatTime(entry.clockInAt),
-      lastOut: entry.clockOutAt ? formatTime(entry.clockOutAt) : "—",
-      totalHours: formatDurationHms(summary.totalWorkedSeconds),
+      breakTime: formatDurationHms(breakTotal, hourFormat),
+      firstIn: formatClockTime(entry.clockInAt, timeFormat),
+      lastOut: entry.clockOutAt ? formatClockTime(entry.clockOutAt, timeFormat) : "—",
+      totalHours: formatDurationHms(summary.totalWorkedSeconds, hourFormat),
     };
   });
 
@@ -140,9 +194,9 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     dateRange,
     metrics: {
       totalEarnings: paidEarnings,
-      totalHours: formatDurationHms(totalWorkedSeconds),
-      workingHours: formatDurationHms(paidSeconds),
-      totalBreakTime: formatDurationHms(breakSeconds),
+      totalHours: formatDurationHms(totalWorkedSeconds, hourFormat),
+      workingHours: formatDurationHms(paidSeconds, hourFormat),
+      totalBreakTime: formatDurationHms(breakSeconds, hourFormat),
       totalCommission: commissionEarnings.total,
       paid: paidEarnings,
       unpaid: 0,
@@ -152,13 +206,13 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
           : activeAssigned.length === 1
             ? activeAssigned[0].name
             : `${activeAssigned.length} Active Plans`,
-      totalAbsents: 0,
+      totalAbsents,
       unpaidSalary: 0,
       totalTransactions: timeEntries.length,
       totalBonus: 0,
-      totalLeaves: 0,
-      paidLeaves: 0,
-      unpaidLeaves: 0,
+      totalLeaves: paidLeaves + unpaidLeaves,
+      paidLeaves,
+      unpaidLeaves,
     },
     commission: {
       ...commissionEarnings,
@@ -838,6 +892,13 @@ function formatShortDate(dateKey: string) {
 function startOfDayFromKey(key: string) {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function toDateKeyLocal(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function endOfDayFromKey(key: string) {

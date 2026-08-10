@@ -11,6 +11,14 @@ type EmployeeStatus = {
   shiftStart?: string;
   shiftEnd?: string;
   serverTime?: number;
+  timeFormat?: "24H" | "12H";
+  hourFormat?: "STANDARD" | "DECIMAL";
+  payrollStats?: {
+    hours: number;
+    earnings: number;
+    hoursLabel: string;
+    earningsLabel: string;
+  } | null;
 };
 
 type VerifyResponse = {
@@ -185,10 +193,16 @@ function WorkforceModal() {
             {statusLabel}
           </s-badge>
           <s-text>Shift timer: {elapsedLabel}</s-text>
+          {status.payrollStats && (
+            <s-text>
+              Today: {status.payrollStats.hoursLabel} · $
+              {status.payrollStats.earningsLabel}
+            </s-text>
+          )}
           {status.shiftStart && status.shiftEnd && (
             <s-text>
-              Today&apos;s shift: {formatTime(status.shiftStart)} –{" "}
-              {formatTime(status.shiftEnd)}
+              Today&apos;s shift: {formatTime(status.shiftStart, status.timeFormat)} –{" "}
+              {formatTime(status.shiftEnd, status.timeFormat)}
             </s-text>
           )}
           {error && <s-banner heading={error} tone="critical" />}
@@ -248,8 +262,14 @@ function WorkforceModal() {
   );
 }
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], {
+function formatTime(iso: string, timeFormat: "24H" | "12H" = "12H") {
+  const date = new Date(iso);
+  if (timeFormat === "24H") {
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  return date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
   });

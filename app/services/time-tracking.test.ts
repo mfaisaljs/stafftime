@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { BreakEntry, TimeEntry } from "@prisma/client";
 import {
   calculateBreakMinutes,
+  formatClockTime,
+  formatDuration,
   formatDurationHms,
   formatMinutes,
   minutesBetween,
@@ -134,5 +136,37 @@ describe("time-tracking", () => {
     const summary = summarizeWeeklyOvertime(entries, settings, dayTwoOut);
     expect(summary.paidMinutes).toBe(1200);
     expect(summary.overtimeMinutes).toBeGreaterThan(0);
+  });
+
+  it("keeps paid seconds equal to worked time when break deduction is disabled", () => {
+    const clockInAt = new Date("2026-08-09T09:00:00.000Z");
+    const clockOutAt = new Date("2026-08-09T10:30:45.000Z");
+    const entry = makeEntry(clockInAt, clockOutAt, [
+      {
+        id: "b1",
+        timeEntryId: "entry-1",
+        type: "UNPAID",
+        startedAt: new Date("2026-08-09T09:15:10.000Z"),
+        endedAt: new Date("2026-08-09T09:20:25.000Z"),
+        createdAt: clockInAt,
+        updatedAt: clockInAt,
+      },
+    ]);
+
+    const summary = summarizeTimeEntrySeconds(entry, clockOutAt, {
+      deductBreakTime: false,
+    });
+    expect(summary.paidSeconds).toBe(summary.totalWorkedSeconds);
+  });
+
+  it("formats durations in decimal hour format", () => {
+    expect(formatDuration(5400, "DECIMAL")).toBe("1.50h");
+    expect(formatDurationHms(5400, "DECIMAL")).toBe("1.50h");
+  });
+
+  it("formats clock times for 24H and 12H", () => {
+    const value = new Date("2026-08-09T14:30:00.000Z");
+    expect(formatClockTime(value, "24H")).toMatch(/^\d{2}:\d{2}$/);
+    expect(formatClockTime(value, "12H")).toBeTruthy();
   });
 });

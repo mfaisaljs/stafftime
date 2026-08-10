@@ -23,7 +23,15 @@ import {
 import {
   formatDurationHms,
   summarizeTimeEntrySeconds,
+  type HourFormat,
 } from "../services/time-tracking.server";
+import {
+  clampRangeStartForSalary,
+  computeSalaryAdjustments,
+  enumerateDateKeys,
+  getApprovedTimeOffForRange,
+  getShopSettings,
+} from "../services/settings.server";
 import {
   DateRangeSelector,
   defaultDateRangeValue,
@@ -70,32 +78,73 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   }
 
   const shop = await getAdminShop(session);
+  const settings = await getShopSettings(shop.id);
   const endDate = new Date();
   endDate.setHours(23, 59, 59, 999);
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - 30);
   startDate.setHours(0, 0, 0, 0);
+  const effectiveStart = await clampRangeStartForSalary(
+    shop.id,
+    employeeId,
+    startDate,
+    settings,
+  );
 
-  const [timeEntries, payments] = await Promise.all([
-    getEmployeeTimeEntries(session, employeeId, startDate, endDate),
+  const [timeEntries, payments, timeOffRequests, shifts] = await Promise.all([
+    getEmployeeTimeEntries(session, employeeId, effectiveStart, endDate),
     prisma.payrollPayment.findMany({
       where: { shopId: shop.id, employeeId },
       select: { amount: true },
     }),
+    getApprovedTimeOffForRange(
+      shop.id,
+      toDateKeyLocal(effectiveStart),
+      toDateKeyLocal(endDate),
+    ),
+    prisma.shift.findMany({
+      where: {
+        shopId: shop.id,
+        employeeId,
+        startsAt: { gte: effectiveStart, lte: endDate },
+      },
+    }),
   ]);
 
   const reportEnd = new Date();
+  const summarizeOptions = { deductBreakTime: settings.deductBreakTime };
+  const hourFormat = settings.hourFormat as HourFormat;
   const summaries = timeEntries.map((entry) =>
-    summarizeTimeEntrySeconds(entry, reportEnd),
+    summarizeTimeEntrySeconds(entry, reportEnd, summarizeOptions),
   );
   const totalWorkedSeconds = summaries.reduce(
     (sum, item) => sum + item.totalWorkedSeconds,
     0,
   );
-  const totalEarnings = timeEntries.reduce((sum, entry, index) => {
+  const totalEarningsBase = timeEntries.reduce((sum, entry, index) => {
     const hourlyRate = entry.hourlyRateSnapshot ?? employee.hourlyRate;
     return sum + (summaries[index].paidSeconds / 3600) * hourlyRate;
   }, 0);
+  const dateKeys = enumerateDateKeys(
+    toDateKeyLocal(effectiveStart),
+    toDateKeyLocal(endDate),
+  );
+  const shiftsByDate = new Map<string, boolean>();
+  for (const shift of shifts) {
+    shiftsByDate.set(toDateKeyLocal(shift.startsAt), true);
+  }
+  const clockedDates = new Set(
+    timeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
+  );
+  const salaryAdjustment = computeSalaryAdjustments({
+    employee,
+    dateKeys,
+    shiftsByDate,
+    clockedDates,
+    requests: timeOffRequests.filter((request) => request.employeeId === employeeId),
+    settings,
+  });
+  const totalEarnings = totalEarningsBase + salaryAdjustment;
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const remaining = Math.max(0, totalEarnings - totalPaid);
 
@@ -114,7 +163,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       rateLabel: formatRateLabel(employee),
     },
     overview: {
-      hoursWorked: formatDurationHms(totalWorkedSeconds),
+      hoursWorked: formatDurationHms(totalWorkedSeconds, hourFormat),
       totalEarnings,
       totalPaid,
       remaining,
@@ -552,6 +601,13 @@ function MetricTile({
 
 function initials(firstName: string, lastName: string) {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+function toDateKeyLocal(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function payrollTypeLabel(value: string) {

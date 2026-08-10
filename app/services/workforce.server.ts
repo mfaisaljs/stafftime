@@ -9,6 +9,20 @@ import type {
 } from "@prisma/client";
 import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
+import {
+  classifyAbsentDay,
+  getApprovedTimeOffForRange,
+  getManagerPayrollStatsForToday,
+  getShopSettings,
+  isHolidayDateKey,
+  leaveCompensationForDate,
+} from "./settings.server";
+import {
+  formatClockTime,
+  formatDuration,
+  type HourFormat,
+  type TimeFormat,
+} from "./time-tracking.server";
 
 export type WorkforceStatus = "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
 type EmployeeWithFirstLogin = Employee & { firstLoginAt: Date | null };
@@ -398,9 +412,14 @@ export async function getOpenTimeEntry(employeeId: string) {
 }
 
 export async function buildEmployeeStatus(employeeId: string) {
-  const [entry, shift] = await Promise.all([
+  const employee = await prisma.employee.findUniqueOrThrow({
+    where: { id: employeeId },
+  });
+  const settings = await getShopSettings(employee.shopId);
+  const [entry, shift, payrollStats] = await Promise.all([
     getOpenTimeEntry(employeeId),
     getEmployeeShiftToday(employeeId),
+    getManagerPayrollStatsForToday(employee.shopId, employeeId, settings),
   ]);
 
   let status: WorkforceStatus = "CLOCKED_OUT";
@@ -426,6 +445,19 @@ export async function buildEmployeeStatus(employeeId: string) {
     shiftStart: shift?.startsAt.toISOString(),
     shiftEnd: shift?.endsAt.toISOString(),
     serverTime: Date.now(),
+    timeFormat: settings.timeFormat as TimeFormat,
+    hourFormat: settings.hourFormat as HourFormat,
+    payrollStats: payrollStats
+      ? {
+          hours: payrollStats.hours,
+          earnings: payrollStats.earnings,
+          hoursLabel: formatDuration(
+            Math.round(payrollStats.hours * 3600),
+            settings.hourFormat as HourFormat,
+          ),
+          earningsLabel: payrollStats.earnings.toFixed(2),
+        }
+      : null,
   };
 }
 
@@ -477,6 +509,27 @@ export async function clockIn(params: {
   });
   if (!employee) {
     throw new Error("Staff member not found");
+  }
+
+  const settings = await getShopSettings(shop.id);
+  const shift = await getEmployeeShiftToday(params.employeeId);
+  if (shift) {
+    const now = Date.now();
+    const shiftStartMs = shift.startsAt.getTime();
+    if (!settings.allowEarlyClockIn && now < shiftStartMs) {
+      throw new Error(
+        `Clock-in is not allowed until shift starts at ${formatClockTime(shift.startsAt, settings.timeFormat as TimeFormat)}`,
+      );
+    }
+    if (settings.allowEarlyClockIn && settings.earlyClockInMinutes > 0) {
+      const earliestMs =
+        shiftStartMs - settings.earlyClockInMinutes * 60 * 1000;
+      if (now < earliestMs) {
+        throw new Error(
+          `Clock-in is allowed up to ${settings.earlyClockInMinutes} minutes before shift start`,
+        );
+      }
+    }
   }
 
   const entry = await prisma.timeEntry.create({
@@ -549,6 +602,14 @@ export async function startBreak(params: {
   }
   if (entry.breaks[0]) {
     throw new Error("Employee is already on break");
+  }
+
+  const settings = await getShopSettings(shop.id);
+  if (settings.blockBreakAfterEndTime) {
+    const shift = await getEmployeeShiftToday(params.employeeId);
+    if (shift && Date.now() > shift.endsAt.getTime()) {
+      throw new Error("Breaks are not allowed after scheduled shift end time");
+    }
   }
 
   const breakEntry = await prisma.breakEntry.create({
@@ -686,10 +747,13 @@ export async function reviewMissedPunch(params: {
 
 export async function getAttendanceSummary(shopDomain: string) {
   const shop = await ensureShop(shopDomain);
+  const settings = await getShopSettings(shop.id);
   const start = new Date();
   start.setHours(0, 0, 0, 0);
+  const todayKey = toDateKeyLocal(new Date());
 
-  const [employees, openEntries, shifts, pendingRequests] = await Promise.all([
+  const [employees, openEntries, shifts, pendingRequests, timeOffRequests] =
+    await Promise.all([
     prisma.employee.findMany({
       where: { shopId: shop.id, status: "ACTIVE" },
       include: { location: true },
@@ -715,6 +779,7 @@ export async function getAttendanceSummary(shopDomain: string) {
     prisma.missedPunchRequest.count({
       where: { shopId: shop.id, status: "PENDING" },
     }),
+    getApprovedTimeOffForRange(shop.id, todayKey, todayKey),
   ]);
 
   const clockedInIds = new Set(openEntries.map((entry) => entry.employeeId));
@@ -724,7 +789,16 @@ export async function getAttendanceSummary(shopDomain: string) {
   const absent = employees.filter((employee) => {
     const hasShift = shifts.some((shift) => shift.employeeId === employee.id);
     const isClockedIn = clockedInIds.has(employee.id);
-    return hasShift && !isClockedIn;
+    return classifyAbsentDay(
+      {
+        dateKey: todayKey,
+        hasShift,
+        hasClockIn: isClockedIn,
+        isHoliday: isHolidayDateKey(todayKey, settings),
+        leaveCompensation: leaveCompensationForDate(timeOffRequests, todayKey),
+      },
+      settings,
+    );
   });
 
   const late = openEntries.filter((entry) => {
@@ -763,6 +837,7 @@ export async function getAttendanceBoard(
   range: { start: string; end: string },
 ) {
   const shop = await ensureShop(shopDomain);
+  const settings = await getShopSettings(shop.id);
   const rangeStart = startOfDayFromKey(range.start);
   const rangeEnd = endOfDayFromKey(range.end);
   const todayKey = toDateKeyLocal(new Date());
@@ -772,7 +847,8 @@ export async function getAttendanceBoard(
   const refEnd = endOfDayFromKey(refKey);
   const isLive = refKey === todayKey;
 
-  const [employees, timeEntries, shifts, pendingApprovals] = await Promise.all([
+  const [employees, timeEntries, shifts, pendingApprovals, timeOffRequests] =
+    await Promise.all([
     prisma.employee.findMany({
       where: { shopId: shop.id, status: "ACTIVE" },
       include: { location: true },
@@ -805,6 +881,7 @@ export async function getAttendanceBoard(
     prisma.missedPunchRequest.count({
       where: { shopId: shop.id, status: "PENDING" },
     }),
+    getApprovedTimeOffForRange(shop.id, refKey, refKey),
   ]);
 
   const rows = employees.map((employee) => {
@@ -852,7 +929,20 @@ export async function getAttendanceBoard(
     if (openEntry) {
       const onBreak = openEntry.breaks.some((item) => item.endedAt == null);
       status = onBreak ? "on_break" : "working";
-    } else if (refShifts.length > 0 && refEntries.length === 0) {
+    } else if (
+      refShifts.length > 0 &&
+      refEntries.length === 0 &&
+      classifyAbsentDay(
+        {
+          dateKey: refKey,
+          hasShift: true,
+          hasClockIn: false,
+          isHoliday: isHolidayDateKey(refKey, settings),
+          leaveCompensation: leaveCompensationForDate(timeOffRequests, refKey),
+        },
+        settings,
+      )
+    ) {
       status = "absent";
     } else if (isLate) {
       status = "late";

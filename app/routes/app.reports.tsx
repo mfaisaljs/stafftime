@@ -20,9 +20,23 @@ import {
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
+  getAdminShop,
   getEmployees,
   getPayrollEntriesForRange,
 } from "../services/admin.server";
+import {
+  formatDurationHms,
+  summarizeTimeEntrySeconds,
+  type HourFormat,
+} from "../services/time-tracking.server";
+import {
+  countAbsentDays,
+  countLeaveDays,
+  enumerateDateKeys,
+  getApprovedTimeOffForRange,
+  getShopSettings,
+} from "../services/settings.server";
+import prisma from "../db.server";
 
 type ReportTab = "overview" | "daily" | "activity";
 
@@ -39,18 +53,33 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const dateRange = resolveDateRange(url.searchParams);
-  const [employees, entries] = await Promise.all([
+  const shop = await getAdminShop(session);
+  const settings = await getShopSettings(shop.id);
+  const hourFormat = settings.hourFormat as HourFormat;
+  const summarizeOptions = { deductBreakTime: settings.deductBreakTime };
+  const rangeStartKey = toDateKey(dateRange.startDate);
+  const rangeEndKey = toDateKey(dateRange.endDate);
+
+  const [employees, entries, shifts, timeOffRequests] = await Promise.all([
     getEmployees(session),
     getPayrollEntriesForRange(session, dateRange.startDate, dateRange.endDate),
+    prisma.shift.findMany({
+      where: {
+        shopId: shop.id,
+        startsAt: { gte: dateRange.startDate, lte: dateRange.endDate },
+      },
+    }),
+    getApprovedTimeOffForRange(shop.id, rangeStartKey, rangeEndKey),
   ]);
   const reportEnd = new Date();
+  const dateKeys = enumerateDateKeys(rangeStartKey, rangeEndKey);
 
   const activeEmployees = employees.filter(
     (employee) => employee.status !== "ARCHIVED",
   );
 
   const summaries = entries.map((entry) => {
-    const summary = summarizeTimeEntrySeconds(entry, reportEnd);
+    const summary = summarizeTimeEntrySeconds(entry, reportEnd, summarizeOptions);
     const earnings = (summary.paidSeconds / 3600) * hourlyRateForEntry(entry);
     return { entry, summary, earnings };
   });
@@ -94,8 +123,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       position: employee.position ?? "Staff",
       salary: salaryLabel(employee),
       rate: rateLabelForPeriod(employee, employeeSummaries),
-      totalHours: formatDurationHms(employeeTotalSeconds),
-      workingHours: formatDurationHms(employeeWorkingSeconds),
+      totalHours: formatDurationHms(employeeTotalSeconds, hourFormat),
+      workingHours: formatDurationHms(employeeWorkingSeconds, hourFormat),
       totalEarnings: formatCurrency(employeeEarnings),
       totalPaid: formatCurrency(employeeEarnings),
     };
@@ -128,9 +157,38 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           : "Pending approval",
     details: `${item.entry.location.name} · ${formatDurationHms(
       item.summary.totalWorkedSeconds,
+      hourFormat,
     )}`,
     createdAt: item.entry.clockInAt.toISOString(),
   }));
+
+  let totalAbsents = 0;
+  let totalLeaves = 0;
+  for (const employee of activeEmployees) {
+    const employeeShifts = shifts.filter((shift) => shift.employeeId === employee.id);
+    const shiftsByDate = new Map<string, boolean>();
+    for (const shift of employeeShifts) {
+      shiftsByDate.set(toDateKey(shift.startsAt), true);
+    }
+    const clockedDates = new Set(
+      entries
+        .filter((entry) => entry.employeeId === employee.id)
+        .map((entry) => toDateKey(entry.clockInAt)),
+    );
+    const employeeTimeOff = timeOffRequests.filter(
+      (request) => request.employeeId === employee.id,
+    );
+    totalAbsents += countAbsentDays(
+      dateKeys,
+      shiftsByDate,
+      clockedDates,
+      employeeTimeOff,
+      settings,
+    );
+    totalLeaves +=
+      countLeaveDays(dateKeys, employeeTimeOff, "PAID") +
+      countLeaveDays(dateKeys, employeeTimeOff, "UNPAID");
+  }
 
   return {
     days,
@@ -152,14 +210,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       activeStaff: activeEmployees.filter(
         (employee) => employee.status === "ACTIVE",
       ).length,
-      totalHours: formatDurationHms(totalSeconds),
-      workingHours: formatDurationHms(workingSeconds),
-      totalAbsents: 0,
+      totalHours: formatDurationHms(totalSeconds, hourFormat),
+      workingHours: formatDurationHms(workingSeconds, hourFormat),
+      totalAbsents,
       totalEarnings: formatCurrency(totalEarnings),
-      totalBreakTime: formatDurationHms(breakSeconds),
+      totalBreakTime: formatDurationHms(breakSeconds, hourFormat),
       totalPaid: formatCurrency(totalEarnings),
       totalUnpaid: formatCurrency(0),
-      totalLeaves: 0,
+      totalLeaves,
       totalCommission: formatCurrency(0),
       totalBonus: formatCurrency(0),
     },
@@ -1205,49 +1263,6 @@ function formatNumericDate(value: string) {
   if (!isDateKey(value)) return value;
   const [year, month, day] = value.split("-");
   return `${Number(month)}/${Number(day)}/${year}`;
-}
-
-function summarizeTimeEntrySeconds(
-  entry: {
-    clockInAt: Date;
-    clockOutAt: Date | null;
-    breaks: Array<{ type: string; startedAt: Date; endedAt: Date | null }>;
-  },
-  referenceDate: Date,
-) {
-  const end = entry.clockOutAt ?? referenceDate;
-  const totalWorkedSeconds = secondsBetween(entry.clockInAt, end);
-  const breakTotals = entry.breaks.reduce(
-    (totals, breakEntry) => {
-      const breakEnd = breakEntry.endedAt ?? end;
-      const seconds = secondsBetween(breakEntry.startedAt, breakEnd);
-      if (breakEntry.type === "PAID") {
-        totals.paidBreakSeconds += seconds;
-      } else {
-        totals.unpaidBreakSeconds += seconds;
-      }
-      return totals;
-    },
-    { paidBreakSeconds: 0, unpaidBreakSeconds: 0 },
-  );
-
-  return {
-    totalWorkedSeconds,
-    paidBreakSeconds: breakTotals.paidBreakSeconds,
-    unpaidBreakSeconds: breakTotals.unpaidBreakSeconds,
-    paidSeconds: Math.max(0, totalWorkedSeconds - breakTotals.unpaidBreakSeconds),
-  };
-}
-
-function secondsBetween(start: Date, end: Date) {
-  return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
-}
-
-function formatDurationHms(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return `${hours}h ${mins}m ${seconds}s`;
 }
 
 function formatTimecode(totalSeconds: number) {

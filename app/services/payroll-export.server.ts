@@ -1,4 +1,4 @@
-import type { BreakEntry, Employee, TimeEntry } from "@prisma/client";
+import type { BreakEntry, Employee, Setting, TimeEntry } from "@prisma/client";
 import { formatMinutes, summarizeTimeEntry } from "./time-tracking.server";
 
 type ExportRow = {
@@ -24,7 +24,7 @@ export function buildPayrollCsv(
       location: { name: string };
     }
   >,
-  settings: { overtimeDailyHours: number },
+  settings: Pick<Setting, "overtimeDailyHours" | "deductBreakTime">,
 ): string {
   const rows: ExportRow[] = entries.map((entry) => {
     const summary = summarizeTimeEntry(entry, settings);

@@ -11,12 +11,15 @@ import {
 import {
   formatDurationHms,
   summarizeTimeEntrySeconds,
+  type HourFormat,
 } from "../services/time-tracking.server";
+import { getShopSettings } from "../services/settings.server";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
+  const settings = await getShopSettings(shop.id);
   const [employees, entries, payments] = await Promise.all([
     getEmployees(session),
     getPayrollEntries(session, 30),
@@ -26,6 +29,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }),
   ]);
   const reportEnd = new Date();
+  const hourFormat = settings.hourFormat as HourFormat;
+  const summarizeOptions = { deductBreakTime: settings.deductBreakTime };
 
   const summariesByEmployee = new Map<
     string,
@@ -33,7 +38,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   >();
 
   for (const entry of entries) {
-    const summary = summarizeTimeEntrySeconds(entry, reportEnd);
+    const summary = summarizeTimeEntrySeconds(entry, reportEnd, summarizeOptions);
     const rate = entry.hourlyRateSnapshot ?? entry.employee.hourlyRate;
     const earnings = (summary.paidSeconds / 3600) * rate;
     const current = summariesByEmployee.get(entry.employeeId) ?? {
@@ -81,9 +86,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         initials: initials(employee.firstName, employee.lastName),
         paymentType: payrollTypeLabel(employee.payrollType),
         rate: formatRate(employee),
-        totalHours: formatDurationHms(summary.totalSeconds),
-        workingHours: formatDurationHms(summary.workingSeconds),
-        totalBreakTime: formatDurationHms(summary.breakSeconds),
+        totalHours: formatDurationHms(summary.totalSeconds, hourFormat),
+        workingHours: formatDurationHms(summary.workingSeconds, hourFormat),
+        totalBreakTime: formatDurationHms(summary.breakSeconds, hourFormat),
         totalEarnings: formatMoney(summary.earnings),
         totalPaid: formatMoney(totalPaid),
         remaining: formatMoney(remaining),

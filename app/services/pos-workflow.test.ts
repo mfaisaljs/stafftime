@@ -7,6 +7,7 @@ import {
   clockOut,
   createEmployee,
   endBreak,
+  ensureDefaultLocation,
   ensureShop,
   findEmployeeByPin,
   getAttendanceSummary,
@@ -222,5 +223,63 @@ describe("POS workflow", () => {
 
     expect(entries[0]?.hourlyRateSnapshot).toBe(20);
     expect(csv).toContain(",20,20");
+  });
+
+  it("rejects clock-in before shift start when early clock-in is disabled", async () => {
+    const { shop, employee } = await seedTestShop();
+    await prisma.setting.update({
+      where: { shopId: shop.id },
+      data: { allowEarlyClockIn: false },
+    });
+
+    const startsAt = new Date();
+    startsAt.setHours(startsAt.getHours() + 2, 0, 0, 0);
+    const endsAt = new Date(startsAt);
+    endsAt.setHours(endsAt.getHours() + 8);
+
+    const location = await ensureDefaultLocation(shop.id);
+    await prisma.shift.create({
+      data: {
+        shopId: shop.id,
+        employeeId: employee.id,
+        locationId: location.id,
+        startsAt,
+        endsAt,
+      },
+    });
+
+    await expect(
+      clockIn({ shopDomain: TEST_DOMAIN, employeeId: employee.id }),
+    ).rejects.toThrow(/Clock-in is not allowed until shift starts/);
+  });
+
+  it("rejects starting a break after scheduled shift end when enabled", async () => {
+    const { shop, employee } = await seedTestShop();
+    await prisma.setting.update({
+      where: { shopId: shop.id },
+      data: { blockBreakAfterEndTime: true, allowEarlyClockIn: true },
+    });
+
+    const endsAt = new Date();
+    endsAt.setMinutes(endsAt.getMinutes() - 30);
+    const startsAt = new Date(endsAt);
+    startsAt.setHours(startsAt.getHours() - 8);
+
+    const location = await ensureDefaultLocation(shop.id);
+    await prisma.shift.create({
+      data: {
+        shopId: shop.id,
+        employeeId: employee.id,
+        locationId: location.id,
+        startsAt,
+        endsAt,
+      },
+    });
+
+    await clockIn({ shopDomain: TEST_DOMAIN, employeeId: employee.id });
+
+    await expect(
+      startBreak({ shopDomain: TEST_DOMAIN, employeeId: employee.id }),
+    ).rejects.toThrow(/Breaks are not allowed after scheduled shift end time/);
   });
 });

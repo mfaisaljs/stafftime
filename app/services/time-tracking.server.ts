@@ -46,11 +46,19 @@ export function calculateBreakSeconds(
   return { paidBreakSeconds, unpaidBreakSeconds };
 }
 
+export type SummarizeOptions = {
+  deductBreakTime?: boolean;
+};
+
+export type HourFormat = "STANDARD" | "DECIMAL";
+export type TimeFormat = "24H" | "12H";
+
 export function summarizeTimeEntrySeconds(
   entry: Pick<TimeEntry, "clockInAt" | "clockOutAt"> & {
     breaks: Pick<BreakEntry, "type" | "startedAt" | "endedAt">[];
   },
   referenceDate = new Date(),
+  options: SummarizeOptions = {},
 ): TimeSummarySeconds {
   const end = entry.clockOutAt ?? referenceDate;
   const totalWorkedSeconds = secondsBetween(entry.clockInAt, end);
@@ -58,20 +66,58 @@ export function summarizeTimeEntrySeconds(
     entry.breaks,
     end,
   );
+  const deductBreakTime = options.deductBreakTime ?? true;
+  const paidSeconds = deductBreakTime
+    ? Math.max(0, totalWorkedSeconds - unpaidBreakSeconds)
+    : totalWorkedSeconds;
 
   return {
     totalWorkedSeconds,
     paidBreakSeconds,
     unpaidBreakSeconds,
-    paidSeconds: Math.max(0, totalWorkedSeconds - unpaidBreakSeconds),
+    paidSeconds,
   };
 }
 
-export function formatDurationHms(totalSeconds: number): string {
+export function formatDuration(
+  totalSeconds: number,
+  hourFormat: HourFormat = "STANDARD",
+  includeSeconds = true,
+): string {
+  if (hourFormat === "DECIMAL") {
+    return `${(totalSeconds / 3600).toFixed(2)}h`;
+  }
+
   const hours = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
+  if (!includeSeconds) {
+    return `${hours}h ${mins}m`;
+  }
   const seconds = totalSeconds % 60;
   return `${hours}h ${mins}m ${seconds}s`;
+}
+
+export function formatDurationHms(
+  totalSeconds: number,
+  hourFormat: HourFormat = "STANDARD",
+): string {
+  return formatDuration(totalSeconds, hourFormat, true);
+}
+
+export function formatClockTime(
+  value: Date | string,
+  timeFormat: TimeFormat = "24H",
+): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (timeFormat === "24H") {
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export function calculateBreakMinutes(
@@ -96,7 +142,7 @@ export function calculateBreakMinutes(
 
 export function summarizeTimeEntry(
   entry: TimeEntry & { breaks: BreakEntry[] },
-  settings: Pick<Setting, "overtimeDailyHours">,
+  settings: Pick<Setting, "overtimeDailyHours"> & SummarizeOptions,
   referenceDate = new Date(),
 ): TimeSummary {
   const end = entry.clockOutAt ?? referenceDate;
@@ -105,7 +151,10 @@ export function summarizeTimeEntry(
     entry.breaks,
     end,
   );
-  const paidMinutes = totalWorkedMinutes - unpaidBreakMinutes;
+  const deductBreakTime = settings.deductBreakTime ?? true;
+  const paidMinutes = deductBreakTime
+    ? totalWorkedMinutes - unpaidBreakMinutes
+    : totalWorkedMinutes;
   const overtimeThresholdMinutes = settings.overtimeDailyHours * 60;
   const overtimeMinutes = Math.max(0, paidMinutes - overtimeThresholdMinutes);
 
