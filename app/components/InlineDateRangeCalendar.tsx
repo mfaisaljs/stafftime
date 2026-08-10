@@ -24,23 +24,38 @@ export function InlineDateRangeCalendar({
   const weekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
   const selectDay = (key: string) => {
-    if (!start || (start && end)) {
-      onChange({ start: key, end: "" });
+    // Completing an open selection (start set, end not yet chosen).
+    if (start && !end) {
+      if (key < start) {
+        onChange({ start: key, end: start });
+      } else {
+        // Same day is allowed: single-day time off.
+        onChange({ start, end: key });
+      }
       return;
     }
 
-    if (key < start) {
-      onChange({ start: key, end: start });
+    // Complete single-day selection: clicking another day extends the range.
+    if (start && end && start === end) {
+      if (key < start) {
+        onChange({ start: key, end: start });
+      } else if (key > end) {
+        onChange({ start, end: key });
+      } else {
+        onChange({ start: key, end: key });
+      }
       return;
     }
 
-    onChange({ start, end: key });
+    // Empty or multi-day range: start a new single-day selection immediately
+    // so same-day time off works with one click.
+    onChange({ start: key, end: key });
   };
 
   return (
     <div className="idrc">
       <input type="hidden" name={startName} value={start} />
-      <input type="hidden" name={endName} value={end} />
+      <input type="hidden" name={endName} value={end || start} />
 
       <div className="idrc-heading">
         <button

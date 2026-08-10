@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T16:15:00.000Z",
+  "lastUpdated": "2026-08-10T19:10:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -1259,6 +1259,25 @@
         "app/routes/app.time-off._index.tsx"
       ],
       "lastUpdated": "2026-08-10T16:15:00.000Z"
+    },
+    {
+      "id": "ST072",
+      "taskId": "T017",
+      "title": "Fix single-day time off date range",
+      "description": "Allow Create Time Off to submit a same-day start/end range without clearing the end date on first click.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST064"],
+      "acceptanceCriteria": [
+        "Selecting only today creates a valid single-day time off request",
+        "Multi-day ranges can still be selected by clicking a second day",
+        "Empty end date falls back to start date on submit"
+      ],
+      "files": [
+        "app/components/InlineDateRangeCalendar.tsx",
+        "app/routes/app.time-off.new.tsx"
+      ],
+      "lastUpdated": "2026-08-10T19:10:00.000Z"
     }
   ]
 }

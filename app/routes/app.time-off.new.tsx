@@ -64,7 +64,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const policyId = String(formData.get("policyId") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
   const startDate = String(formData.get("startDate") ?? "").trim();
-  const endDate = String(formData.get("endDate") ?? "").trim();
+  const endDateRaw = String(formData.get("endDate") ?? "").trim();
+  const endDate = endDateRaw || startDate;
   const reason = String(formData.get("reason") ?? "").trim();
 
   if (!employeeId) return { error: "Select a staff member." };

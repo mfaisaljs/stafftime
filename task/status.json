@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T16:15:00.000Z",
+  "lastUpdated": "2026-08-10T19:10:00.000Z",
   "notes": [
+    "ST072 complete: Create Time Off accepts same-day ranges; calendar no longer clears end date on first click.",
     "ST071 complete: wired settings gaps — payroll index salary adjustments, attendance timeFormat, POS hourFormat timer, time-off approve/decline.",
     "ST070 complete: settings enforcement wired for clock/break rules, break deduction, absence/holiday/leave metrics, salary adjustments, time formats, and POS manager payroll stats. ST068/ST069 deferred (selfie/GPS, portal toggles).",
     "ST067 complete: staff detail top-right date range uses DateRangeSelector and filters overview metrics/attendance.",
