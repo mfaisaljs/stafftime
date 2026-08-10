@@ -21,6 +21,7 @@ export default function App() {
         <s-link href="/app">Dashboard</s-link>
         <s-link href="/app/staff">Staff</s-link>
         <s-link href="/app/attendance">Attendance</s-link>
+        <s-link href="/app/time-off">Time Off</s-link>
         <s-link href="/app/reports">Reports</s-link>
         <s-link href="/app/schedules">Schedule</s-link>
         <s-link href="/app/commission-programs">Commission Programs</s-link>

@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T10:50:00.000Z",
+  "lastUpdated": "2026-08-10T13:55:00.000Z",
   "notes": [
+    "ST062 complete: Time Off Management index at /app/time-off with status tabs, empty state, and page actions.",
     "ST061 complete: Dashboard (/app) uses the same AttendanceBoard UI as Attendance.",
     "ST060 complete: Attendance route matches Reports pattern with date range, metric cards, status tabs, and Working/On Break/Absent/Late staff table.",
     "Updated: app nav order places Attendance directly below Staff.",
