@@ -8,7 +8,6 @@ import {
   BadgePercent,
   BarChart2,
   Briefcase,
-  Calendar,
   CheckCircle,
   Clock,
   Coins,
@@ -34,6 +33,12 @@ import {
   formatDurationHms,
   summarizeTimeEntrySeconds,
 } from "../services/time-tracking.server";
+import {
+  DateRangeSelector,
+  defaultDateRangeValue,
+  rangeFromPreset,
+  type DateRangeValue,
+} from "../components/DateRangeSelector";
 import prisma from "../db.server";
 
 type StaffTab = "overview" | "commission" | "payroll";
@@ -47,11 +52,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   if (!employee) throw new Response("Staff member not found", { status: 404 });
 
   const shop = await getAdminShop(session);
-  const endDate = new Date();
-  endDate.setHours(23, 59, 59, 999);
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - 30);
-  startDate.setHours(0, 0, 0, 0);
+  const url = new URL(request.url);
+  const dateRange = resolveDateRange(url.searchParams);
+  const startDate = startOfDayFromKey(dateRange.start);
+  const endDate = endOfDayFromKey(dateRange.end);
 
   const timeEntries = await getEmployeeTimeEntries(
     session,
@@ -133,8 +137,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 
   return {
     employee,
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
+    dateRange,
     metrics: {
       totalEarnings: paidEarnings,
       totalHours: formatDurationHms(totalWorkedSeconds),
@@ -166,13 +169,27 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 };
 
 export default function StaffDetailPage() {
-  const { employee, startDate, endDate, metrics, commission, attendanceRows } =
+  const { employee, dateRange, metrics, commission, attendanceRows } =
     useLoaderData<typeof loader>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab: StaffTab =
     tabParam === "commission" || tabParam === "payroll" ? tabParam : "overview";
   const fullName = `${employee.firstName} ${employee.lastName}`;
+
+  const applyRange = (next: DateRangeValue) => {
+    const params = new URLSearchParams(searchParams);
+    if (next.custom) {
+      params.set("start", next.start);
+      params.set("end", next.end);
+      params.delete("days");
+    } else {
+      params.set("days", String(next.days));
+      params.delete("start");
+      params.delete("end");
+    }
+    setSearchParams(params);
+  };
 
   return (
     <s-page inlineSize="large">
@@ -196,20 +213,39 @@ export default function StaffDetailPage() {
               </span>
             )}
           </div>
-          <button className="date-range" type="button">
-            <Calendar aria-hidden="true" size={16} />
-            {formatDateRange(startDate, endDate)}
-          </button>
+          <div className="date-control">
+            <DateRangeSelector
+              value={dateRange}
+              onChange={applyRange}
+              align="end"
+              includeHiddenInputs={false}
+            />
+          </div>
         </div>
 
         <div className="detail-tabs">
-          <TabLink tab="overview" activeTab={tab} employeeId={employee.id}>
+          <TabLink
+            tab="overview"
+            activeTab={tab}
+            employeeId={employee.id}
+            searchParams={searchParams}
+          >
             Overview
           </TabLink>
-          <TabLink tab="commission" activeTab={tab} employeeId={employee.id}>
+          <TabLink
+            tab="commission"
+            activeTab={tab}
+            employeeId={employee.id}
+            searchParams={searchParams}
+          >
             Commission Program
           </TabLink>
-          <TabLink tab="payroll" activeTab={tab} employeeId={employee.id}>
+          <TabLink
+            tab="payroll"
+            activeTab={tab}
+            employeeId={employee.id}
+            searchParams={searchParams}
+          >
             Payroll
           </TabLink>
         </div>
@@ -734,17 +770,25 @@ function TabLink({
   tab,
   activeTab,
   employeeId,
+  searchParams,
   children,
 }: {
   tab: StaffTab;
   activeTab: StaffTab;
   employeeId: string;
+  searchParams: URLSearchParams;
   children: ReactNode;
 }) {
-  const href =
-    tab === "overview"
-      ? `/app/staff/${employeeId}`
-      : `/app/staff/${employeeId}?tab=${tab}`;
+  const next = new URLSearchParams(searchParams);
+  if (tab === "overview") {
+    next.delete("tab");
+  } else {
+    next.set("tab", tab);
+  }
+  const query = next.toString();
+  const href = query
+    ? `/app/staff/${employeeId}?${query}`
+    : `/app/staff/${employeeId}`;
 
   return (
     <Link
@@ -754,6 +798,51 @@ function TabLink({
       {children}
     </Link>
   );
+}
+
+function resolveDateRange(searchParams: URLSearchParams): DateRangeValue {
+  const start = normalizeDateKey(searchParams.get("start"));
+  const end = normalizeDateKey(searchParams.get("end"));
+  if (start && end && start <= end) {
+    return {
+      start,
+      end,
+      custom: true,
+      days: 0,
+      label: `${formatShortDate(start)} - ${formatShortDate(end)}`,
+    };
+  }
+
+  const days = Number(searchParams.get("days"));
+  if ([1, 2, 7, 30, 90, 365].includes(days)) {
+    return rangeFromPreset(days);
+  }
+
+  return defaultDateRangeValue(30);
+}
+
+function normalizeDateKey(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return value;
+}
+
+function formatShortDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function startOfDayFromKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function endOfDayFromKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999);
 }
 
 function formatCurrency(amount: number, whole = false): string {
@@ -777,18 +866,6 @@ function formatTableDate(value: string): string {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function formatDateRange(start: string, end: string): string {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const fmt = (date: Date) =>
-    date.toLocaleDateString(undefined, {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  return `${fmt(startDate)} - ${fmt(endDate)}`;
 }
 
 function formatEntryStatus(status: string): string {
@@ -879,17 +956,8 @@ const STAFF_DETAIL_STYLES = `
     gap: 4px;
   }
 
-  .date-range {
-    align-items: center;
-    background: #fff;
-    border: 1px solid #d4d4d4;
-    border-radius: 8px;
-    color: #303030;
-    cursor: pointer;
-    display: inline-flex;
-    gap: 8px;
-    padding: 8px 12px;
-    white-space: nowrap;
+  .date-control {
+    justify-self: end;
   }
 
   .detail-tabs {

@@ -1151,6 +1151,23 @@
         "prisma/migrations/20260810143000_settings_page_options/migration.sql"
       ],
       "lastUpdated": "2026-08-10T14:20:00.000Z"
+    },
+    {
+      "id": "ST067",
+      "taskId": "T017",
+      "title": "Staff detail date range filter",
+      "description": "Wire staff detail top-right date range to DateRangeSelector and filter metrics/attendance by selected period.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST035"],
+      "acceptanceCriteria": [
+        "Staff detail date control opens shared DateRangeSelector",
+        "Changing range reloads overview metrics and attendance for that period"
+      ],
+      "files": [
+        "app/routes/app.staff.$employeeId._index.tsx"
+      ],
+      "lastUpdated": "2026-08-10T15:50:00.000Z"
     }
   ]
 }
