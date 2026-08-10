@@ -38,6 +38,7 @@ type AttendanceBoardProps = {
   basePath: string;
   dateRange: DateRangeValue;
   live: boolean;
+  timeFormat?: "24H" | "12H";
   metrics: AttendanceBoardMetrics;
   rows: AttendanceBoardRow[];
 };
@@ -46,6 +47,7 @@ export function AttendanceBoard({
   basePath,
   dateRange,
   live,
+  timeFormat = "12H",
   metrics,
   rows,
 }: AttendanceBoardProps) {
@@ -204,8 +206,8 @@ export function AttendanceBoard({
                       )}
                     </span>
                   </td>
-                  <td>{formatTime(row.shiftStartsAt)}</td>
-                  <td>{formatTime(row.clockInAt)}</td>
+                  <td>{formatTime(row.shiftStartsAt, timeFormat)}</td>
+                  <td>{formatTime(row.clockInAt, timeFormat)}</td>
                 </tr>
               ))}
               {filteredRows.length === 0 && (
@@ -330,9 +332,15 @@ function statusLabel(status: AttendanceStatus) {
   }
 }
 
-function formatTime(value: string | null) {
+function formatTime(value: string | null, timeFormat: "24H" | "12H" = "12H") {
   if (!value) return "—";
-  return new Date(value).toLocaleTimeString(undefined, {
+  const date = new Date(value);
+  if (timeFormat === "24H") {
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  return date.toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",
   });

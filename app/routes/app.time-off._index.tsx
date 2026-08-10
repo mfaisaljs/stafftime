@@ -1,6 +1,10 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
 import type { ReactNode } from "react";
-import { Link, useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { Form, Link, useActionData, useLoaderData, useNavigate, useSearchParams } from "react-router";
 import { ArrowUpDown, Search } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -49,8 +53,41 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = await getAdminShop(session);
+  const formData = await request.formData();
+  const requestId = String(formData.get("requestId") ?? "");
+  const status = String(formData.get("status") ?? "");
+
+  if (!requestId) {
+    return { error: "Time off request not found." };
+  }
+  if (status !== "APPROVED" && status !== "DECLINED") {
+    return { error: "Select a valid review action." };
+  }
+
+  const existing = await prisma.timeOffRequest.findFirst({
+    where: { id: requestId, shopId: shop.id },
+  });
+  if (!existing) {
+    return { error: "Time off request not found." };
+  }
+  if (existing.status !== "PENDING") {
+    return { error: "This time off request has already been reviewed." };
+  }
+
+  await prisma.timeOffRequest.update({
+    where: { id: existing.id },
+    data: { status },
+  });
+
+  return { success: status === "APPROVED" ? "Time off approved." : "Time off declined." };
+};
+
 export default function TimeOffIndexPage() {
   const { timeOffs, created, status } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tab = statusTab(searchParams.get("status") ?? status);
@@ -76,6 +113,12 @@ export default function TimeOffIndexPage() {
       </s-button>
 
       {created && <s-banner tone="success" heading="Time off request created." />}
+      {actionData && "error" in actionData && actionData.error && (
+        <s-banner tone="critical" heading={actionData.error} />
+      )}
+      {actionData && "success" in actionData && actionData.success && (
+        <s-banner tone="success" heading={actionData.success} />
+      )}
 
       <section className="timeoff-card">
         <div className="timeoff-toolbar">
@@ -141,6 +184,7 @@ export default function TimeOffIndexPage() {
                   <th>Dates</th>
                   <th>Status</th>
                   <th>Reason</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,6 +201,28 @@ export default function TimeOffIndexPage() {
                       </span>
                     </td>
                     <td>{item.reason || "—"}</td>
+                    <td>
+                      {item.status === "pending" ? (
+                        <div className="timeoff-actions-inline">
+                          <Form method="post">
+                            <input type="hidden" name="requestId" value={item.id} />
+                            <input type="hidden" name="status" value="APPROVED" />
+                            <s-button type="submit" variant="primary">
+                              Approve
+                            </s-button>
+                          </Form>
+                          <Form method="post">
+                            <input type="hidden" name="requestId" value={item.id} />
+                            <input type="hidden" name="status" value="DECLINED" />
+                            <s-button type="submit" variant="secondary">
+                              Decline
+                            </s-button>
+                          </Form>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -281,6 +347,13 @@ const TIME_OFF_STYLES = `
   .timeoff-actions {
     align-items: center;
     display: inline-flex;
+    gap: 8px;
+  }
+
+  .timeoff-actions-inline {
+    align-items: center;
+    display: inline-flex;
+    flex-wrap: wrap;
     gap: 8px;
   }
 

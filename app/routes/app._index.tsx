@@ -21,7 +21,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function DashboardPage() {
-  const { dateRange, live, metrics, rows } = useLoaderData<typeof loader>();
+  const { dateRange, live, timeFormat, metrics, rows } = useLoaderData<typeof loader>();
 
   return (
     <s-page heading="Dashboard" inlineSize="large">
@@ -29,6 +29,7 @@ export default function DashboardPage() {
         basePath="/app"
         dateRange={dateRange}
         live={live}
+        timeFormat={timeFormat}
         metrics={metrics}
         rows={rows}
       />

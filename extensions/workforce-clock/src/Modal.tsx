@@ -64,11 +64,8 @@ function WorkforceModal() {
 
     const adjustedNow = now + clockOffsetRef.current;
     const seconds = Math.max(0, Math.floor((adjustedNow - clockInAtMs) / 1000));
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h}h ${m}m ${s}s`;
-  }, [now, verified?.status.clockInAtMs]);
+    return formatElapsed(seconds, verified?.status.hourFormat ?? "STANDARD");
+  }, [now, verified?.status.clockInAtMs, verified?.status.hourFormat]);
 
   const apiFetch = useCallback(async (path: string, body?: Record<string, unknown>) => {
     const token = await shopify.session.getSessionToken();
@@ -273,6 +270,19 @@ function formatTime(iso: string, timeFormat: "24H" | "12H" = "12H") {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatElapsed(
+  totalSeconds: number,
+  hourFormat: "STANDARD" | "DECIMAL" = "STANDARD",
+) {
+  if (hourFormat === "DECIMAL") {
+    return `${(totalSeconds / 3600).toFixed(2)}h`;
+  }
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h}h ${m}m ${s}s`;
 }
 
 function errorMessageFromResponse(data: unknown): string | null {

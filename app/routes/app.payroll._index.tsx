@@ -13,20 +13,40 @@ import {
   summarizeTimeEntrySeconds,
   type HourFormat,
 } from "../services/time-tracking.server";
-import { getShopSettings } from "../services/settings.server";
+import {
+  clampRangeStartForSalary,
+  computeSalaryAdjustments,
+  enumerateDateKeys,
+  getApprovedTimeOffForRange,
+  getShopSettings,
+} from "../services/settings.server";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
   const settings = await getShopSettings(shop.id);
-  const [employees, entries, payments] = await Promise.all([
+  const periodStart = new Date();
+  periodStart.setDate(periodStart.getDate() - 30);
+  periodStart.setHours(0, 0, 0, 0);
+  const periodEnd = new Date();
+  const rangeStartKey = toDateKeyLocal(periodStart);
+  const rangeEndKey = toDateKeyLocal(periodEnd);
+
+  const [employees, entries, payments, shifts, timeOffRequests] = await Promise.all([
     getEmployees(session),
     getPayrollEntries(session, 30),
     prisma.payrollPayment.findMany({
       where: { shopId: shop.id },
       select: { employeeId: true, amount: true },
     }),
+    prisma.shift.findMany({
+      where: {
+        shopId: shop.id,
+        startsAt: { gte: periodStart, lte: periodEnd },
+      },
+    }),
+    getApprovedTimeOffForRange(shop.id, rangeStartKey, rangeEndKey),
   ]);
   const reportEnd = new Date();
   const hourFormat = settings.hourFormat as HourFormat;
@@ -37,25 +57,59 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     { totalSeconds: number; workingSeconds: number; breakSeconds: number; earnings: number }
   >();
 
-  for (const entry of entries) {
-    const summary = summarizeTimeEntrySeconds(entry, reportEnd, summarizeOptions);
-    const rate = entry.hourlyRateSnapshot ?? entry.employee.hourlyRate;
-    const earnings = (summary.paidSeconds / 3600) * rate;
-    const current = summariesByEmployee.get(entry.employeeId) ?? {
-      totalSeconds: 0,
-      workingSeconds: 0,
-      breakSeconds: 0,
-      earnings: 0,
-    };
+  for (const employee of employees) {
+    if (employee.status === "ARCHIVED") continue;
 
-    summariesByEmployee.set(entry.employeeId, {
-      totalSeconds: current.totalSeconds + summary.totalWorkedSeconds,
-      workingSeconds: current.workingSeconds + summary.paidSeconds,
-      breakSeconds:
-        current.breakSeconds +
-        summary.paidBreakSeconds +
-        summary.unpaidBreakSeconds,
-      earnings: current.earnings + earnings,
+    const effectiveStart = await clampRangeStartForSalary(
+      shop.id,
+      employee.id,
+      periodStart,
+      settings,
+    );
+    const employeeEntries = entries.filter(
+      (entry) =>
+        entry.employeeId === employee.id && entry.clockInAt >= effectiveStart,
+    );
+
+    let totalSeconds = 0;
+    let workingSeconds = 0;
+    let breakSeconds = 0;
+    let earnings = 0;
+
+    for (const entry of employeeEntries) {
+      const summary = summarizeTimeEntrySeconds(entry, reportEnd, summarizeOptions);
+      const rate = entry.hourlyRateSnapshot ?? entry.employee.hourlyRate;
+      totalSeconds += summary.totalWorkedSeconds;
+      workingSeconds += summary.paidSeconds;
+      breakSeconds += summary.paidBreakSeconds + summary.unpaidBreakSeconds;
+      earnings += (summary.paidSeconds / 3600) * rate;
+    }
+
+    const dateKeys = enumerateDateKeys(
+      toDateKeyLocal(effectiveStart),
+      rangeEndKey,
+    );
+    const shiftsByDate = new Map<string, boolean>();
+    for (const shift of shifts.filter((item) => item.employeeId === employee.id)) {
+      shiftsByDate.set(toDateKeyLocal(shift.startsAt), true);
+    }
+    const clockedDates = new Set(
+      employeeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
+    );
+    earnings += computeSalaryAdjustments({
+      employee,
+      dateKeys,
+      shiftsByDate,
+      clockedDates,
+      requests: timeOffRequests.filter((request) => request.employeeId === employee.id),
+      settings,
+    });
+
+    summariesByEmployee.set(employee.id, {
+      totalSeconds,
+      workingSeconds,
+      breakSeconds,
+      earnings,
     });
   }
 
@@ -197,6 +251,13 @@ function formatRate(employee: {
 
 function formatMoney(amount: number) {
   return `$${amount.toFixed(2)}`;
+}
+
+function toDateKeyLocal(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {

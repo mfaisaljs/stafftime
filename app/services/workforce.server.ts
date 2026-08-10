@@ -981,6 +981,7 @@ export async function getAttendanceBoard(
   return {
     refDate: refKey,
     live: isLive,
+    timeFormat: settings.timeFormat as TimeFormat,
     metrics: {
       working: workingCount,
       onBreak: onBreakCount,

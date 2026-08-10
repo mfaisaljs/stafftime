@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T16:10:00.000Z",
+  "lastUpdated": "2026-08-10T16:15:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -1233,7 +1233,32 @@
         "app/services/pos-workflow.test.ts",
         "app/services/time-tracking.test.ts"
       ],
-      "lastUpdated": "2026-08-10T16:10:00.000Z"
+      "lastUpdated": "2026-08-10T16:15:00.000Z"
+    },
+    {
+      "id": "ST071",
+      "taskId": "T017",
+      "title": "Wire settings enforcement gaps",
+      "description": "Complete partial settings wiring: payroll index salary math, attendance time format, POS hour format timer, time-off approve/decline.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST070"],
+      "acceptanceCriteria": [
+        "Payroll index applies salaryAfterFirstClockIn and leave/absence salary adjustments",
+        "Attendance board shift/clock-in columns respect shop timeFormat",
+        "POS elapsed timer respects hourFormat",
+        "Time off requests can be approved or declined so leave settings take effect"
+      ],
+      "files": [
+        "app/routes/app.payroll._index.tsx",
+        "app/components/attendance/AttendanceBoard.tsx",
+        "app/routes/app.attendance.tsx",
+        "app/routes/app._index.tsx",
+        "app/services/workforce.server.ts",
+        "extensions/workforce-clock/src/Modal.tsx",
+        "app/routes/app.time-off._index.tsx"
+      ],
+      "lastUpdated": "2026-08-10T16:15:00.000Z"
     }
   ]
 }
