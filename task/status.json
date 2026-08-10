@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T06:25:00.000Z",
+  "lastUpdated": "2026-08-10T06:30:00.000Z",
   "notes": [
+    "Updated: Staff row delete opens remove_staff modal with Archive or Permanently Delete options.",
     "Updated: Sales Target History modal shows last 6 months with snapshotted monthly goal amounts.",
     "Updated: Sales Targets list matches Staff/Location/Target/Sold/Progress/Remaining/Status/Actions table.",
     "Updated: Set target opens Polaris modal with staff/location selection and monthly USD target save.",

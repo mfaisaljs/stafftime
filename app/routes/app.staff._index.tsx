@@ -26,6 +26,11 @@ export default function StaffManagementPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [removeStaff, setRemoveStaff] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [removeMode, setRemoveMode] = useState<"archive" | "delete">("archive");
   const selectAllRef = useRef<HTMLInputElement>(null);
   const isBulkSubmitting = fetcher.state !== "idle";
 
@@ -88,6 +93,12 @@ export default function StaffManagementPage() {
   useEffect(() => {
     if (fetcher.data?.success) {
       setSelectedIds(new Set());
+      setRemoveStaff(null);
+      setRemoveMode("archive");
+      const modal = document.getElementById("remove-staff-modal") as
+        | (HTMLElement & { hideOverlay?: () => void })
+        | null;
+      modal?.hideOverlay?.();
     }
   }, [fetcher.data?.success]);
 
@@ -97,6 +108,30 @@ export default function StaffManagementPage() {
     for (const employeeId of selectedIds) {
       formData.append("employeeIds", employeeId);
     }
+    fetcher.submit(formData, { method: "post", action: "/app/staff" });
+  };
+
+  const openRemoveStaffModal = (employee: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  }) => {
+    setRemoveStaff({
+      id: employee.id,
+      name: `${employee.firstName} ${employee.lastName}`.trim(),
+    });
+    setRemoveMode("archive");
+    const modal = document.getElementById("remove-staff-modal") as
+      | (HTMLElement & { showOverlay?: () => void })
+      | null;
+    modal?.showOverlay?.();
+  };
+
+  const submitRemoveStaff = () => {
+    if (!removeStaff) return;
+    const formData = new FormData();
+    formData.set("intent", removeMode);
+    formData.append("employeeIds", removeStaff.id);
     fetcher.submit(formData, { method: "post", action: "/app/staff" });
   };
 
@@ -280,6 +315,75 @@ export default function StaffManagementPage() {
           </s-button>
         </s-modal>
 
+        <s-modal id="remove-staff-modal" heading="remove_staff" size="base">
+          <div className="remove-staff-body">
+            <p className="remove-staff-question">
+              How would you like to remove &quot;{removeStaff?.name ?? "this staff member"}
+              &quot;?
+            </p>
+            <div className="remove-options">
+              <label
+                className={`remove-option${removeMode === "archive" ? " selected" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="removeMode"
+                  value="archive"
+                  checked={removeMode === "archive"}
+                  onChange={() => setRemoveMode("archive")}
+                />
+                <span>
+                  <strong>Archive (Recommended)</strong>
+                  <span className="remove-option-help">
+                    Preserves historical payroll and clock-in data, but removes their
+                    access and frees up a staff seat.
+                  </span>
+                </span>
+              </label>
+              <label
+                className={`remove-option${removeMode === "delete" ? " selected" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="removeMode"
+                  value="delete"
+                  checked={removeMode === "delete"}
+                  onChange={() => setRemoveMode("delete")}
+                />
+                <span>
+                  <strong>Permanently Delete</strong>
+                  <span className="remove-option-help">
+                    Permanently erases all data associated with this staff member. This
+                    cannot be undone.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+          <s-button
+            slot="secondary-actions"
+            variant="secondary"
+            commandFor="remove-staff-modal"
+            command="--hide"
+            onClick={() => {
+              setRemoveStaff(null);
+              setRemoveMode("archive");
+            }}
+          >
+            Cancel
+          </s-button>
+          <s-button
+            slot="primary-action"
+            variant="primary"
+            tone={removeMode === "delete" ? "critical" : "auto"}
+            loading={isBulkSubmitting}
+            disabled={!removeStaff}
+            onClick={submitRemoveStaff}
+          >
+            {removeMode === "delete" ? "Permanently Delete" : "Archive"}
+          </s-button>
+        </s-modal>
+
         <section className="staff-table-card">
           <div className="table-toolbar">
             <div className="status-tabs">
@@ -415,10 +519,26 @@ export default function StaffManagementPage() {
                         >
                           <Pencil aria-hidden="true" size={15} />
                         </Link>
-                        <button type="button" aria-label="Archive staff">
+                        <button
+                          type="button"
+                          aria-label="Archive staff"
+                          onClick={() => {
+                            const formData = new FormData();
+                            formData.set("intent", "archive");
+                            formData.append("employeeIds", employee.id);
+                            fetcher.submit(formData, {
+                              method: "post",
+                              action: "/app/staff",
+                            });
+                          }}
+                        >
                           <Archive aria-hidden="true" size={15} />
                         </button>
-                        <button type="button" aria-label="Delete staff">
+                        <button
+                          type="button"
+                          aria-label="Delete staff"
+                          onClick={() => openRemoveStaffModal(employee)}
+                        >
                           <Trash2 aria-hidden="true" size={15} />
                         </button>
                       </div>
@@ -874,6 +994,59 @@ const STAFF_MANAGEMENT_STYLES = `
   .row-actions button:last-child {
     border: 0;
     color: #8a0000;
+  }
+
+  .remove-staff-body {
+    display: grid;
+    gap: 16px;
+  }
+
+  .remove-staff-question {
+    color: #303030;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .remove-options {
+    display: grid;
+    gap: 10px;
+  }
+
+  .remove-option {
+    align-items: flex-start;
+    border: 1px solid #d9d9d9;
+    border-radius: 10px;
+    cursor: pointer;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: auto 1fr;
+    padding: 12px;
+  }
+
+  .remove-option.selected {
+    border-color: #1a1a1a;
+    box-shadow: inset 0 0 0 1px #1a1a1a;
+  }
+
+  .remove-option input {
+    accent-color: #1a1a1a;
+    margin-top: 2px;
+  }
+
+  .remove-option > span {
+    display: grid;
+    gap: 4px;
+  }
+
+  .remove-option strong {
+    color: #303030;
+    font-size: 14px;
+  }
+
+  .remove-option-help {
+    color: #616161;
+    font-size: 13px;
+    line-height: 1.4;
   }
 
   .empty-state {
