@@ -373,7 +373,10 @@ model TaskList {
   description    String?
   assignStaff    Boolean  @default(false)
   assignManagers Boolean  @default(false)
+  staffScope     String   @default("ALL")
+  managerScope   String   @default("ALL")
   employeeIds    String   @default("[]")
+  managerIds     String   @default("[]")
   locationAccess String   @default("ALL")
   locationIds    String   @default("[]")
   timelines      String   @default("[]")

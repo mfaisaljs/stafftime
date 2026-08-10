@@ -76,12 +76,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const description = String(formData.get("description") ?? "").trim();
   const assignStaff = formData.get("assignStaff") === "true";
   const assignManagers = formData.get("assignManagers") === "true";
+  const staffScope =
+    String(formData.get("staffScope") ?? "ALL") === "SELECTED"
+      ? "SELECTED"
+      : "ALL";
+  const managerScope =
+    String(formData.get("managerScope") ?? "ALL") === "SELECTED"
+      ? "SELECTED"
+      : "ALL";
   const locationAccess =
     String(formData.get("locationAccess") ?? "ALL") === "SPECIFIC"
       ? "SPECIFIC"
       : "ALL";
   const employeeIds = formData
     .getAll("employeeIds")
+    .map((value) => String(value))
+    .filter(Boolean);
+  const managerIds = formData
+    .getAll("managerIds")
     .map((value) => String(value))
     .filter(Boolean);
   const locationIds = formData
@@ -103,8 +115,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!assignStaff && !assignManagers) {
     return { error: "Assign the task list to Staff and/or Managers." };
   }
-  if (assignStaff && employeeIds.length === 0) {
+  if (assignStaff && staffScope === "SELECTED" && employeeIds.length === 0) {
     return { error: "Select at least one staff member." };
+  }
+  if (assignManagers && managerScope === "SELECTED" && managerIds.length === 0) {
+    return { error: "Select at least one manager." };
   }
   if (locationAccess === "SPECIFIC" && locationIds.length === 0) {
     return { error: "Select at least one location." };
@@ -123,7 +138,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       description: description || null,
       assignStaff,
       assignManagers,
-      employeeIds: JSON.stringify(assignStaff ? employeeIds : []),
+      staffScope: assignStaff ? staffScope : "ALL",
+      managerScope: assignManagers ? managerScope : "ALL",
+      employeeIds: JSON.stringify(
+        assignStaff && staffScope === "SELECTED" ? employeeIds : [],
+      ),
+      managerIds: JSON.stringify(
+        assignManagers && managerScope === "SELECTED" ? managerIds : [],
+      ),
       locationAccess,
       locationIds: JSON.stringify(
         locationAccess === "SPECIFIC" ? locationIds : [],
@@ -147,7 +169,12 @@ export default function CreateTaskListPage() {
   const actionData = useActionData<typeof action>();
   const [assignStaff, setAssignStaff] = useState(true);
   const [assignManagers, setAssignManagers] = useState(false);
+  const [staffScope, setStaffScope] = useState<"ALL" | "SELECTED">("ALL");
+  const [managerScope, setManagerScope] = useState<"ALL" | "SELECTED">("ALL");
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [selectedManagerIds, setSelectedManagerIds] = useState<Set<string>>(
     () => new Set(),
   );
   const [locationAccess, setLocationAccess] = useState<"ALL" | "SPECIFIC">(
@@ -166,11 +193,30 @@ export default function CreateTaskListPage() {
     () => employees.filter((employee) => employee.role === "EMPLOYEE"),
     [employees],
   );
+  const managerEmployees = useMemo(
+    () =>
+      employees.filter(
+        (employee) =>
+          employee.role === "STORE_MANAGER" || employee.role === "OWNER",
+      ),
+    [employees],
+  );
   const selectableStaff =
     staffEmployees.length > 0 ? staffEmployees : employees;
+  const selectableManagers =
+    managerEmployees.length > 0 ? managerEmployees : employees;
 
   const toggleEmployee = (id: string, checked: boolean) => {
     setSelectedEmployeeIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleManager = (id: string, checked: boolean) => {
+    setSelectedManagerIds((current) => {
       const next = new Set(current);
       if (checked) next.add(id);
       else next.delete(id);
@@ -233,7 +279,10 @@ export default function CreateTaskListPage() {
 
       <Form method="post" data-save-bar>
         {Array.from(selectedEmployeeIds).map((id) => (
-          <input key={id} type="hidden" name="employeeIds" value={id} />
+          <input key={`staff-${id}`} type="hidden" name="employeeIds" value={id} />
+        ))}
+        {Array.from(selectedManagerIds).map((id) => (
+          <input key={`manager-${id}`} type="hidden" name="managerIds" value={id} />
         ))}
         {Array.from(selectedLocationIds).map((id) => (
           <input key={id} type="hidden" name="locationIds" value={id} />
@@ -281,7 +330,10 @@ export default function CreateTaskListPage() {
                   onChange={(event) => {
                     const checked = event.currentTarget.checked;
                     setAssignStaff(checked);
-                    if (!checked) setSelectedEmployeeIds(new Set());
+                    if (!checked) {
+                      setStaffScope("ALL");
+                      setSelectedEmployeeIds(new Set());
+                    }
                   }}
                 />
                 Staff
@@ -292,53 +344,160 @@ export default function CreateTaskListPage() {
                   name="assignManagers"
                   value="true"
                   checked={assignManagers}
-                  onChange={(event) =>
-                    setAssignManagers(event.currentTarget.checked)
-                  }
+                  onChange={(event) => {
+                    const checked = event.currentTarget.checked;
+                    setAssignManagers(checked);
+                    if (!checked) {
+                      setManagerScope("ALL");
+                      setSelectedManagerIds(new Set());
+                    }
+                  }}
                 />
                 Managers
               </label>
             </div>
 
-            {assignStaff && (
+            {(assignStaff || assignManagers) && (
               <div className="assignee-picker">
                 <span className="group-label">Selected Assignees</span>
                 <div className="assignee-chips">
-                  <span className="chip">
-                    Staff
-                    <button
-                      type="button"
-                      aria-label="Remove Staff assignment"
-                      onClick={() => {
-                        setAssignStaff(false);
-                        setSelectedEmployeeIds(new Set());
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                </div>
-                <div className="staff-options">
-                  {selectableStaff.length === 0 ? (
-                    <p className="help-text">No staff members available.</p>
-                  ) : (
-                    selectableStaff.map((employee) => (
-                      <label key={employee.id} className="check-row">
-                        <input
-                          type="checkbox"
-                          checked={selectedEmployeeIds.has(employee.id)}
-                          onChange={(event) =>
-                            toggleEmployee(
-                              employee.id,
-                              event.currentTarget.checked,
-                            )
-                          }
-                        />
-                        {employee.name}
-                      </label>
-                    ))
+                  {assignStaff && (
+                    <span className="chip">
+                      Staff
+                      <button
+                        type="button"
+                        aria-label="Remove Staff assignment"
+                        onClick={() => {
+                          setAssignStaff(false);
+                          setStaffScope("ALL");
+                          setSelectedEmployeeIds(new Set());
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                  {assignManagers && (
+                    <span className="chip">
+                      Managers
+                      <button
+                        type="button"
+                        aria-label="Remove Managers assignment"
+                        onClick={() => {
+                          setAssignManagers(false);
+                          setManagerScope("ALL");
+                          setSelectedManagerIds(new Set());
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
                   )}
                 </div>
+
+                {assignStaff && (
+                  <div className="scope-block">
+                    <span className="group-label">Staff assignees</span>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="staffScope"
+                        value="ALL"
+                        checked={staffScope === "ALL"}
+                        onChange={() => {
+                          setStaffScope("ALL");
+                          setSelectedEmployeeIds(new Set());
+                        }}
+                      />
+                      All staff
+                    </label>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="staffScope"
+                        value="SELECTED"
+                        checked={staffScope === "SELECTED"}
+                        onChange={() => setStaffScope("SELECTED")}
+                      />
+                      Selected staff
+                    </label>
+                    {staffScope === "SELECTED" && (
+                      <div className="staff-options">
+                        {selectableStaff.length === 0 ? (
+                          <p className="help-text">No staff members available.</p>
+                        ) : (
+                          selectableStaff.map((employee) => (
+                            <label key={employee.id} className="check-row">
+                              <input
+                                type="checkbox"
+                                checked={selectedEmployeeIds.has(employee.id)}
+                                onChange={(event) =>
+                                  toggleEmployee(
+                                    employee.id,
+                                    event.currentTarget.checked,
+                                  )
+                                }
+                              />
+                              {employee.name}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {assignManagers && (
+                  <div className="scope-block">
+                    <span className="group-label">Manager assignees</span>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="managerScope"
+                        value="ALL"
+                        checked={managerScope === "ALL"}
+                        onChange={() => {
+                          setManagerScope("ALL");
+                          setSelectedManagerIds(new Set());
+                        }}
+                      />
+                      All managers
+                    </label>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="managerScope"
+                        value="SELECTED"
+                        checked={managerScope === "SELECTED"}
+                        onChange={() => setManagerScope("SELECTED")}
+                      />
+                      Selected managers
+                    </label>
+                    {managerScope === "SELECTED" && (
+                      <div className="staff-options">
+                        {selectableManagers.length === 0 ? (
+                          <p className="help-text">No managers available.</p>
+                        ) : (
+                          selectableManagers.map((employee) => (
+                            <label key={employee.id} className="check-row">
+                              <input
+                                type="checkbox"
+                                checked={selectedManagerIds.has(employee.id)}
+                                onChange={(event) =>
+                                  toggleManager(
+                                    employee.id,
+                                    event.currentTarget.checked,
+                                  )
+                                }
+                              />
+                              {employee.name}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </FormSection>
@@ -594,11 +753,17 @@ const CREATE_TASKLIST_STYLES = `
 
   .assign-block,
   .assignee-picker,
+  .scope-block,
   .staff-options,
   .task-list,
   .add-task-form {
     display: grid;
     gap: 10px;
+  }
+
+  .scope-block {
+    border-top: 1px solid #ececec;
+    padding-top: 12px;
   }
 
   .check-row,
