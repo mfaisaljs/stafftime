@@ -100,10 +100,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     .getAll("locationIds")
     .map((value) => String(value))
     .filter(Boolean);
-  const timelines = formData
-    .getAll("timelines")
-    .map((value) => String(value))
-    .filter((value) => ["DAILY", "WEEKLY", "MONTHLY"].includes(value));
+  const timeline = String(formData.get("timeline") ?? "");
+  const timelines = ["DAILY", "WEEKLY", "MONTHLY"].includes(timeline)
+    ? [timeline]
+    : [];
   const taskTitles = formData
     .getAll("taskTitles")
     .map((value) => String(value).trim())
@@ -125,7 +125,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return { error: "Select at least one location." };
   }
   if (timelines.length === 0) {
-    return { error: "Choose at least one timeline." };
+    return { error: "Choose a timeline." };
   }
   if (taskTitles.length === 0) {
     return { error: "Add at least one task." };
@@ -183,7 +183,7 @@ export default function CreateTaskListPage() {
   const [selectedLocationIds, setSelectedLocationIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [timelines, setTimelines] = useState<Set<string>>(() => new Set());
+  const [timeline, setTimeline] = useState("");
   const [tasks, setTasks] = useState<TaskDraft[]>([]);
   const [addingTask, setAddingTask] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
@@ -229,15 +229,6 @@ export default function CreateTaskListPage() {
       const next = new Set(current);
       if (checked) next.add(id);
       else next.delete(id);
-      return next;
-    });
-  };
-
-  const toggleTimeline = (value: string, checked: boolean) => {
-    setTimelines((current) => {
-      const next = new Set(current);
-      if (checked) next.add(value);
-      else next.delete(value);
       return next;
     });
   };
@@ -558,15 +549,16 @@ export default function CreateTaskListPage() {
             title="Timeline"
             description="Choose how frequently this task list should be completed."
           >
+            <input type="hidden" name="timeline" value={timeline} />
             {TIMELINE_OPTIONS.map((option) => (
               <label key={option.value} className="timeline-row">
                 <input
                   type="checkbox"
-                  name="timelines"
-                  value={option.value}
-                  checked={timelines.has(option.value)}
+                  checked={timeline === option.value}
                   onChange={(event) =>
-                    toggleTimeline(option.value, event.currentTarget.checked)
+                    setTimeline(
+                      event.currentTarget.checked ? option.value : "",
+                    )
                   }
                 />
                 <span>
