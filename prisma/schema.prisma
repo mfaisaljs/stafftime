@@ -90,6 +90,7 @@ model Shop {
   settings            Setting?
   commissionPrograms  CommissionProgram[]
   salesTargets        SalesTarget[]
+  salesTargetSnapshots SalesTargetSnapshot[]
 }
 
 model StoreLocation {
@@ -210,6 +211,24 @@ model SalesTarget {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, yearMonth])
+}
+
+/// Monthly goal snapshot per staff member so history keeps the target amount over time.
+model SalesTargetSnapshot {
+  id         String   @id @default(cuid())
+  shopId     String
+  employeeId String
+  yearMonth  String
+  amount     Float
+  currency   String   @default("USD")
+  soldAmount Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, employeeId, yearMonth])
+  @@index([shopId, employeeId, yearMonth])
 }
 
 model TimeEntry {

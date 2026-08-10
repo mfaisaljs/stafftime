@@ -17,10 +17,56 @@ function parseIds(raw: string): string[] {
   }
 }
 
-function currentYearMonth() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  return `${now.getFullYear()}-${month}`;
+function currentYearMonth(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+}
+
+function lastSixYearMonths(from = new Date()) {
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(from.getFullYear(), from.getMonth() - index, 1);
+    return currentYearMonth(date);
+  });
+}
+
+function formatMonthLabel(yearMonth: string, isCurrent: boolean) {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const label = new Date(year, (month ?? 1) - 1, 1).toLocaleString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+  return isCurrent ? `${label} (current)` : label;
+}
+
+async function upsertTargetGoalSnapshots(options: {
+  shopId: string;
+  employeeIds: string[];
+  yearMonth: string;
+  amount: number;
+  currency: string;
+}) {
+  const { shopId, employeeIds, yearMonth, amount, currency } = options;
+  await Promise.all(
+    employeeIds.map((employeeId) =>
+      prisma.salesTargetSnapshot.upsert({
+        where: {
+          shopId_employeeId_yearMonth: { shopId, employeeId, yearMonth },
+        },
+        create: {
+          shopId,
+          employeeId,
+          yearMonth,
+          amount,
+          currency,
+          soldAmount: 0,
+        },
+        update: {
+          amount,
+          currency,
+        },
+      }),
+    ),
+  );
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -37,6 +83,58 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       orderBy: { createdAt: "desc" },
     }),
   ]);
+
+  const yearMonth = currentYearMonth();
+  const historyMonths = lastSixYearMonths();
+
+  // Keep current-month goal snapshots in sync with active targets.
+  await Promise.all(
+    targets.flatMap((target) =>
+      parseIds(target.employeeIds).map((employeeId) =>
+        prisma.salesTargetSnapshot.upsert({
+          where: {
+            shopId_employeeId_yearMonth: {
+              shopId: shop.id,
+              employeeId,
+              yearMonth,
+            },
+          },
+          create: {
+            shopId: shop.id,
+            employeeId,
+            yearMonth,
+            amount: target.amount,
+            currency: target.currency,
+            soldAmount: 0,
+          },
+          update: {
+            amount: target.amount,
+            currency: target.currency,
+          },
+        }),
+      ),
+    ),
+  );
+
+  const employeeIdsInTargets = Array.from(
+    new Set(targets.flatMap((target) => parseIds(target.employeeIds))),
+  );
+  const snapshots = employeeIdsInTargets.length
+    ? await prisma.salesTargetSnapshot.findMany({
+        where: {
+          shopId: shop.id,
+          employeeId: { in: employeeIdsInTargets },
+          yearMonth: { in: historyMonths },
+        },
+      })
+    : [];
+
+  const snapshotByEmployeeMonth = new Map(
+    snapshots.map((snapshot) => [
+      `${snapshot.employeeId}:${snapshot.yearMonth}`,
+      snapshot,
+    ]),
+  );
 
   const employeeNameById = new Map(
     employees.map((employee) => [
@@ -59,31 +157,61 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         ? "All locations"
         : (locationNameById.get(locationIds[0]) ?? "All locations");
 
-    // Sold tracking is not wired yet — show zero progress for the current month.
-    const sold = 0;
-    const remaining = Math.max(0, target.amount - sold);
-    const progressPercent =
-      target.amount > 0
-        ? Math.min(100, Math.round((sold / target.amount) * 100))
-        : 0;
-    const status =
-      progressPercent >= 100 ? "Met" : progressPercent >= 50 ? "On track" : "Behind";
+    return employeeIds.map((employeeId) => {
+      const currentSnapshot = snapshotByEmployeeMonth.get(
+        `${employeeId}:${yearMonth}`,
+      );
+      const sold = currentSnapshot?.soldAmount ?? 0;
+      const goalAmount = currentSnapshot?.amount ?? target.amount;
+      const remaining = Math.max(0, goalAmount - sold);
+      const progressPercent =
+        goalAmount > 0
+          ? Math.min(100, Math.round((sold / goalAmount) * 100))
+          : 0;
+      const status =
+        progressPercent >= 100
+          ? "Met"
+          : progressPercent >= 50
+            ? "On track"
+            : "Behind";
 
-    return employeeIds.map((employeeId) => ({
-      id: `${target.id}:${employeeId}`,
-      targetId: target.id,
-      employeeId,
-      staffName: employeeNameById.get(employeeId) ?? "Unknown staff",
-      locationLabel,
-      amount: target.amount,
-      currency: target.currency,
-      sold,
-      remaining,
-      progressPercent,
-      status,
-      employeeIds,
-      locationIds,
-    }));
+      const history = historyMonths.map((monthKey, index) => {
+        const snapshot = snapshotByEmployeeMonth.get(`${employeeId}:${monthKey}`);
+        // Prefer snapshotted goal for that month; fall back to current target amount.
+        const monthGoal = snapshot?.amount ?? target.amount;
+        const monthSold = snapshot?.soldAmount ?? 0;
+        const monthProgress =
+          monthGoal > 0
+            ? Math.min(100, Math.round((monthSold / monthGoal) * 100))
+            : 0;
+        return {
+          yearMonth: monthKey,
+          label: formatMonthLabel(monthKey, index === 0),
+          isCurrent: index === 0,
+          sold: monthSold,
+          amount: monthGoal,
+          currency: snapshot?.currency ?? target.currency,
+          progressPercent: monthProgress,
+        };
+      });
+
+      return {
+        id: `${target.id}:${employeeId}`,
+        targetId: target.id,
+        employeeId,
+        staffName: employeeNameById.get(employeeId) ?? "Unknown staff",
+        locationLabel,
+        amount: goalAmount,
+        currency: target.currency,
+        sold,
+        remaining,
+        progressPercent,
+        status,
+        employeeIds,
+        locationIds,
+        history,
+      };
+    });
   });
 
   return {
@@ -184,19 +312,37 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     }
 
+    await upsertTargetGoalSnapshots({
+      shopId: shop.id,
+      employeeIds,
+      yearMonth: existing.yearMonth || currentYearMonth(),
+      amount,
+      currency: existing.currency,
+    });
+
     return { ok: true };
   }
+
+  const yearMonth = currentYearMonth();
 
   // One row per staff member in the list view.
   await prisma.salesTarget.createMany({
     data: employeeIds.map((employeeId) => ({
       shopId: shop.id,
-      yearMonth: currentYearMonth(),
+      yearMonth,
       amount,
       currency: "USD",
       employeeIds: JSON.stringify([employeeId]),
       locationIds: JSON.stringify(locationIds),
     })),
+  });
+
+  await upsertTargetGoalSnapshots({
+    shopId: shop.id,
+    employeeIds,
+    yearMonth,
+    amount,
+    currency: "USD",
   });
 
   return { ok: true };
@@ -220,6 +366,9 @@ export default function SalesTargetsIndex() {
   const [amount, setAmount] = useState("");
   const [formError, setFormError] = useState("");
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
+  const [historyRow, setHistoryRow] = useState<(typeof targetRows)[number] | null>(
+    null,
+  );
 
   const saving = fetcher.state !== "idle";
   const saveDisabled =
@@ -451,7 +600,17 @@ export default function SalesTargetsIndex() {
                             >
                               Edit
                             </button>
-                            <button type="button" className="action-link" disabled>
+                            <button
+                              type="button"
+                              className="action-link"
+                              onClick={() => {
+                                setHistoryRow(row);
+                                const modal = document.getElementById(
+                                  "sales-target-history-modal",
+                                ) as (HTMLElement & { showOverlay?: () => void }) | null;
+                                modal?.showOverlay?.();
+                              }}
+                            >
                               History
                             </button>
                             <fetcher.Form method="post" className="inline-form">
@@ -603,6 +762,61 @@ export default function SalesTargetsIndex() {
           onClick={submitTarget}
         >
           {saving ? "Saving..." : isEditing ? "Update" : "Save"}
+        </s-button>
+      </s-modal>
+
+      <s-modal
+        id="sales-target-history-modal"
+        heading={
+          historyRow
+            ? `Monthly history — ${historyRow.staffName}`
+            : "Monthly history"
+        }
+        size="base"
+      >
+        {historyRow && (
+          <div className="history-modal-body">
+            <p className="history-intro">
+              Sold each month vs the monthly target goal snapshot (
+              {formatMoney(historyRow.currency, historyRow.amount)}). Each month
+              keeps the target amount that was set for that month.
+            </p>
+            <div className="history-list">
+              {historyRow.history.map((month) => (
+                <div className="history-row" key={month.yearMonth}>
+                  <strong className={month.isCurrent ? "is-current" : undefined}>
+                    {month.label}
+                  </strong>
+                  <div className="history-metrics">
+                    <span>
+                      {formatMoney(month.currency, month.sold)} /{" "}
+                      {formatMoney(month.currency, month.amount)}
+                    </span>
+                    <span
+                      className={`history-pill${
+                        month.progressPercent >= 100
+                          ? " is-met"
+                          : month.progressPercent >= 50
+                            ? " is-track"
+                            : ""
+                      }`}
+                    >
+                      {month.progressPercent}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor="sales-target-history-modal"
+          command="--hide"
+          onClick={() => setHistoryRow(null)}
+        >
+          Close
         </s-button>
       </s-modal>
 
@@ -819,6 +1033,71 @@ const SALES_TARGETS_STYLES = `
 
   .action-link.danger {
     color: #d72c0d;
+  }
+
+  .history-modal-body {
+    display: grid;
+    gap: 14px;
+  }
+
+  .history-intro {
+    color: #616161;
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 0;
+  }
+
+  .history-list {
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .history-row {
+    align-items: center;
+    border-bottom: 1px solid #ececec;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 12px 14px;
+  }
+
+  .history-row:last-child {
+    border-bottom: 0;
+  }
+
+  .history-row strong {
+    font-weight: 500;
+  }
+
+  .history-row strong.is-current {
+    font-weight: 700;
+  }
+
+  .history-metrics {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    white-space: nowrap;
+  }
+
+  .history-pill {
+    background: #ffea8a;
+    border-radius: 999px;
+    color: #5c4400;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 2px 8px;
+  }
+
+  .history-pill.is-track {
+    background: #e0f0ff;
+    color: #00527c;
+  }
+
+  .history-pill.is-met {
+    background: #cdfee1;
+    color: #0c5132;
   }
 
   .target-modal-body {
