@@ -264,8 +264,81 @@ export async function bulkArchiveEmployees(shopId: string, employeeIds: string[]
   return { count: result.count };
 }
 
+function parseJsonIdArray(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function removeEmployeesFromCommissionPrograms(
+  shopId: string,
+  employeeIds: string[],
+) {
+  const removeSet = new Set(employeeIds);
+  const programs = await prisma.commissionProgram.findMany({
+    where: { shopId },
+    select: { id: true, employeeIds: true },
+  });
+
+  await Promise.all(
+    programs.map(async (program) => {
+      const current = parseJsonIdArray(program.employeeIds);
+      const next = current.filter((id) => !removeSet.has(id));
+      if (next.length === current.length) return;
+      await prisma.commissionProgram.update({
+        where: { id: program.id },
+        data: { employeeIds: JSON.stringify(next) },
+      });
+    }),
+  );
+}
+
+async function removeEmployeesFromSalesTargets(
+  shopId: string,
+  employeeIds: string[],
+) {
+  const removeSet = new Set(employeeIds);
+  const targets = await prisma.salesTarget.findMany({
+    where: { shopId },
+    select: { id: true, employeeIds: true },
+  });
+
+  await Promise.all(
+    targets.map(async (target) => {
+      const current = parseJsonIdArray(target.employeeIds);
+      const next = current.filter((id) => !removeSet.has(id));
+      if (next.length === current.length) return;
+
+      if (next.length === 0) {
+        await prisma.salesTarget.delete({ where: { id: target.id } });
+        return;
+      }
+
+      await prisma.salesTarget.update({
+        where: { id: target.id },
+        data: { employeeIds: JSON.stringify(next) },
+      });
+    }),
+  );
+
+  await prisma.salesTargetSnapshot.deleteMany({
+    where: {
+      shopId,
+      employeeId: { in: employeeIds },
+    },
+  });
+}
+
 export async function bulkDeleteEmployees(shopId: string, employeeIds: string[]) {
   if (employeeIds.length === 0) return { count: 0 };
+
+  await removeEmployeesFromCommissionPrograms(shopId, employeeIds);
+  await removeEmployeesFromSalesTargets(shopId, employeeIds);
 
   const result = await prisma.employee.deleteMany({
     where: {
