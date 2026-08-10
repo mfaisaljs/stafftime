@@ -140,6 +140,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const periodStart = String(formData.get("periodStart") ?? "").trim();
   const periodEnd = String(formData.get("periodEnd") ?? "").trim();
   const periodLabel = String(formData.get("periodLabel") ?? "").trim();
+  const bonusReason = String(formData.get("bonusReason") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").replace(/[^0-9.]/g, "");
   const amount = Number.parseFloat(amountRaw);
@@ -156,8 +157,10 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     return { error: "Enter a valid payment amount greater than zero." };
   }
 
-  if (!isDateKey(periodStart) || !isDateKey(periodEnd) || periodStart > periodEnd) {
-    return { error: "Select a valid payment period." };
+  if (paymentType === "SALARY") {
+    if (!isDateKey(periodStart) || !isDateKey(periodEnd) || periodStart > periodEnd) {
+      return { error: "Select a valid payment period." };
+    }
   }
 
   let proofFileName: string | null = null;
@@ -178,6 +181,13 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     proofFileName = proof.name.slice(0, 180);
   }
 
+  const notes =
+    paymentType === "BONUS"
+      ? [bonusReason && `Bonus reason: ${bonusReason}`, notesRaw]
+          .filter(Boolean)
+          .join("\n\n") || null
+      : notesRaw || null;
+
   await prisma.payrollPayment.create({
     data: {
       shopId: shop.id,
@@ -186,11 +196,14 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       amount,
       currency: employee.currency || "USD",
       paymentMethod,
-      notes: notesRaw || null,
+      notes,
       proofFileName,
-      periodLabel: periodLabel || `${periodStart} - ${periodEnd}`,
-      periodStart,
-      periodEnd,
+      periodLabel:
+        paymentType === "SALARY"
+          ? periodLabel || `${periodStart} - ${periodEnd}`
+          : null,
+      periodStart: paymentType === "SALARY" ? periodStart : null,
+      periodEnd: paymentType === "SALARY" ? periodEnd : null,
     },
   });
 
@@ -203,11 +216,18 @@ export default function CreatePayrollPage() {
   const navigation = useNavigation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [proofName, setProofName] = useState("");
+  const [paymentType, setPaymentType] = useState("SALARY");
   const [amount, setAmount] = useState(overview.remaining.toFixed(2));
   const [period, setPeriod] = useState<DateRangeValue>(() =>
     defaultDateRangeValue(2),
   );
   const isSubmitting = navigation.state === "submitting";
+
+  // Commission order ledger is not persisted yet — keep zeros until orders exist.
+  const commissionAvailable = 0;
+  const commissionOrderTotal = 0;
+  const selectedOrderCount = 0;
+  const selectedAmount = Number.parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
 
   const amountHelp = useMemo(
     () => ({
@@ -216,6 +236,15 @@ export default function CreatePayrollPage() {
     }),
     [employee.rateLabel, overview.remaining],
   );
+
+  const onPaymentTypeChange = (value: string) => {
+    setPaymentType(value);
+    if (value === "SALARY") {
+      setAmount(overview.remaining.toFixed(2));
+      return;
+    }
+    setAmount("0.00");
+  };
 
   const onProofChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
@@ -289,7 +318,11 @@ export default function CreatePayrollPage() {
           >
             <label className="field-label">
               Payment Type
-              <select name="paymentType" defaultValue="SALARY">
+              <select
+                name="paymentType"
+                value={paymentType}
+                onChange={(event) => onPaymentTypeChange(event.currentTarget.value)}
+              >
                 {PAYMENT_TYPE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -299,30 +332,102 @@ export default function CreatePayrollPage() {
               <small>Select the payment type you want to process</small>
             </label>
 
-            <div className="field-label period-field">
-              <span>Payment period</span>
-              <DateRangeSelector value={period} onChange={setPeriod} />
-            </div>
+            {paymentType === "SALARY" && (
+              <>
+                <div className="field-label period-field">
+                  <span>Payment period</span>
+                  <DateRangeSelector value={period} onChange={setPeriod} />
+                </div>
 
-            <label className="field-label">
-              Salary amount to pay
-              <span className="amount-input">
-                <span>$</span>
-                <input
-                  name="amount"
-                  type="text"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(event) => setAmount(event.currentTarget.value)}
-                  required
-                />
-              </span>
-              <small>
-                Available unpaid salary: {amountHelp.unpaid}
-                <br />
-                Hourly rate: {amountHelp.rate}
-              </small>
-            </label>
+                <label className="field-label">
+                  Salary amount to pay
+                  <span className="amount-input">
+                    <span>$</span>
+                    <input
+                      name="amount"
+                      type="text"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(event) => setAmount(event.currentTarget.value)}
+                      required
+                    />
+                  </span>
+                  <small>
+                    Available unpaid salary: {amountHelp.unpaid}
+                    <br />
+                    Hourly rate: {amountHelp.rate}
+                  </small>
+                </label>
+              </>
+            )}
+
+            {paymentType === "COMMISSION" && (
+              <div className="commission-panel">
+                <div className="commission-metrics">
+                  <div className="commission-metric">
+                    <span>Total available</span>
+                    <strong>{formatMoney(commissionAvailable)}</strong>
+                  </div>
+                  <div className="commission-metric">
+                    <span>Selected amount</span>
+                    <strong>{formatMoney(selectedAmount)}</strong>
+                  </div>
+                  <div className="commission-metric">
+                    <span>Selected orders</span>
+                    <strong>
+                      {selectedOrderCount} / {commissionOrderTotal}
+                    </strong>
+                  </div>
+                </div>
+
+                <label className="field-label">
+                  Total commission amount
+                  <span className="amount-input">
+                    <span>$</span>
+                    <input
+                      name="amount"
+                      type="text"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(event) => setAmount(event.currentTarget.value)}
+                      required
+                    />
+                  </span>
+                  <small>
+                    {selectedOrderCount} Orders selected for payment
+                  </small>
+                </label>
+              </div>
+            )}
+
+            {paymentType === "BONUS" && (
+              <>
+                <label className="field-label">
+                  Bonus amount
+                  <span className="amount-input">
+                    <span>$</span>
+                    <input
+                      name="amount"
+                      type="text"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(event) => setAmount(event.currentTarget.value)}
+                      required
+                    />
+                  </span>
+                  <small>Enter bonus amount</small>
+                </label>
+
+                <label className="field-label">
+                  Bonus reason
+                  <textarea
+                    name="bonusReason"
+                    rows={4}
+                    placeholder="Enter reason for the bonus"
+                  />
+                </label>
+              </>
+            )}
           </FormSection>
 
           <FormSection
@@ -670,6 +775,39 @@ const CREATE_PAYROLL_STYLES = `
     align-items: start;
   }
 
+  .commission-panel {
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    display: grid;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .commission-metrics {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .commission-metric {
+    background: #f6f6f7;
+    border-radius: 10px;
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+  }
+
+  .commission-metric span {
+    color: #616161;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .commission-metric strong {
+    color: #202223;
+    font-size: 18px;
+  }
+
   .amount-input {
     align-items: center;
     border: 1px solid #8a8a8a;
@@ -731,7 +869,8 @@ const CREATE_PAYROLL_STYLES = `
     .form-section,
     .overview-metrics,
     .overview-panels,
-    .history-row {
+    .history-row,
+    .commission-metrics {
       grid-template-columns: 1fr;
     }
 
