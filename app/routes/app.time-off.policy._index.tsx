@@ -14,8 +14,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     orderBy: { createdAt: "desc" },
   });
 
+  const url = new URL(request.url);
   return {
-    created: new URL(request.url).searchParams.get("created") === "1",
+    created: url.searchParams.get("created") === "1",
+    updated: url.searchParams.get("updated") === "1",
     policies: policies.map((policy) => ({
       id: policy.id,
       name: policy.name,
@@ -28,7 +30,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function TimeOffPolicyIndexPage() {
-  const { policies, created } = useLoaderData<typeof loader>();
+  const { policies, created, updated } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [selected, setSelected] = useState<string[]>([]);
@@ -37,6 +39,10 @@ export default function TimeOffPolicyIndexPage() {
   const showCreated = useMemo(
     () => created || searchParams.get("created") === "1",
     [created, searchParams],
+  );
+  const showUpdated = useMemo(
+    () => updated || searchParams.get("updated") === "1",
+    [updated, searchParams],
   );
 
   const toggleAll = () => {
@@ -65,6 +71,9 @@ export default function TimeOffPolicyIndexPage() {
       {showCreated && (
         <s-banner tone="success" heading="Policy created." />
       )}
+      {showUpdated && (
+        <s-banner tone="success" heading="Policy updated." />
+      )}
 
       <section className="policy-card">
         <div className="table-scroll">
@@ -88,8 +97,24 @@ export default function TimeOffPolicyIndexPage() {
             </thead>
             <tbody>
               {policies.map((policy) => (
-                <tr key={policy.id}>
-                  <td className="check-col">
+                <tr
+                  key={policy.id}
+                  className="is-clickable"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => navigate(`/app/time-off/policy/${policy.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/app/time-off/policy/${policy.id}`);
+                    }
+                  }}
+                >
+                  <td
+                    className="check-col"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
                     <input
                       type="checkbox"
                       checked={selected.includes(policy.id)}
@@ -176,6 +201,14 @@ const POLICY_LIST_STYLES = `
 
   .policy-table tbody tr:last-child td {
     border-bottom: 0;
+  }
+
+  .policy-table tbody tr.is-clickable {
+    cursor: pointer;
+  }
+
+  .policy-table tbody tr.is-clickable:hover {
+    background: #fafafa;
   }
 
   .check-col {

@@ -11,9 +11,31 @@ import { TimeOffPolicyForm } from "../components/time-off/TimeOffPolicyForm";
 import { parseTimeOffPolicyForm } from "../components/time-off/parseTimeOffPolicyForm";
 import prisma from "../db.server";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+function parseIds(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const employees = await getEmployees(session);
+  const shop = await getAdminShop(session);
+  const policyId = params.policyId;
+  if (!policyId) throw new Response("Policy not found", { status: 404 });
+
+  const [employees, policy] = await Promise.all([
+    getEmployees(session),
+    prisma.timeOffPolicy.findFirst({
+      where: { id: policyId, shopId: shop.id },
+    }),
+  ]);
+
+  if (!policy) throw new Response("Policy not found", { status: 404 });
 
   return {
     employees: employees
@@ -23,42 +45,61 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         name: `${employee.firstName} ${employee.lastName}`.trim(),
         position: employee.position ?? roleLabel(employee.role),
       })),
+    policy: {
+      id: policy.id,
+      name: policy.name,
+      policyType: policy.policyType,
+      compensation: policy.compensation,
+      fullDayDuration: policy.fullDayDuration,
+      employeeIds: parseIds(policy.employeeIds),
+      active: policy.active,
+    },
   };
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
+export const action = async ({ request, params }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
+  const policyId = params.policyId;
+  if (!policyId) return { error: "Policy not found." };
+
+  const existing = await prisma.timeOffPolicy.findFirst({
+    where: { id: policyId, shopId: shop.id },
+    select: { id: true },
+  });
+  if (!existing) return { error: "Policy not found." };
+
   const formData = await request.formData();
-  const parsed = parseTimeOffPolicyForm(formData);
+  const parsed = parseTimeOffPolicyForm(formData, { allowActive: true });
 
   if ("error" in parsed) {
     return { error: parsed.error };
   }
 
-  await prisma.timeOffPolicy.create({
+  await prisma.timeOffPolicy.update({
+    where: { id: policyId },
     data: {
-      shopId: shop.id,
       name: parsed.name,
       policyType: parsed.policyType,
       compensation: parsed.compensation,
       fullDayDuration: parsed.fullDayDuration,
       employeeIds: JSON.stringify(parsed.employeeIds),
-      active: true,
+      active: parsed.active,
     },
   });
 
-  return redirect("/app/time-off/policy?created=1");
+  return redirect("/app/time-off/policy?updated=1");
 };
 
-export default function CreateTimeOffPolicyPage() {
-  const { employees } = useLoaderData<typeof loader>();
+export default function EditTimeOffPolicyPage() {
+  const { employees, policy } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
     <TimeOffPolicyForm
-      mode="create"
+      mode="edit"
       employees={employees}
+      initialPolicy={policy}
       actionError={actionData && "error" in actionData ? actionData.error : null}
     />
   );

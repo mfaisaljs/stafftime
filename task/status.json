@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T14:05:00.000Z",
+  "lastUpdated": "2026-08-10T14:15:00.000Z",
   "notes": [
+    "ST065 complete: Policy create/edit uses Shopify save bar; policy rows open edit at /app/time-off/policy/:id.",
     "ST064 complete: Create Time Off form at /app/time-off/new with inline date range calendar and TimeOffRequest persistence.",
     "ST063 complete: Policy Management list and Create Policy form at /app/time-off/policy(+ /new) with TimeOffPolicy persistence.",
     "ST062 complete: Time Off Management index at /app/time-off with status tabs, empty state, and page actions.",

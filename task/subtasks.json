@@ -1108,6 +1108,28 @@
         "prisma/migrations/20260810141000_time_off_requests/migration.sql"
       ],
       "lastUpdated": "2026-08-10T14:05:00.000Z"
+    },
+    {
+      "id": "ST065",
+      "taskId": "T017",
+      "title": "Time Off policy save bar and edit",
+      "description": "Shared policy form with Shopify save bar; open policies for edit from the Policy Management list.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST063"],
+      "acceptanceCriteria": [
+        "Create and edit policy forms use data-save-bar and discard confirmation",
+        "Clicking a policy row opens edit at /app/time-off/policy/:id",
+        "Saving updates TimeOffPolicy and returns to the policy list"
+      ],
+      "files": [
+        "app/components/time-off/TimeOffPolicyForm.tsx",
+        "app/components/time-off/parseTimeOffPolicyForm.ts",
+        "app/routes/app.time-off.policy.new.tsx",
+        "app/routes/app.time-off.policy.$policyId.tsx",
+        "app/routes/app.time-off.policy._index.tsx"
+      ],
+      "lastUpdated": "2026-08-10T14:15:00.000Z"
     }
   ]
 }
