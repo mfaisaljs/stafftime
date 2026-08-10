@@ -93,8 +93,9 @@ export default function TaskListsIndexPage() {
     <s-page heading="TaskLists" inlineSize="large">
       <s-button
         slot="primary-action"
+        type="button"
         variant="primary"
-        href="/app/tasklists/new"
+        onClick={() => navigate("/app/tasklists/new")}
       >
         <span className="button-content">
           <Plus aria-hidden="true" size={14} />
@@ -111,7 +112,11 @@ export default function TaskListsIndexPage() {
           </div>
           <strong>Create your first task list</strong>
           <p>Start organizing tasks for your team and locations.</p>
-          <s-button variant="primary" href="/app/tasklists/new">
+          <s-button
+            type="button"
+            variant="primary"
+            onClick={() => navigate("/app/tasklists/new")}
+          >
             <span className="button-content">
               <Plus aria-hidden="true" size={13} />
               Create Task List
@@ -221,8 +226,9 @@ export default function TaskListsIndexPage() {
                   onKeyDown={(event) => event.stopPropagation()}
                 >
                   <s-button
+                    type="button"
                     variant="primary"
-                    href={`/app/tasklists/${list.id}`}
+                    onClick={() => navigate(`/app/tasklists/${list.id}`)}
                   >
                     <span className="button-content">
                       <Eye aria-hidden="true" size={14} />
