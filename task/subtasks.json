@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T10:05:00.000Z",
+  "lastUpdated": "2026-08-10T10:20:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -964,6 +964,27 @@
         "prisma/migrations/20260810095500_task_lists/migration.sql"
       ],
       "lastUpdated": "2026-08-10T10:05:00.000Z"
+    },
+    {
+      "id": "ST058",
+      "taskId": "T017",
+      "title": "TaskLists index row layout",
+      "description": "Show task list rows with status toggle, name/count, timeline pill, locations, assigned pills, and View Details.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST057"],
+      "acceptanceCriteria": [
+        "TaskLists index rows match Status / Task List / Timeline / Locations / Assigned To / Actions layout",
+        "Status toggle persists active state",
+        "View Details opens task list detail page"
+      ],
+      "files": [
+        "app/routes/app.tasklists._index.tsx",
+        "app/routes/app.tasklists.$listId.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260810101500_task_list_active/migration.sql"
+      ],
+      "lastUpdated": "2026-08-10T10:20:00.000Z"
     }
   ]
 }

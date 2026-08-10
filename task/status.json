@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-10T09:55:00.000Z",
+  "lastUpdated": "2026-08-10T10:20:00.000Z",
   "notes": [
+    "ST058 complete: TaskLists index rows show status toggle, timeline/assigned pills, locations, and View Details.",
     "Updated: app nav order places Payroll directly below Sales Targets.",
     "ST057 complete: Create Task List form at /app/tasklists/new with assignees, locations, timeline, tasks, and persistence.",
     "ST056 complete: TaskLists route at /app/tasklists with empty state and Create Task List CTAs; nav link added.",

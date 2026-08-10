@@ -371,6 +371,7 @@ model TaskList {
   shopId         String
   name           String
   description    String?
+  active         Boolean  @default(true)
   assignStaff    Boolean  @default(false)
   assignManagers Boolean  @default(false)
   staffScope     String   @default("ALL")

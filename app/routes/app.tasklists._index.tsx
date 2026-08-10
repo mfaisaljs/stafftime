@@ -1,33 +1,91 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
-import { FileText, Plus } from "lucide-react";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
+import {
+  Check,
+  Eye,
+  FileText,
+  ListTodo,
+  MapPin,
+  Plus,
+  CalendarDays,
+  User,
+} from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { getAdminShop } from "../services/admin.server";
+import { getAdminShop, getEmployeeLocations } from "../services/admin.server";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
-  const taskLists = await prisma.taskList.findMany({
-    where: { shopId: shop.id },
-    include: { items: { orderBy: { sortOrder: "asc" } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [taskLists, locations] = await Promise.all([
+    prisma.taskList.findMany({
+      where: { shopId: shop.id },
+      include: { _count: { select: { items: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    getEmployeeLocations(session),
+  ]);
+
+  const locationNameById = new Map(
+    locations.map((location) => [location.id, location.name]),
+  );
 
   return {
-    taskLists: taskLists.map((list) => ({
-      id: list.id,
-      name: list.name,
-      description: list.description,
-      taskCount: list.items.length,
-      timelines: parseJsonArray(list.timelines),
-    })),
+    taskLists: taskLists.map((list) => {
+      const locationIds = parseJsonArray(list.locationIds);
+      const locationLabel =
+        list.locationAccess === "ALL"
+          ? "All Locations"
+          : locationIds
+              .map((id) => locationNameById.get(id) ?? id)
+              .filter(Boolean)
+              .join(", ") || "—";
+
+      const assignedTo: string[] = [];
+      if (list.assignStaff) assignedTo.push("Staff");
+      if (list.assignManagers) assignedTo.push("Managers");
+
+      return {
+        id: list.id,
+        name: list.name,
+        active: list.active,
+        taskCount: list._count.items,
+        timeline: timelineLabel(parseJsonArray(list.timelines)[0] ?? ""),
+        locations: locationLabel,
+        assignedTo,
+      };
+    }),
   };
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = await getAdminShop(session);
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+
+  if (intent !== "toggleActive") return { ok: false };
+
+  const id = String(formData.get("id") ?? "");
+  const active = String(formData.get("active") ?? "") === "true";
+  if (!id) return { ok: false };
+
+  await prisma.taskList.updateMany({
+    where: { id, shopId: shop.id },
+    data: { active },
+  });
+
+  return { ok: true };
 };
 
 export default function TaskListsIndexPage() {
   const { taskLists } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher();
   const isEmpty = taskLists.length === 0;
 
   return (
@@ -61,31 +119,100 @@ export default function TaskListsIndexPage() {
         </section>
       ) : (
         <section className="lists-card">
-          <table className="lists-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Timeline</th>
-                <th>Tasks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {taskLists.map((list) => (
-                <tr key={list.id}>
-                  <td>
-                    <strong>{list.name}</strong>
-                    {list.description ? <small>{list.description}</small> : null}
-                  </td>
-                  <td>
-                    {list.timelines.length > 0
-                      ? list.timelines.map(timelineLabel).join(", ")
-                      : "—"}
-                  </td>
-                  <td>{list.taskCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="lists-header">
+            <span>
+              <Check size={15} />
+              Status
+            </span>
+            <span>
+              <ListTodo size={15} />
+              Task List
+            </span>
+            <span>
+              <CalendarDays size={15} />
+              Timeline
+            </span>
+            <span>
+              <MapPin size={15} />
+              Locations
+            </span>
+            <span>
+              <User size={15} />
+              Assigned To
+            </span>
+            <span>Actions</span>
+          </div>
+
+          {taskLists.map((list) => {
+            const pending =
+              fetcher.state !== "idle" &&
+              String(fetcher.formData?.get("id") || "") === list.id;
+
+            return (
+              <div className="lists-row" key={list.id}>
+                <div className="status-cell">
+                  <fetcher.Form method="post">
+                    <input type="hidden" name="intent" value="toggleActive" />
+                    <input type="hidden" name="id" value={list.id} />
+                    <input
+                      type="hidden"
+                      name="active"
+                      value={list.active ? "false" : "true"}
+                    />
+                    <button
+                      type="submit"
+                      className={`status-toggle${list.active ? " is-active" : ""}`}
+                      disabled={pending}
+                      aria-label={
+                        list.active ? "Deactivate task list" : "Activate task list"
+                      }
+                    >
+                      <span />
+                    </button>
+                  </fetcher.Form>
+                </div>
+
+                <div className="list-name">
+                  <strong>{list.name}</strong>
+                  <span>
+                    ({list.taskCount} Task{list.taskCount === 1 ? "" : "s"})
+                  </span>
+                </div>
+
+                <div>
+                  {list.timeline ? (
+                    <span className="timeline-pill">{list.timeline}</span>
+                  ) : (
+                    "—"
+                  )}
+                </div>
+
+                <div className="locations-cell">{list.locations}</div>
+
+                <div className="assigned-cell">
+                  {list.assignedTo.length > 0
+                    ? list.assignedTo.map((label) => (
+                        <span key={label} className="assigned-pill">
+                          {label}
+                        </span>
+                      ))
+                    : "—"}
+                </div>
+
+                <div>
+                  <s-button
+                    variant="primary"
+                    href={`/app/tasklists/${list.id}`}
+                  >
+                    <span className="button-content">
+                      <Eye aria-hidden="true" size={14} />
+                      View Details
+                    </span>
+                  </s-button>
+                </div>
+              </div>
+            );
+          })}
         </section>
       )}
 
@@ -111,7 +238,7 @@ function timelineLabel(value: string) {
     WEEKLY: "Weekly",
     MONTHLY: "Monthly",
   };
-  return labels[value] ?? value;
+  return labels[value] ?? "";
 }
 
 export const headers: HeadersFunction = (headersArgs) => {
@@ -188,38 +315,133 @@ const TASKLISTS_STYLES = `
     z-index: 2;
   }
 
-  .lists-table {
-    border-collapse: collapse;
-    width: 100%;
+  .lists-card {
+    overflow: hidden;
   }
 
-  .lists-table th,
-  .lists-table td {
-    border-bottom: 1px solid #ececec;
-    color: #303030;
-    font-size: 13px;
+  .lists-header,
+  .lists-row {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns:
+      90px minmax(160px, 1.3fr) 110px minmax(140px, 1.2fr) minmax(120px, 1fr) 140px;
     padding: 14px 16px;
-    text-align: left;
-    vertical-align: top;
   }
 
-  .lists-table th {
+  .lists-header {
     background: #f6f6f7;
-    color: #616161;
+    border-bottom: 1px solid #ececec;
+    color: #202223;
+    font-size: 13px;
     font-weight: 600;
   }
 
-  .lists-table tr:last-child td {
+  .lists-header span {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
+  }
+
+  .lists-row {
+    border-bottom: 1px solid #ececec;
+    color: #202223;
+    font-size: 13px;
+  }
+
+  .lists-row:last-child {
     border-bottom: 0;
   }
 
-  .lists-table strong,
-  .lists-table small {
-    display: block;
+  .status-cell {
+    display: inline-flex;
   }
 
-  .lists-table small {
+  .status-toggle {
+    align-items: center;
+    background: #8c9196;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    height: 24px;
+    justify-content: flex-start;
+    padding: 2px;
+    transition: background 120ms ease;
+    width: 44px;
+  }
+
+  .status-toggle.is-active {
+    background: #008060;
+    justify-content: flex-end;
+  }
+
+  .status-toggle:disabled {
+    cursor: wait;
+  }
+
+  .status-toggle span {
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    display: block;
+    height: 20px;
+    width: 20px;
+  }
+
+  .list-name {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .list-name strong {
+    font-weight: 700;
+  }
+
+  .list-name span {
     color: #616161;
-    margin-top: 2px;
+  }
+
+  .timeline-pill {
+    background: #e3f5e1;
+    border-radius: 999px;
+    color: #0c5132;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 3px 10px;
+  }
+
+  .locations-cell {
+    color: #303030;
+  }
+
+  .assigned-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .assigned-pill {
+    background: #e0f0ff;
+    border-radius: 999px;
+    color: #00527c;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 3px 10px;
+  }
+
+  @media (max-width: 980px) {
+    .lists-card {
+      overflow-x: auto;
+    }
+
+    .lists-header,
+    .lists-row {
+      min-width: 900px;
+    }
   }
 `;
