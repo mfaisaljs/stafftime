@@ -92,6 +92,7 @@ model Shop {
   commissionPrograms  CommissionProgram[]
   salesTargets        SalesTarget[]
   salesTargetSnapshots SalesTargetSnapshot[]
+  taskLists           TaskList[]
 }
 
 model StoreLocation {
@@ -363,6 +364,40 @@ model PayrollPayment {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([shopId, employeeId, createdAt])
+}
+
+model TaskList {
+  id             String   @id @default(cuid())
+  shopId         String
+  name           String
+  description    String?
+  assignStaff    Boolean  @default(false)
+  assignManagers Boolean  @default(false)
+  employeeIds    String   @default("[]")
+  locationAccess String   @default("ALL")
+  locationIds    String   @default("[]")
+  timelines      String   @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  shop  Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  items TaskListItem[]
+
+  @@index([shopId, createdAt])
+}
+
+model TaskListItem {
+  id         String   @id @default(cuid())
+  taskListId String
+  title      String
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  taskList TaskList @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+
+  @@index([taskListId, sortOrder])
 }
 
 model Setting {

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T09:55:00.000Z",
+  "lastUpdated": "2026-08-10T10:05:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -938,9 +938,32 @@
       ],
       "files": [
         "app/routes/app.tasklists.tsx",
+        "app/routes/app.tasklists._index.tsx",
         "app/routes/app.tsx"
       ],
-      "lastUpdated": "2026-08-10T09:55:00.000Z"
+      "lastUpdated": "2026-08-10T10:05:00.000Z"
+    },
+    {
+      "id": "ST057",
+      "taskId": "T017",
+      "title": "Create Task List form",
+      "description": "Add Create Task List page with details, assignees, locations, timeline, and drag-reorderable tasks.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST056"],
+      "acceptanceCriteria": [
+        "Create Task List opens /app/tasklists/new",
+        "Form includes Task List Details, Assigned To, Locations, Timeline, and Tasks sections",
+        "Saving persists TaskList + TaskListItem records and returns to /app/tasklists"
+      ],
+      "files": [
+        "app/routes/app.tasklists.tsx",
+        "app/routes/app.tasklists._index.tsx",
+        "app/routes/app.tasklists.new.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260810095500_task_lists/migration.sql"
+      ],
+      "lastUpdated": "2026-08-10T10:05:00.000Z"
     }
   ]
 }
