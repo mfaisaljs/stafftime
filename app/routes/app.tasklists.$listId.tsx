@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useFetcher,
   useLoaderData,
@@ -11,7 +11,6 @@ import {
   useSearchParams,
 } from "react-router";
 import {
-  CalendarDays,
   Check,
   Clock3,
   Info,
@@ -25,6 +24,12 @@ import {
   getAdminShop,
   getEmployeeLocations,
 } from "../services/admin.server";
+import {
+  DateRangeSelector,
+  defaultDateRangeValue,
+  rangeFromPreset,
+  type DateRangeValue,
+} from "../components/DateRangeSelector";
 import prisma from "../db.server";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -34,7 +39,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 
   const shop = await getAdminShop(session);
   const url = new URL(request.url);
-  const dateKey = normalizeDateKey(url.searchParams.get("date")) ?? toDateKey(new Date());
+  const dateRange = resolveDateRange(url.searchParams);
+  const completeDateKey = resolveCompleteDateKey(dateRange);
 
   const [list, locations, completions] = await Promise.all([
     prisma.taskList.findFirst({
@@ -43,7 +49,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     }),
     getEmployeeLocations(session),
     prisma.taskListCompletion.findMany({
-      where: { shopId: shop.id, taskListId: listId, dateKey },
+      where: {
+        shopId: shop.id,
+        taskListId: listId,
+        dateKey: { gte: dateRange.start, lte: dateRange.end },
+      },
+      orderBy: { performedAt: "desc" },
     }),
   ]);
 
@@ -53,9 +64,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     locations.map((location) => [location.id, location.name]),
   );
   const locationIds = parseJsonArray(list.locationIds);
-  const completionByItemId = new Map(
-    completions.map((completion) => [completion.taskItemId, completion]),
-  );
+  const completionByItemId = new Map<string, (typeof completions)[number]>();
+  for (const completion of completions) {
+    if (!completionByItemId.has(completion.taskItemId)) {
+      completionByItemId.set(completion.taskItemId, completion);
+    }
+  }
 
   const assignedTo: string[] = [];
   if (list.assignStaff) assignedTo.push("Staff");
@@ -95,8 +109,9 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
               .join(", ") || "—",
       assignedTo,
     },
-    dateKey,
-    dateLabel: formatStatusDate(dateKey),
+    dateRange,
+    completeDateKey,
+    dateLabel: formatRangeLabel(dateRange),
     progressPercent,
     completedCount,
     totalCount,
@@ -153,7 +168,8 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 export default function TaskListDetailPage() {
   const {
     list,
-    dateKey,
+    dateRange,
+    completeDateKey,
     dateLabel,
     progressPercent,
     completedCount,
@@ -163,30 +179,26 @@ export default function TaskListDetailPage() {
   const fetcher = useFetcher<typeof action>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  const [draftDate, setDraftDate] = useState(dateKey);
+  const [range, setRange] = useState<DateRangeValue>(dateRange);
 
   useEffect(() => {
-    setDraftDate(dateKey);
-  }, [dateKey]);
+    setRange(dateRange);
+  }, [dateRange]);
 
-  const openDatePicker = () => {
-    const input = dateInputRef.current;
-    if (!input) return;
-    if (typeof input.showPicker === "function") {
-      input.showPicker();
-      return;
-    }
-    input.focus();
-    input.click();
-  };
-
-  const applyDate = (value: string) => {
-    const next = normalizeDateKey(value);
-    if (!next) return;
-    setDraftDate(next);
+  const applyRange = (next: DateRangeValue) => {
+    setRange(next);
     const params = new URLSearchParams(searchParams);
-    params.set("date", next);
+    if (next.custom) {
+      params.set("start", next.start);
+      params.set("end", next.end);
+      params.delete("days");
+      params.delete("date");
+    } else {
+      params.set("days", String(next.days));
+      params.delete("start");
+      params.delete("end");
+      params.delete("date");
+    }
     setSearchParams(params);
   };
 
@@ -267,18 +279,11 @@ export default function TaskListDetailPage() {
           <div className="status-header">
             <h2>Task status for {dateLabel}</h2>
             <div className="date-control">
-              <s-button type="button" variant="primary" onClick={openDatePicker}>
-                <span className="button-content">
-                  <CalendarDays aria-hidden="true" size={14} />
-                  Select Date
-                </span>
-              </s-button>
-              <input
-                ref={dateInputRef}
-                className="date-input"
-                type="date"
-                value={draftDate}
-                onChange={(event) => applyDate(event.currentTarget.value)}
+              <DateRangeSelector
+                value={range}
+                onChange={applyRange}
+                align="end"
+                includeHiddenInputs={false}
               />
             </div>
           </div>
@@ -286,8 +291,11 @@ export default function TaskListDetailPage() {
           <div className="info-banner">
             <Info aria-hidden="true" size={16} />
             <div>
-              <strong>Filter tasks by date</strong>
-              <p>Select a date to view task status for that specific day.</p>
+              <strong>Filter tasks by date range</strong>
+              <p>
+                Select a date range to view task status and completion progress
+                for that period.
+              </p>
             </div>
           </div>
 
@@ -377,7 +385,7 @@ export default function TaskListDetailPage() {
                               <input
                                 type="hidden"
                                 name="dateKey"
-                                value={dateKey}
+                                value={completeDateKey}
                               />
                               <s-button
                                 type="submit"
@@ -439,6 +447,44 @@ function normalizeDateKey(value: string | null) {
   return value;
 }
 
+function resolveDateRange(searchParams: URLSearchParams): DateRangeValue {
+  const start = normalizeDateKey(searchParams.get("start"));
+  const end = normalizeDateKey(searchParams.get("end"));
+  if (start && end && start <= end) {
+    return {
+      start,
+      end,
+      custom: true,
+      days: 0,
+      label: `${formatShortDate(start)} - ${formatShortDate(end)}`,
+    };
+  }
+
+  const legacyDate = normalizeDateKey(searchParams.get("date"));
+  if (legacyDate) {
+    return {
+      start: legacyDate,
+      end: legacyDate,
+      custom: true,
+      days: 0,
+      label: formatStatusDate(legacyDate),
+    };
+  }
+
+  const days = Number(searchParams.get("days"));
+  if ([1, 2, 7, 30, 90, 365].includes(days)) {
+    return rangeFromPreset(days);
+  }
+
+  return defaultDateRangeValue(1);
+}
+
+function resolveCompleteDateKey(range: DateRangeValue) {
+  const today = toDateKey(new Date());
+  if (today >= range.start && today <= range.end) return today;
+  return range.end;
+}
+
 function formatStatusDate(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   const date = new Date(year, month - 1, day);
@@ -448,6 +494,17 @@ function formatStatusDate(dateKey: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatShortDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return `${month}/${day}/${year}`;
+}
+
+function formatRangeLabel(range: DateRangeValue) {
+  if (!range.custom && range.label) return range.label;
+  if (range.start === range.end) return formatStatusDate(range.start);
+  return `${formatStatusDate(range.start)} - ${formatStatusDate(range.end)}`;
 }
 
 function formatPerformedAt(value: string) {
@@ -577,15 +634,7 @@ const DETAIL_STYLES = `
 
   .date-control {
     position: relative;
-  }
-
-  .date-input {
-    height: 0;
-    left: 0;
-    opacity: 0;
-    position: absolute;
-    top: 100%;
-    width: 0;
+    z-index: 5;
   }
 
   .button-content {

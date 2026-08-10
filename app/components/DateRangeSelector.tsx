@@ -27,6 +27,8 @@ type DateRangeSelectorProps = {
   value: DateRangeValue;
   onChange: (value: DateRangeValue) => void;
   namePrefix?: string;
+  align?: "start" | "end";
+  includeHiddenInputs?: boolean;
 };
 
 export function defaultDateRangeValue(
@@ -39,6 +41,8 @@ export function DateRangeSelector({
   value,
   onChange,
   namePrefix = "period",
+  align = "start",
+  includeHiddenInputs = true,
 }: DateRangeSelectorProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -116,10 +120,14 @@ export function DateRangeSelector({
   const draftEnd = draftRange.split("--")[1] || value.end;
 
   return (
-    <div className="drs-wrap" ref={wrapRef}>
-      <input type="hidden" name={`${namePrefix}Start`} value={value.start} />
-      <input type="hidden" name={`${namePrefix}End`} value={value.end} />
-      <input type="hidden" name={`${namePrefix}Label`} value={value.label} />
+    <div className={`drs-wrap${align === "end" ? " align-end" : ""}`} ref={wrapRef}>
+      {includeHiddenInputs ? (
+        <>
+          <input type="hidden" name={`${namePrefix}Start`} value={value.start} />
+          <input type="hidden" name={`${namePrefix}End`} value={value.end} />
+          <input type="hidden" name={`${namePrefix}Label`} value={value.label} />
+        </>
+      ) : null}
 
       <button
         className="drs-trigger"
@@ -417,6 +425,11 @@ const DATE_RANGE_SELECTOR_STYLES = `
     position: relative;
     width: max-content;
     max-width: 100%;
+  }
+
+  .drs-wrap.align-end .drs-panel {
+    left: auto;
+    right: 0;
   }
 
   .drs-trigger {
