@@ -8,6 +8,7 @@
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
   "lastUpdated": "2026-08-10T10:35:00.000Z",
   "notes": [
+    "Updated: clicking a TaskLists row opens /app/tasklists/:id/edit; View Details still opens status detail.",
     "Updated: Task list detail page matches Task List Information, dated status/progress, and Tasks table with Complete Task.",
     "ST058 complete: TaskLists index rows show status toggle, timeline/assigned pills, locations, and View Details.",
     "Updated: app nav order places Payroll directly below Sales Targets.",

@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useFetcher, useLoaderData } from "react-router";
+import { useFetcher, useLoaderData, useNavigate } from "react-router";
 import {
   Check,
   Eye,
@@ -86,6 +86,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function TaskListsIndexPage() {
   const { taskLists } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
+  const navigate = useNavigate();
   const isEmpty = taskLists.length === 0;
 
   return (
@@ -149,8 +150,24 @@ export default function TaskListsIndexPage() {
               String(fetcher.formData?.get("id") || "") === list.id;
 
             return (
-              <div className="lists-row" key={list.id}>
-                <div className="status-cell">
+              <div
+                className="lists-row is-clickable"
+                key={list.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/app/tasklists/${list.id}/edit`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate(`/app/tasklists/${list.id}/edit`);
+                  }
+                }}
+              >
+                <div
+                  className="status-cell"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <fetcher.Form method="post">
                     <input type="hidden" name="intent" value="toggleActive" />
                     <input type="hidden" name="id" value={list.id} />
@@ -199,7 +216,10 @@ export default function TaskListsIndexPage() {
                     : "—"}
                 </div>
 
-                <div>
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <s-button
                     variant="primary"
                     href={`/app/tasklists/${list.id}`}
@@ -347,6 +367,14 @@ const TASKLISTS_STYLES = `
     border-bottom: 1px solid #ececec;
     color: #202223;
     font-size: 13px;
+  }
+
+  .lists-row.is-clickable {
+    cursor: pointer;
+  }
+
+  .lists-row.is-clickable:hover {
+    background: #fafafa;
   }
 
   .lists-row:last-child {

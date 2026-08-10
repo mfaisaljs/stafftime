@@ -1,0 +1,788 @@
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
+import { Form } from "react-router";
+import { GripVertical, Plus, X } from "lucide-react";
+
+type TaskDraft = {
+  id: string;
+  title: string;
+  active: boolean;
+  persisted?: boolean;
+};
+
+export type TaskListFormEmployee = {
+  id: string;
+  name: string;
+  role: string;
+};
+
+export type TaskListFormLocation = {
+  id: string;
+  name: string;
+};
+
+export type TaskListFormInitial = {
+  name: string;
+  description: string | null;
+  assignStaff: boolean;
+  assignManagers: boolean;
+  staffScope: "ALL" | "SELECTED";
+  managerScope: "ALL" | "SELECTED";
+  employeeIds: string[];
+  managerIds: string[];
+  locationAccess: "ALL" | "SPECIFIC";
+  locationIds: string[];
+  timeline: string;
+  tasks: Array<{ id: string; title: string; active: boolean }>;
+};
+
+type TaskListFormProps = {
+  mode: "create" | "edit";
+  employees: TaskListFormEmployee[];
+  locations: TaskListFormLocation[];
+  initialList?: TaskListFormInitial | null;
+  actionError?: string | null;
+};
+
+const TIMELINE_OPTIONS = [
+  {
+    value: "DAILY",
+    label: "Daily",
+    help: "This task list needs to be completed every day.",
+  },
+  {
+    value: "WEEKLY",
+    label: "Weekly",
+    help: "This task list needs to be completed every week.",
+  },
+  {
+    value: "MONTHLY",
+    label: "Monthly",
+    help: "This task list needs to be completed every month.",
+  },
+] as const;
+
+export default function TaskListForm({
+  mode,
+  employees,
+  locations,
+  initialList = null,
+  actionError = null,
+}: TaskListFormProps) {
+  const [assignStaff, setAssignStaff] = useState(initialList?.assignStaff ?? true);
+  const [assignManagers, setAssignManagers] = useState(
+    initialList?.assignManagers ?? false,
+  );
+  const [staffScope, setStaffScope] = useState<"ALL" | "SELECTED">(
+    initialList?.staffScope ?? "ALL",
+  );
+  const [managerScope, setManagerScope] = useState<"ALL" | "SELECTED">(
+    initialList?.managerScope ?? "ALL",
+  );
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
+    () => new Set(initialList?.employeeIds ?? []),
+  );
+  const [selectedManagerIds, setSelectedManagerIds] = useState<Set<string>>(
+    () => new Set(initialList?.managerIds ?? []),
+  );
+  const [locationAccess, setLocationAccess] = useState<"ALL" | "SPECIFIC">(
+    initialList?.locationAccess ?? "ALL",
+  );
+  const [selectedLocationIds, setSelectedLocationIds] = useState<Set<string>>(
+    () => new Set(initialList?.locationIds ?? []),
+  );
+  const [timeline, setTimeline] = useState(initialList?.timeline ?? "");
+  const [tasks, setTasks] = useState<TaskDraft[]>(() =>
+    (initialList?.tasks ?? []).map((task) => ({ ...task, persisted: true })),
+  );
+  const [addingTask, setAddingTask] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const pageHeading = mode === "edit" ? "Edit Task List" : "Create Task List";
+
+  const staffEmployees = useMemo(
+    () => employees.filter((employee) => employee.role === "EMPLOYEE"),
+    [employees],
+  );
+  const managerEmployees = useMemo(
+    () =>
+      employees.filter(
+        (employee) =>
+          employee.role === "STORE_MANAGER" || employee.role === "OWNER",
+      ),
+    [employees],
+  );
+  const selectableStaff =
+    staffEmployees.length > 0 ? staffEmployees : employees;
+  const selectableManagers =
+    managerEmployees.length > 0 ? managerEmployees : employees;
+
+  const toggleEmployee = (id: string, checked: boolean) => {
+    setSelectedEmployeeIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleManager = (id: string, checked: boolean) => {
+    setSelectedManagerIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleLocation = (id: string, checked: boolean) => {
+    setSelectedLocationIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const addTask = () => {
+    const title = draftTitle.trim();
+    if (!title) return;
+    setTasks((current) => [
+      ...current,
+      { id: `task-${Date.now()}-${current.length}`, title, active: true, persisted: false },
+    ]);
+    setDraftTitle("");
+    setAddingTask(false);
+  };
+
+  const removeTask = (id: string) => {
+    setTasks((current) => current.filter((task) => task.id !== id));
+  };
+
+  const onDropTask = (targetIndex: number) => {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      return;
+    }
+    setTasks((current) => {
+      const next = [...current];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+    setDragIndex(null);
+  };
+
+  return (
+    <s-page heading={pageHeading} inlineSize="large">
+      {actionError && <s-banner heading={actionError} tone="critical" />}
+
+      <Form method="post" data-save-bar>
+        {Array.from(selectedEmployeeIds).map((id) => (
+          <input key={`staff-${id}`} type="hidden" name="employeeIds" value={id} />
+        ))}
+        {Array.from(selectedManagerIds).map((id) => (
+          <input key={`manager-${id}`} type="hidden" name="managerIds" value={id} />
+        ))}
+        {Array.from(selectedLocationIds).map((id) => (
+          <input key={id} type="hidden" name="locationIds" value={id} />
+        ))}
+        {tasks.map((task) => (
+          <span key={task.id}>
+            <input type="hidden" name="taskTitles" value={task.title} />
+            <input
+              type="hidden"
+              name="taskItemIds"
+              value={task.persisted ? task.id : ""}
+            />
+          </span>
+        ))}
+
+        <s-stack direction="block" gap="large">
+          <FormSection
+            title="Task List Details"
+            description="Give your task list a name and description."
+          >
+            <label className="field-label">
+              Task List Name
+              <input
+                name="name"
+                type="text"
+                placeholder="Daily tasks for store."
+                defaultValue={initialList?.name ?? ""}
+                required
+              />
+            </label>
+            <label className="field-label">
+              Description
+              <textarea
+                name="description"
+                rows={4}
+                placeholder="Describe the purpose of this task list"
+                defaultValue={initialList?.description ?? ""}
+              />
+            </label>
+          </FormSection>
+
+          <FormSection
+            title="Assigned To"
+            description="Choose who should be responsible for completing this task list. You can select multiple options."
+          >
+            <div className="assign-block">
+              <span className="group-label">Assign To</span>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  name="assignStaff"
+                  value="true"
+                  checked={assignStaff}
+                  onChange={(event) => {
+                    const checked = event.currentTarget.checked;
+                    setAssignStaff(checked);
+                    if (!checked) {
+                      setStaffScope("ALL");
+                      setSelectedEmployeeIds(new Set());
+                    }
+                  }}
+                />
+                Staff
+              </label>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  name="assignManagers"
+                  value="true"
+                  checked={assignManagers}
+                  onChange={(event) => {
+                    const checked = event.currentTarget.checked;
+                    setAssignManagers(checked);
+                    if (!checked) {
+                      setManagerScope("ALL");
+                      setSelectedManagerIds(new Set());
+                    }
+                  }}
+                />
+                Managers
+              </label>
+            </div>
+
+            {(assignStaff || assignManagers) && (
+              <div className="assignee-picker">
+                <span className="group-label">Selected Assignees</span>
+                <div className="assignee-chips">
+                  {assignStaff && (
+                    <span className="chip">
+                      Staff
+                      <button
+                        type="button"
+                        aria-label="Remove Staff assignment"
+                        onClick={() => {
+                          setAssignStaff(false);
+                          setStaffScope("ALL");
+                          setSelectedEmployeeIds(new Set());
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                  {assignManagers && (
+                    <span className="chip">
+                      Managers
+                      <button
+                        type="button"
+                        aria-label="Remove Managers assignment"
+                        onClick={() => {
+                          setAssignManagers(false);
+                          setManagerScope("ALL");
+                          setSelectedManagerIds(new Set());
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+
+                {assignStaff && (
+                  <div className="scope-block">
+                    <span className="group-label">Staff assignees</span>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="staffScope"
+                        value="ALL"
+                        checked={staffScope === "ALL"}
+                        onChange={() => {
+                          setStaffScope("ALL");
+                          setSelectedEmployeeIds(new Set());
+                        }}
+                      />
+                      All staff
+                    </label>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="staffScope"
+                        value="SELECTED"
+                        checked={staffScope === "SELECTED"}
+                        onChange={() => setStaffScope("SELECTED")}
+                      />
+                      Selected staff
+                    </label>
+                    {staffScope === "SELECTED" && (
+                      <div className="staff-options">
+                        {selectableStaff.length === 0 ? (
+                          <p className="help-text">No staff members available.</p>
+                        ) : (
+                          selectableStaff.map((employee) => (
+                            <label key={employee.id} className="check-row">
+                              <input
+                                type="checkbox"
+                                checked={selectedEmployeeIds.has(employee.id)}
+                                onChange={(event) =>
+                                  toggleEmployee(
+                                    employee.id,
+                                    event.currentTarget.checked,
+                                  )
+                                }
+                              />
+                              {employee.name}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {assignManagers && (
+                  <div className="scope-block">
+                    <span className="group-label">Manager assignees</span>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="managerScope"
+                        value="ALL"
+                        checked={managerScope === "ALL"}
+                        onChange={() => {
+                          setManagerScope("ALL");
+                          setSelectedManagerIds(new Set());
+                        }}
+                      />
+                      All managers
+                    </label>
+                    <label className="radio-row">
+                      <input
+                        type="radio"
+                        name="managerScope"
+                        value="SELECTED"
+                        checked={managerScope === "SELECTED"}
+                        onChange={() => setManagerScope("SELECTED")}
+                      />
+                      Selected managers
+                    </label>
+                    {managerScope === "SELECTED" && (
+                      <div className="staff-options">
+                        {selectableManagers.length === 0 ? (
+                          <p className="help-text">No managers available.</p>
+                        ) : (
+                          selectableManagers.map((employee) => (
+                            <label key={employee.id} className="check-row">
+                              <input
+                                type="checkbox"
+                                checked={selectedManagerIds.has(employee.id)}
+                                onChange={(event) =>
+                                  toggleManager(
+                                    employee.id,
+                                    event.currentTarget.checked,
+                                  )
+                                }
+                              />
+                              {employee.name}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </FormSection>
+
+          <FormSection
+            title="Locations"
+            description="Select the locations where this task list applies."
+          >
+            <label className="radio-row">
+              <input
+                type="radio"
+                name="locationAccess"
+                value="ALL"
+                checked={locationAccess === "ALL"}
+                onChange={() => {
+                  setLocationAccess("ALL");
+                  setSelectedLocationIds(new Set());
+                }}
+              />
+              All Locations
+            </label>
+            <label className="radio-row">
+              <input
+                type="radio"
+                name="locationAccess"
+                value="SPECIFIC"
+                checked={locationAccess === "SPECIFIC"}
+                onChange={() => setLocationAccess("SPECIFIC")}
+              />
+              Specific locations
+            </label>
+            {locationAccess === "SPECIFIC" && (
+              <div className="staff-options">
+                {locations.length === 0 ? (
+                  <p className="help-text">No locations available.</p>
+                ) : (
+                  locations.map((location) => (
+                    <label key={location.id} className="check-row">
+                      <input
+                        type="checkbox"
+                        checked={selectedLocationIds.has(location.id)}
+                        onChange={(event) =>
+                          toggleLocation(
+                            location.id,
+                            event.currentTarget.checked,
+                          )
+                        }
+                      />
+                      {location.name}
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+          </FormSection>
+
+          <FormSection
+            title="Timeline"
+            description="Choose how frequently this task list should be completed."
+          >
+            <input type="hidden" name="timeline" value={timeline} />
+            {TIMELINE_OPTIONS.map((option) => (
+              <label key={option.value} className="timeline-row">
+                <input
+                  type="checkbox"
+                  checked={timeline === option.value}
+                  onChange={(event) =>
+                    setTimeline(
+                      event.currentTarget.checked ? option.value : "",
+                    )
+                  }
+                />
+                <span>
+                  <strong>{option.label}</strong>
+                  <small>{option.help}</small>
+                </span>
+              </label>
+            ))}
+          </FormSection>
+
+          <FormSection
+            title="Tasks"
+            description="Add and manage the tasks that need to be completed."
+          >
+            <div className="tasks-header">
+              <strong>Task Items</strong>
+              <p>Add tasks to your list. Drag to reorder them as needed.</p>
+            </div>
+
+            <div className="task-list">
+              {tasks.map((task, index) => (
+                <div
+                  key={task.id}
+                  className="task-row"
+                  draggable
+                  onDragStart={() => setDragIndex(index)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => onDropTask(index)}
+                >
+                  <GripVertical
+                    className="drag-handle"
+                    aria-hidden="true"
+                    size={16}
+                  />
+                  <span className="task-title">{task.title}</span>
+                  <span className="active-badge">Active</span>
+                  <button
+                    type="button"
+                    className="delete-task"
+                    aria-label={`Remove ${task.title}`}
+                    onClick={() => removeTask(task.id)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {addingTask ? (
+              <div className="add-task-form">
+                <label className="field-label">
+                  Task Title
+                  <input
+                    type="text"
+                    placeholder="Enter task title"
+                    value={draftTitle}
+                    onChange={(event) => setDraftTitle(event.currentTarget.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addTask();
+                      }
+                    }}
+                  />
+                </label>
+                <div className="add-task-actions">
+                  <s-button type="button" variant="primary" onClick={addTask}>
+                    Add task
+                  </s-button>
+                  <s-button
+                    type="button"
+                    variant="tertiary"
+                    onClick={() => {
+                      setAddingTask(false);
+                      setDraftTitle("");
+                    }}
+                  >
+                    Cancel
+                  </s-button>
+                </div>
+              </div>
+            ) : (
+              <s-button
+                type="button"
+                variant="secondary"
+                onClick={() => setAddingTask(true)}
+              >
+                <span className="button-content">
+                  <Plus aria-hidden="true" size={14} />
+                  Add task
+                </span>
+              </s-button>
+            )}
+          </FormSection>
+        </s-stack>
+      </Form>
+
+      <style>{CREATE_TASKLIST_STYLES}</style>
+    </s-page>
+  );
+}
+
+function FormSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="form-section">
+      <div className="form-section-copy">
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </div>
+      <div className="form-section-card">{children}</div>
+    </div>
+  );
+}
+
+const CREATE_TASKLIST_STYLES = `
+  .form-section {
+    align-items: start;
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(180px, 280px) 1fr;
+    min-width: 0;
+  }
+
+  .form-section-copy {
+    color: #303030;
+    display: grid;
+    gap: 6px;
+  }
+
+  .form-section-copy span,
+  .help-text,
+  .tasks-header p {
+    color: #616161;
+    font-size: 13px;
+  }
+
+  .form-section-card {
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: 18px;
+  }
+
+  .field-label,
+  .group-label {
+    color: #303030;
+    display: grid;
+    font-size: 13px;
+    font-weight: 600;
+    gap: 6px;
+  }
+
+  .field-label input,
+  .field-label textarea {
+    border: 1px solid #8a8a8a;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font: inherit;
+    font-weight: 400;
+    min-height: 36px;
+    padding: 8px 10px;
+    width: 100%;
+  }
+
+  .field-label textarea {
+    min-height: 96px;
+    resize: vertical;
+  }
+
+  .assign-block,
+  .assignee-picker,
+  .scope-block,
+  .staff-options,
+  .task-list,
+  .add-task-form {
+    display: grid;
+    gap: 10px;
+  }
+
+  .scope-block {
+    border-top: 1px solid #ececec;
+    padding-top: 12px;
+  }
+
+  .check-row,
+  .radio-row,
+  .timeline-row {
+    align-items: flex-start;
+    color: #303030;
+    display: flex;
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .timeline-row span {
+    display: grid;
+    gap: 2px;
+  }
+
+  .timeline-row small {
+    color: #616161;
+    font-size: 12px;
+  }
+
+  .assignee-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    align-items: center;
+    background: #f1f2f3;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 6px;
+    padding: 4px 8px 4px 10px;
+  }
+
+  .chip button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: #616161;
+    cursor: pointer;
+    display: inline-flex;
+    padding: 0;
+  }
+
+  .tasks-header {
+    display: grid;
+    gap: 4px;
+  }
+
+  .tasks-header strong,
+  .tasks-header p {
+    margin: 0;
+  }
+
+  .task-row {
+    align-items: center;
+    border: 1px solid #e3e3e3;
+    border-radius: 10px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 20px 1fr auto auto;
+    padding: 10px 12px;
+  }
+
+  .drag-handle {
+    color: #8a8a8a;
+    cursor: grab;
+  }
+
+  .task-title {
+    color: #202223;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .active-badge {
+    background: #008060;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+  }
+
+  .delete-task {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: #d72c0d;
+    cursor: pointer;
+    display: inline-flex;
+    padding: 2px;
+  }
+
+  .add-task-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .button-content {
+    align-items: center;
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  @media (max-width: 900px) {
+    .form-section {
+      grid-template-columns: 1fr;
+    }
+  }
+`;
