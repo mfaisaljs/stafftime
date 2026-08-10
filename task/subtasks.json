@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T09:20:00.000Z",
+  "lastUpdated": "2026-08-10T09:45:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -904,6 +904,24 @@
         "prisma/migrations/20260810090500_payroll_payments/migration.sql"
       ],
       "lastUpdated": "2026-08-10T09:20:00.000Z"
+    },
+    {
+      "id": "ST055",
+      "taskId": "T008",
+      "title": "Payroll payment period date range selector",
+      "description": "Use the shared Reports-style date range selector for Create Payroll payment period.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST054"],
+      "acceptanceCriteria": [
+        "Payment period opens Today/Yesterday/Last N Days/Custom dual-calendar picker",
+        "Selected range is submitted with the payroll payment"
+      ],
+      "files": [
+        "app/components/DateRangeSelector.tsx",
+        "app/routes/app.payroll.$employeeId.create.tsx"
+      ],
+      "lastUpdated": "2026-08-10T09:45:00.000Z"
     }
   ]
 }

@@ -12,7 +12,7 @@ import {
   useLoaderData,
   useNavigation,
 } from "react-router";
-import { Calendar, Upload, User } from "lucide-react";
+import { Upload, User } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
@@ -24,6 +24,11 @@ import {
   formatDurationHms,
   summarizeTimeEntrySeconds,
 } from "../services/time-tracking.server";
+import {
+  DateRangeSelector,
+  defaultDateRangeValue,
+  type DateRangeValue,
+} from "../components/DateRangeSelector";
 import prisma from "../db.server";
 
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
@@ -53,14 +58,6 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "PAYSTACK", label: "Paystack" },
   { value: "VENMO", label: "Venmo" },
   { value: "SQUARE", label: "Square" },
-];
-
-const PERIOD_OPTIONS = [
-  { value: "yesterday", label: "Yesterday" },
-  { value: "today", label: "Today" },
-  { value: "this_week", label: "This week" },
-  { value: "last_week", label: "Last week" },
-  { value: "this_month", label: "This month" },
 ];
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -141,7 +138,9 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const paymentType = String(formData.get("paymentType") ?? "SALARY");
   const paymentMethod = String(formData.get("paymentMethod") ?? "PAYPAL");
-  const periodKey = String(formData.get("periodKey") ?? "yesterday");
+  const periodStart = String(formData.get("periodStart") ?? "").trim();
+  const periodEnd = String(formData.get("periodEnd") ?? "").trim();
+  const periodLabel = String(formData.get("periodLabel") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").replace(/[^0-9.]/g, "");
   const amount = Number.parseFloat(amountRaw);
@@ -149,6 +148,10 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return { error: "Enter a valid payment amount greater than zero." };
+  }
+
+  if (!isDateKey(periodStart) || !isDateKey(periodEnd) || periodStart > periodEnd) {
+    return { error: "Select a valid payment period." };
   }
 
   let proofFileName: string | null = null;
@@ -169,8 +172,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     proofFileName = proof.name.slice(0, 180);
   }
 
-  const period = resolvePeriod(periodKey);
-
   await prisma.payrollPayment.create({
     data: {
       shopId: shop.id,
@@ -181,9 +182,9 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       paymentMethod,
       notes: notesRaw || null,
       proofFileName,
-      periodLabel: period.label,
-      periodStart: period.start,
-      periodEnd: period.end,
+      periodLabel: periodLabel || `${periodStart} - ${periodEnd}`,
+      periodStart,
+      periodEnd,
     },
   });
 
@@ -197,6 +198,9 @@ export default function CreatePayrollPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [proofName, setProofName] = useState("");
   const [amount, setAmount] = useState(overview.remaining.toFixed(2));
+  const [period, setPeriod] = useState<DateRangeValue>(() =>
+    defaultDateRangeValue(2),
+  );
   const isSubmitting = navigation.state === "submitting";
 
   const amountHelp = useMemo(
@@ -289,19 +293,10 @@ export default function CreatePayrollPage() {
               <small>Select the payment type you want to process</small>
             </label>
 
-            <label className="field-label period-field">
-              Payment period
-              <span className="period-control">
-                <Calendar aria-hidden="true" size={16} />
-                <select name="periodKey" defaultValue="yesterday">
-                  {PERIOD_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </label>
+            <div className="field-label period-field">
+              <span>Payment period</span>
+              <DateRangeSelector value={period} onChange={setPeriod} />
+            </div>
 
             <label className="field-label">
               Salary amount to pay
@@ -475,70 +470,8 @@ function formatMoney(amount: number) {
   return `$${amount.toFixed(2)}`;
 }
 
-function resolvePeriod(periodKey: string) {
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-
-  switch (periodKey) {
-    case "today": {
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return {
-        label: "Today",
-        start: start.toISOString(),
-        end: end.toISOString(),
-      };
-    }
-    case "this_week": {
-      const day = start.getDay();
-      const diff = day === 0 ? 6 : day - 1;
-      start.setDate(start.getDate() - diff);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return {
-        label: "This week",
-        start: start.toISOString(),
-        end: end.toISOString(),
-      };
-    }
-    case "last_week": {
-      const day = start.getDay();
-      const diff = day === 0 ? 6 : day - 1;
-      end.setDate(end.getDate() - diff - 1);
-      end.setHours(23, 59, 59, 999);
-      start.setTime(end.getTime());
-      start.setDate(start.getDate() - 6);
-      start.setHours(0, 0, 0, 0);
-      return {
-        label: "Last week",
-        start: start.toISOString(),
-        end: end.toISOString(),
-      };
-    }
-    case "this_month": {
-      start.setDate(1);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return {
-        label: "This month",
-        start: start.toISOString(),
-        end: end.toISOString(),
-      };
-    }
-    case "yesterday":
-    default: {
-      start.setDate(start.getDate() - 1);
-      start.setHours(0, 0, 0, 0);
-      end.setDate(end.getDate() - 1);
-      end.setHours(23, 59, 59, 999);
-      return {
-        label: "Yesterday",
-        start: start.toISOString(),
-        end: end.toISOString(),
-      };
-    }
-  }
+function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 export const headers: HeadersFunction = (headersArgs) => {
@@ -727,22 +660,8 @@ const CREATE_PAYROLL_STYLES = `
     resize: vertical;
   }
 
-  .period-control {
-    align-items: center;
-    border: 1px solid #8a8a8a;
-    border-radius: 8px;
-    display: inline-flex;
-    gap: 8px;
-    max-width: 280px;
-    padding: 0 10px;
-    width: 100%;
-  }
-
-  .period-control select {
-    border: 0;
-    min-height: 36px;
-    outline: none;
-    padding-left: 0;
+  .period-field {
+    align-items: start;
   }
 
   .amount-input {
