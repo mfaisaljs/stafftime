@@ -22,11 +22,17 @@ function currentYearMonth(date = new Date()) {
   return `${date.getFullYear()}-${month}`;
 }
 
-function lastSixYearMonths(from = new Date()) {
+function lastSixYearMonths(from = new Date(), notBefore?: Date | null) {
+  const floor = notBefore
+    ? new Date(notBefore.getFullYear(), notBefore.getMonth(), 1)
+    : null;
+
   return Array.from({ length: 6 }, (_, index) => {
     const date = new Date(from.getFullYear(), from.getMonth() - index, 1);
-    return currentYearMonth(date);
-  });
+    return date;
+  })
+    .filter((date) => !floor || date.getTime() >= floor.getTime())
+    .map((date) => currentYearMonth(date));
 }
 
 function formatMonthLabel(yearMonth: string, isCurrent: boolean) {
@@ -85,7 +91,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   ]);
 
   const yearMonth = currentYearMonth();
-  const historyMonths = lastSixYearMonths();
 
   // Keep current-month goal snapshots in sync with active targets.
   await Promise.all(
@@ -119,12 +124,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const employeeIdsInTargets = Array.from(
     new Set(targets.flatMap((target) => parseIds(target.employeeIds))),
   );
+  const historyMonthCandidates = lastSixYearMonths();
   const snapshots = employeeIdsInTargets.length
     ? await prisma.salesTargetSnapshot.findMany({
         where: {
           shopId: shop.id,
           employeeId: { in: employeeIdsInTargets },
-          yearMonth: { in: historyMonths },
+          yearMonth: { in: historyMonthCandidates },
         },
       })
     : [];
@@ -140,6 +146,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     employees.map((employee) => [
       employee.id,
       `${employee.firstName} ${employee.lastName}`.trim(),
+    ]),
+  );
+  const employeeActivationById = new Map(
+    employees.map((employee) => [
+      employee.id,
+      employee.firstLoginAt ?? employee.createdAt,
     ]),
   );
   const locationNameById = new Map(
@@ -174,6 +186,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           : progressPercent >= 50
             ? "On track"
             : "Behind";
+
+      const historyMonths = lastSixYearMonths(
+        new Date(),
+        employeeActivationById.get(employeeId) ?? null,
+      );
 
       const history = historyMonths.map((monthKey, index) => {
         const snapshot = snapshotByEmployeeMonth.get(`${employeeId}:${monthKey}`);
@@ -778,34 +795,40 @@ export default function SalesTargetsIndex() {
           <div className="history-modal-body">
             <p className="history-intro">
               Sold each month vs the monthly target goal snapshot (
-              {formatMoney(historyRow.currency, historyRow.amount)}). Each month
-              keeps the target amount that was set for that month.
+              {formatMoney(historyRow.currency, historyRow.amount)}). History only
+              includes months on or after this staff member&apos;s activation date.
             </p>
             <div className="history-list">
-              {historyRow.history.map((month) => (
-                <div className="history-row" key={month.yearMonth}>
-                  <strong className={month.isCurrent ? "is-current" : undefined}>
-                    {month.label}
-                  </strong>
-                  <div className="history-metrics">
-                    <span>
-                      {formatMoney(month.currency, month.sold)} /{" "}
-                      {formatMoney(month.currency, month.amount)}
-                    </span>
-                    <span
-                      className={`history-pill${
-                        month.progressPercent >= 100
-                          ? " is-met"
-                          : month.progressPercent >= 50
-                            ? " is-track"
-                            : ""
-                      }`}
-                    >
-                      {month.progressPercent}%
-                    </span>
+              {historyRow.history.length === 0 ? (
+                <p className="history-empty">
+                  No monthly history yet for this staff member.
+                </p>
+              ) : (
+                historyRow.history.map((month) => (
+                  <div className="history-row" key={month.yearMonth}>
+                    <strong className={month.isCurrent ? "is-current" : undefined}>
+                      {month.label}
+                    </strong>
+                    <div className="history-metrics">
+                      <span>
+                        {formatMoney(month.currency, month.sold)} /{" "}
+                        {formatMoney(month.currency, month.amount)}
+                      </span>
+                      <span
+                        className={`history-pill${
+                          month.progressPercent >= 100
+                            ? " is-met"
+                            : month.progressPercent >= 50
+                              ? " is-track"
+                              : ""
+                        }`}
+                      >
+                        {month.progressPercent}%
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -1051,6 +1074,13 @@ const SALES_TARGETS_STYLES = `
     border: 1px solid #e3e3e3;
     border-radius: 8px;
     overflow: hidden;
+  }
+
+  .history-empty {
+    color: #616161;
+    font-size: 13px;
+    margin: 0;
+    padding: 16px 14px;
   }
 
   .history-row {
