@@ -31,6 +31,11 @@ import {
   type DateRangeValue,
 } from "../components/DateRangeSelector";
 import prisma from "../db.server";
+import {
+  normalizeTimelines,
+  periodKeyForTimeline,
+  periodLabelForTimeline,
+} from "../services/tasklists.server";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -40,25 +45,31 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const shop = await getAdminShop(session);
   const url = new URL(request.url);
   const dateRange = resolveDateRange(url.searchParams);
-  const completeDateKey = resolveCompleteDateKey(dateRange);
 
-  const [list, locations, completions] = await Promise.all([
-    prisma.taskList.findFirst({
-      where: { id: listId, shopId: shop.id },
-      include: { items: { orderBy: { sortOrder: "asc" } } },
-    }),
+  const list = await prisma.taskList.findFirst({
+    where: { id: listId, shopId: shop.id },
+    include: { items: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!list) throw new Response("Task list not found", { status: 404 });
+
+  const timelineCode = normalizeTimelines(list.timelines)[0] ?? "DAILY";
+  const completeDateKey = resolveCompleteDateKey(dateRange, timelineCode);
+  const referenceDate = dateFromKey(completeDateKey);
+
+  const [locations, completions] = await Promise.all([
     getEmployeeLocations(session),
     prisma.taskListCompletion.findMany({
       where: {
         shopId: shop.id,
         taskListId: listId,
-        dateKey: { gte: dateRange.start, lte: dateRange.end },
+        OR: [
+          { dateKey: { gte: dateRange.start, lte: dateRange.end } },
+          { dateKey: completeDateKey },
+        ],
       },
       orderBy: { performedAt: "desc" },
     }),
   ]);
-
-  if (!list) throw new Response("Task list not found", { status: 404 });
 
   const locationNameById = new Map(
     locations.map((location) => [location.id, location.name]),
@@ -66,6 +77,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const locationIds = parseJsonArray(list.locationIds);
   const completionByItemId = new Map<string, (typeof completions)[number]>();
   for (const completion of completions) {
+    const matchesPeriod =
+      timelineCode === "DAILY"
+        ? completion.dateKey >= dateRange.start &&
+          completion.dateKey <= dateRange.end
+        : completion.dateKey === completeDateKey;
+    if (!matchesPeriod) continue;
     if (!completionByItemId.has(completion.taskItemId)) {
       completionByItemId.set(completion.taskItemId, completion);
     }
@@ -75,7 +92,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   if (list.assignStaff) assignedTo.push("Staff");
   if (list.assignManagers) assignedTo.push("Managers");
 
-  const timeline = timelineLabel(parseJsonArray(list.timelines)[0] ?? "");
+  const timeline = timelineLabel(timelineCode);
   const tasks = list.items.map((item) => {
     const completion = completionByItemId.get(item.id);
     return {
@@ -111,6 +128,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     },
     dateRange,
     completeDateKey,
+    periodLabel: periodLabelForTimeline(timelineCode, referenceDate),
     dateLabel: formatRangeLabel(dateRange),
     progressPercent,
     completedCount,
@@ -128,9 +146,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
   const taskItemId = String(formData.get("taskItemId") ?? "");
-  const dateKey =
-    normalizeDateKey(String(formData.get("dateKey") ?? "")) ?? toDateKey(new Date());
-
   if (intent !== "completeTask" || !taskItemId) {
     return { error: "Invalid action" };
   }
@@ -142,6 +157,11 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   if (!list || list.items.length === 0) {
     return { error: "Task not found" };
   }
+
+  const timelineCode = normalizeTimelines(list.timelines)[0] ?? "DAILY";
+  const submittedKey =
+    normalizeDateKey(String(formData.get("dateKey") ?? "")) ?? toDateKey(new Date());
+  const dateKey = periodKeyForTimeline(timelineCode, dateFromKey(submittedKey));
 
   await prisma.taskListCompletion.upsert({
     where: {
@@ -170,6 +190,7 @@ export default function TaskListDetailPage() {
     list,
     dateRange,
     completeDateKey,
+    periodLabel,
     dateLabel,
     progressPercent,
     completedCount,
@@ -278,6 +299,9 @@ export default function TaskListDetailPage() {
         <section className="status-card">
           <div className="status-header">
             <h2>Task status for {dateLabel}</h2>
+            {periodLabel ? (
+              <p className="period-label">Completion period: {periodLabel}</p>
+            ) : null}
             <div className="date-control">
               <DateRangeSelector
                 value={range}
@@ -479,10 +503,19 @@ function resolveDateRange(searchParams: URLSearchParams): DateRangeValue {
   return defaultDateRangeValue(1);
 }
 
-function resolveCompleteDateKey(range: DateRangeValue) {
+function dateFromKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function resolveCompleteDateKey(
+  range: DateRangeValue,
+  timeline: string,
+) {
   const today = toDateKey(new Date());
-  if (today >= range.start && today <= range.end) return today;
-  return range.end;
+  const referenceKey =
+    today >= range.start && today <= range.end ? today : range.end;
+  return periodKeyForTimeline(timeline, dateFromKey(referenceKey));
 }
 
 function formatStatusDate(dateKey: string) {
@@ -626,6 +659,12 @@ const DETAIL_STYLES = `
     gap: 12px;
     justify-content: space-between;
     margin-bottom: 12px;
+  }
+
+  .period-label {
+    margin: 0.25rem 0 0;
+    color: var(--p-color-text-secondary, #6d7175);
+    font-size: 0.875rem;
   }
 
   .status-header h2 {

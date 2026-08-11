@@ -21,6 +21,8 @@ export type PosTaskListRow = {
   timelines: Array<"DAILY" | "WEEKLY" | "MONTHLY">;
   timelineLabels: string[];
   timelineLabel: string;
+  periodKey: string;
+  periodLabel: string;
   taskCount: number;
   completedCount: number;
   progressLabel: string;

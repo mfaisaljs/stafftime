@@ -348,6 +348,8 @@ function TaskListCard(props: {
             </s-badge>
           </s-stack>
 
+          <s-text>Period: {list.periodLabel}</s-text>
+
           {list.description ? <s-text>{list.description}</s-text> : null}
 
           {list.items.length === 0 ? (

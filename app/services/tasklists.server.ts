@@ -4,6 +4,7 @@ import { ensureShop } from "./workforce.server";
 import { isManagerRole } from "./settings.server";
 
 export type PosTaskListTab = "all" | "daily" | "weekly" | "monthly";
+export type TaskTimeline = "DAILY" | "WEEKLY" | "MONTHLY";
 
 export type PosTaskItemRow = {
   id: string;
@@ -16,9 +17,11 @@ export type PosTaskListRow = {
   id: string;
   name: string;
   description: string | null;
-  timelines: Array<"DAILY" | "WEEKLY" | "MONTHLY">;
+  timelines: TaskTimeline[];
   timelineLabels: string[];
   timelineLabel: string;
+  periodKey: string;
+  periodLabel: string;
   taskCount: number;
   completedCount: number;
   progressLabel: string;
@@ -36,11 +39,99 @@ function parseJsonArray(raw: string): string[] {
   }
 }
 
-function todayDateKey(now = new Date()) {
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+export function toDateKey(value = new Date()) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function startOfLocalDay(value = new Date()) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/** Sunday-start local week (matches schedule week helpers). */
+export function startOfLocalWeek(value = new Date()) {
+  const date = startOfLocalDay(value);
+  date.setDate(date.getDate() - date.getDay());
+  return date;
+}
+
+export function startOfLocalMonth(value = new Date()) {
+  const date = startOfLocalDay(value);
+  date.setDate(1);
+  return date;
+}
+
+export function endOfLocalWeek(value = new Date()) {
+  const start = startOfLocalWeek(value);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+export function endOfLocalMonth(value = new Date()) {
+  const start = startOfLocalMonth(value);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  end.setMilliseconds(-1);
+  return end;
+}
+
+/**
+ * Completion bucket for a timeline:
+ * - DAILY → that calendar day
+ * - WEEKLY → Sunday of that week
+ * - MONTHLY → 1st of that month
+ */
+export function periodKeyForTimeline(
+  timeline: string | null | undefined,
+  at = new Date(),
+): string {
+  const kind = String(timeline ?? "DAILY").toUpperCase();
+  if (kind === "WEEKLY") return toDateKey(startOfLocalWeek(at));
+  if (kind === "MONTHLY") return toDateKey(startOfLocalMonth(at));
+  return toDateKey(at);
+}
+
+export function currentPeriodKeys(at = new Date()) {
+  return {
+    DAILY: periodKeyForTimeline("DAILY", at),
+    WEEKLY: periodKeyForTimeline("WEEKLY", at),
+    MONTHLY: periodKeyForTimeline("MONTHLY", at),
+  } as const;
+}
+
+export function periodLabelForTimeline(
+  timeline: string | null | undefined,
+  at = new Date(),
+): string {
+  const kind = String(timeline ?? "DAILY").toUpperCase();
+  if (kind === "WEEKLY") {
+    const start = startOfLocalWeek(at);
+    const end = endOfLocalWeek(at);
+    return `Week of ${start.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    })} – ${end.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    })}`;
+  }
+  if (kind === "MONTHLY") {
+    return startOfLocalMonth(at).toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }
+  return at.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function timelineLabel(value: string) {
@@ -56,13 +147,17 @@ function timelineLabel(value: string) {
   }
 }
 
-function normalizeTimelines(raw: string): Array<"DAILY" | "WEEKLY" | "MONTHLY"> {
+export function normalizeTimelines(raw: string): TaskTimeline[] {
   return parseJsonArray(raw)
     .map((value) => value.toUpperCase())
     .filter(
-      (value): value is "DAILY" | "WEEKLY" | "MONTHLY" =>
+      (value): value is TaskTimeline =>
         value === "DAILY" || value === "WEEKLY" || value === "MONTHLY",
     );
+}
+
+function primaryTimeline(timelines: TaskTimeline[]): TaskTimeline {
+  return timelines[0] ?? "DAILY";
 }
 
 function roleBucket(role: EmployeeRole): "staff" | "manager" | null {
@@ -144,7 +239,14 @@ export async function listEmployeeTaskListsForPos(params: {
   tab: PosTaskListTab;
 }) {
   const { shop, employee } = await getAssignedEmployee(params);
-  const dateKey = todayDateKey();
+  const now = new Date();
+  const periodKeys = currentPeriodKeys(now);
+  const periodKeyList = [
+    periodKeys.DAILY,
+    periodKeys.WEEKLY,
+    periodKeys.MONTHLY,
+  ];
+
   const lists = await prisma.taskList.findMany({
     where: { shopId: shop.id, active: true },
     include: {
@@ -153,8 +255,8 @@ export async function listEmployeeTaskListsForPos(params: {
         orderBy: { sortOrder: "asc" },
       },
       completions: {
-        where: { dateKey },
-        select: { taskItemId: true, performedBy: true },
+        where: { dateKey: { in: periodKeyList } },
+        select: { taskItemId: true, performedBy: true, dateKey: true },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -169,8 +271,14 @@ export async function listEmployeeTaskListsForPos(params: {
     const timelines = normalizeTimelines(list.timelines);
     if (!matchesTab(timelines, params.tab)) continue;
 
+    const timeline = primaryTimeline(timelines);
+    const periodKey = periodKeys[timeline];
+    const periodLabel = periodLabelForTimeline(timeline, now);
+
     const completionByItem = new Map(
-      list.completions.map((item) => [item.taskItemId, item.performedBy]),
+      list.completions
+        .filter((item) => item.dateKey === periodKey)
+        .map((item) => [item.taskItemId, item.performedBy]),
     );
     const items: PosTaskItemRow[] = list.items.map((item) => ({
       id: item.id,
@@ -189,6 +297,8 @@ export async function listEmployeeTaskListsForPos(params: {
       timelines,
       timelineLabels: labels,
       timelineLabel: labels[0] ?? "—",
+      periodKey,
+      periodLabel,
       taskCount,
       completedCount,
       progressLabel: `${completedCount}/${taskCount} done`,
@@ -206,7 +316,7 @@ export async function listEmployeeTaskListsForPos(params: {
       roleLabel: roleBucket(employee.role) === "manager" ? "Manager" : "Staff",
     },
     tab: params.tab,
-    dateKey,
+    periodKeys,
     taskLists: rows,
     serverTime: Date.now(),
   };
@@ -246,7 +356,8 @@ export async function setPosTaskItemCompletion(params: {
     throw new Error("This task list is not available at your location");
   }
 
-  const dateKey = todayDateKey();
+  const timeline = primaryTimeline(normalizeTimelines(list.timelines));
+  const dateKey = periodKeyForTimeline(timeline);
   const performedBy = performerLabel(employee);
 
   if (params.completed) {
@@ -284,6 +395,8 @@ export async function setPosTaskItemCompletion(params: {
   return {
     ok: true as const,
     dateKey,
+    timeline,
+    periodLabel: periodLabelForTimeline(timeline),
     taskListId: list.id,
     taskItemId: params.taskItemId,
     completed: params.completed,
