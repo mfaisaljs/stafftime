@@ -23,6 +23,7 @@ import {
   UserCog,
 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
+import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 import {
   getAdminShop,
