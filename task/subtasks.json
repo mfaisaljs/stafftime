@@ -1691,6 +1691,29 @@
         "prisma/migrations/20260811200000_commission_attributions/migration.sql"
       ],
       "lastUpdated": "2026-08-11T20:40:00.000Z"
+    },
+    {
+      "id": "ST092",
+      "taskId": "T017",
+      "title": "PIN-first Commission and Sales Target attribution entry points",
+      "description": "Order details and Post-purchase attribution blocks/menu items prompt for staff PIN before opening the attribution modal.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST089", "ST091"],
+      "acceptanceCriteria": [
+        "Sales Target attribution block and menu item show native PIN pad before presentModal",
+        "Commission attribution block and menu item show native PIN pad before presentModal",
+        "Successful PIN persists session so the modal opens already verified"
+      ],
+      "files": [
+        "extensions/sales-target/src/AttributionBlock.tsx",
+        "extensions/sales-target/src/AttributionMenuItem.tsx",
+        "extensions/sales-target/src/posApi.ts",
+        "extensions/commission/src/AttributionBlock.tsx",
+        "extensions/commission/src/AttributionMenuItem.tsx",
+        "extensions/commission/src/posApi.ts"
+      ],
+      "lastUpdated": "2026-08-12T21:25:00.000Z"
     }
   ]
 }
