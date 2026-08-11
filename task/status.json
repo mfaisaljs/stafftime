@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T15:52:00.000Z",
+  "lastUpdated": "2026-08-11T16:00:00.000Z",
   "notes": [
+    "ST084 complete: admin Create Time Off auto-approves on save and cancels overlapping shifts.",
     "Updated: POS View Shifts Upcoming status badge uses success (green) tone.",
     "Updated: POS View Shifts cancelled scheduled shifts use critical (red) tone instead of grey subdued styling.",
     "ST083 complete: POS View Shifts cancelled/on-leave rows use Unicode strikethrough (POS s-text has no line-through CSS).",

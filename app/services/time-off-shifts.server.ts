@@ -169,6 +169,35 @@ export async function approveTimeOffRequestForShop(params: {
   return { request: updated, cancelledShiftCount };
 }
 
+export async function createApprovedTimeOffRequestForShop(params: {
+  shopId: string;
+  employeeId: string;
+  policyId: string;
+  locationId: string;
+  startDate: string;
+  endDate: string;
+  reason?: string | null;
+}) {
+  const created = await prisma.timeOffRequest.create({
+    data: {
+      shopId: params.shopId,
+      employeeId: params.employeeId,
+      policyId: params.policyId,
+      locationId: params.locationId,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      reason: params.reason ?? null,
+      status: "PENDING",
+    },
+  });
+
+  return approveTimeOffRequestForShop({
+    shopId: params.shopId,
+    requestId: created.id,
+    status: "APPROVED",
+  });
+}
+
 export async function assertEmployeeNotOnApprovedLeave(params: {
   shopId: string;
   employeeId: string;

@@ -1521,6 +1521,26 @@
         "extensions/view-shifts/src/Modal.tsx"
       ],
       "lastUpdated": "2026-08-11T15:45:00.000Z"
+    },
+    {
+      "id": "ST084",
+      "taskId": "T009",
+      "title": "Auto-approve admin Create Time Off",
+      "description": "Time off created from Admin Create Time Off is approved immediately and overlapping shifts are cancelled.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST082"],
+      "acceptanceCriteria": [
+        "Create Time Off in admin saves request as APPROVED",
+        "Overlapping scheduled shifts are cancelled on create",
+        "Success banner reflects approved status"
+      ],
+      "files": [
+        "app/services/time-off-shifts.server.ts",
+        "app/routes/app.time-off.new.tsx",
+        "app/routes/app.time-off._index.tsx"
+      ],
+      "lastUpdated": "2026-08-11T16:00:00.000Z"
     }
   ]
 }

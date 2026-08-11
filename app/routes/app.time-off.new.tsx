@@ -22,6 +22,9 @@ import {
 } from "../services/admin.server";
 import { InlineDateRangeCalendar } from "../components/InlineDateRangeCalendar";
 import { toDateKey } from "../components/DateRangeSelector";
+import {
+  createApprovedTimeOffRequestForShop,
+} from "../services/time-off-shifts.server";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -91,8 +94,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!policy) return { error: "Selected policy was not found." };
   if (!location) return { error: "Selected location was not found." };
 
-  await prisma.timeOffRequest.create({
-    data: {
+  try {
+    await createApprovedTimeOffRequestForShop({
       shopId: shop.id,
       employeeId,
       policyId,
@@ -100,9 +103,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       startDate,
       endDate,
       reason: reason || null,
-      status: "PENDING",
-    },
-  });
+    });
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not create time off request.",
+    };
+  }
 
   return redirect("/app/time-off?created=1");
 };

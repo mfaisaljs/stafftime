@@ -154,7 +154,9 @@ export default function TimeOffIndexPage() {
         Create Time Off
       </s-button>
 
-      {created && <s-banner tone="success" heading="Time off request created." />}
+      {created && (
+        <s-banner tone="success" heading="Time off created and approved." />
+      )}
       {actionData && "error" in actionData && actionData.error && (
         <s-banner tone="critical" heading={actionData.error} />
       )}
