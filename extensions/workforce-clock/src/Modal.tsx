@@ -1,36 +1,23 @@
 import { render } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { resolveAppUrl } from "./appUrl";
 import {
-  buildClockState,
-  CLOCK_STATE_STORAGE_KEY,
+  ACTIVE_SESSION_STORAGE_KEY,
+  parseStoredVerifySession,
   type ClockStatus,
+  type StoredVerifySession,
 } from "./clockStatus";
+import {
+  apiFetch,
+  messageFromError,
+  persistVerifySession,
+  type VerifyResponse,
+  verifyPin,
+} from "./posApi";
 
-type EmployeeStatus = {
+type EmployeeStatus = StoredVerifySession["status"] & {
   employeeId: string;
   employeeName: string;
   status: ClockStatus;
-  clockInAt?: string;
-  clockInAtMs?: number;
-  breakStartAt?: string;
-  shiftStart?: string;
-  shiftEnd?: string;
-  serverTime?: number;
-  timeFormat?: "24H" | "12H";
-  hourFormat?: "STANDARD" | "DECIMAL";
-  payrollStats?: {
-    hours: number;
-    earnings: number;
-    hoursLabel: string;
-    earningsLabel: string;
-  } | null;
-};
-
-type VerifyResponse = {
-  employee: { id: string; firstName: string; lastName: string };
-  status: EmployeeStatus;
-  serverTime?: number;
 };
 
 export default async function extension() {
@@ -41,97 +28,58 @@ function WorkforceModal() {
   const [qrCode, setQrCode] = useState("");
   const [mode, setMode] = useState<"pin" | "qr">("pin");
   const [loading, setLoading] = useState(false);
+  const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState<VerifyResponse | null>(null);
   const [now, setNow] = useState(Date.now());
   const clockOffsetRef = useRef(0);
-  const acceptedVerifyRef = useRef<VerifyResponse | null>(null);
   const pinPadOpenRef = useRef(false);
-  const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => {
-      clearInterval(timer);
-      if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
-    };
-  }, []);
 
   const syncClockOffset = useCallback((status: EmployeeStatus, serverTime?: number) => {
-    if (typeof serverTime !== "number") return;
-    clockOffsetRef.current = serverTime - Date.now();
+    if (typeof serverTime === "number") {
+      clockOffsetRef.current = serverTime - Date.now();
+    }
     if (typeof status.clockInAtMs !== "number" && status.clockInAt) {
       status.clockInAtMs = new Date(status.clockInAt).getTime();
     }
   }, []);
 
-  const persistClockState = useCallback(
-    async (status: ClockStatus, employeeId?: string) => {
-      try {
-        await shopify.storage.set(
-          CLOCK_STATE_STORAGE_KEY,
-          buildClockState(status, employeeId),
-        );
-      } catch {
-        // Tile falls back to "Tap to clock in" if storage write fails.
-      }
-    },
-    [],
-  );
-
-  const elapsedLabel = useMemo(() => {
-    const clockInAtMs = verified?.status.clockInAtMs;
-    if (!clockInAtMs) return "Not clocked in";
-
-    const adjustedNow = now + clockOffsetRef.current;
-    const seconds = Math.max(0, Math.floor((adjustedNow - clockInAtMs) / 1000));
-    return formatElapsed(seconds, verified?.status.hourFormat ?? "STANDARD");
-  }, [now, verified?.status.clockInAtMs, verified?.status.hourFormat]);
-
-  const apiFetch = useCallback(async (path: string, body?: Record<string, unknown>) => {
-    const token = await shopify.session.getSessionToken();
-    if (!token) {
-      throw new Error("POS session token unavailable. Check app permissions.");
-    }
-
-    let response: Response;
+  const clearSession = useCallback(async () => {
     try {
-      response = await fetch(resolveAppUrl(path), {
-        method: body ? "POST" : "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-    } catch (err) {
-      throw new Error(messageFromError(err, "Could not reach StaffTime server"));
+      await shopify.storage.delete(ACTIVE_SESSION_STORAGE_KEY);
+    } catch {
+      // ignore
     }
-
-    const data = await response.json().catch((): null => null);
-    if (!response.ok) {
-      throw new Error(errorMessageFromResponse(data) ?? "Request failed");
-    }
-    return data;
   }, []);
 
   const applyVerified = useCallback(
-    (data: VerifyResponse) => {
-      syncClockOffset(data.status, data.serverTime);
-      setVerified(data);
+    (data: VerifyResponse, options?: { persist?: boolean }) => {
+      const next: VerifyResponse = {
+        employee: data.employee,
+        status: { ...data.status },
+        serverTime: data.serverTime,
+      };
+      syncClockOffset(next.status as EmployeeStatus, next.serverTime);
+      setVerified(next);
       setQrCode("");
       setError(null);
       setMode("pin");
-      void persistClockState(data.status.status, data.employee.id);
+      if (options?.persist !== false) {
+        void persistVerifySession(next);
+      }
     },
-    [persistClockState, syncClockOffset],
+    [syncClockOffset],
   );
 
-  const commitAcceptedVerify = useCallback(() => {
-    const data = acceptedVerifyRef.current;
-    if (!data) return;
-    acceptedVerifyRef.current = null;
-    applyVerified(data);
+  const loadSessionIntoUi = useCallback(async () => {
+    const stored = parseStoredVerifySession(
+      await shopify.storage.get(ACTIVE_SESSION_STORAGE_KEY),
+    );
+    if (stored) {
+      applyVerified(stored, { persist: false });
+      return true;
+    }
+    return false;
   }, [applyVerified]);
 
   const showNativePinPad = useCallback(() => {
@@ -144,7 +92,6 @@ function WorkforceModal() {
 
     setError(null);
     setLoading(false);
-    acceptedVerifyRef.current = null;
     pinPadOpenRef.current = true;
 
     try {
@@ -152,22 +99,10 @@ function WorkforceModal() {
         async (pinDigits) => {
           const pin = pinDigits.join("");
           try {
-            const data = (await apiFetch("/api/pos/verify", {
-              pin,
-            })) as VerifyResponse;
-            acceptedVerifyRef.current = data;
-
-            // Apply after the native pad finishes dismissing. Relying only on
-            // onDismissed is flaky on some POS builds.
-            if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
-            applyTimerRef.current = setTimeout(() => {
-              pinPadOpenRef.current = false;
-              commitAcceptedVerify();
-            }, 100);
-
+            const data = await verifyPin(pin);
+            await persistVerifySession(data);
             return { result: "accept" as const };
           } catch (err) {
-            acceptedVerifyRef.current = null;
             return {
               result: "reject" as const,
               errorMessage: messageFromError(err, "Invalid PIN"),
@@ -181,13 +116,10 @@ function WorkforceModal() {
           minPinLength: 4,
           maxPinLength: 4,
           autoSubmit: true,
-          onDismissed: () => {
+          onDismissed: (result) => {
             pinPadOpenRef.current = false;
-            // Backup path if the delayed commit did not run yet.
-            if (acceptedVerifyRef.current) {
-              if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
-              commitAcceptedVerify();
-            }
+            if (!result.completed) return;
+            void loadSessionIntoUi();
           },
         },
       );
@@ -195,7 +127,45 @@ function WorkforceModal() {
       pinPadOpenRef.current = false;
       setError(messageFromError(err, "Could not open PIN pad"));
     }
-  }, [apiFetch, commitAcceptedVerify]);
+  }, [loadSessionIntoUi]);
+
+  // Restore session written by the tile PIN pad (or a prior modal verify).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const stored = parseStoredVerifySession(
+          await shopify.storage.get(ACTIVE_SESSION_STORAGE_KEY),
+        );
+        if (!cancelled && stored) {
+          syncClockOffset(stored.status as EmployeeStatus, stored.serverTime);
+          setVerified(stored);
+        }
+      } catch {
+        // Start on fallback screen if restore fails.
+      } finally {
+        if (!cancelled) setBooting(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once on mount
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const elapsedLabel = useMemo(() => {
+    const clockInAtMs = verified?.status.clockInAtMs;
+    if (!clockInAtMs) return "Not clocked in";
+
+    const adjustedNow = now + clockOffsetRef.current;
+    const seconds = Math.max(0, Math.floor((adjustedNow - clockInAtMs) / 1000));
+    return formatElapsed(seconds, verified?.status.hourFormat ?? "STANDARD");
+  }, [now, verified?.status.clockInAtMs, verified?.status.hourFormat]);
 
   async function verifyWithQr() {
     setLoading(true);
@@ -218,9 +188,11 @@ function WorkforceModal() {
       const data = (await apiFetch(`/api/pos/${action}`, {
         employeeId: verified.employee.id,
       })) as { status: EmployeeStatus; serverTime?: number };
-      syncClockOffset(data.status, data.serverTime);
-      setVerified({ ...verified, status: data.status, serverTime: data.serverTime });
-      await persistClockState(data.status.status, verified.employee.id);
+      applyVerified({
+        ...verified,
+        status: data.status,
+        serverTime: data.serverTime,
+      });
     } catch (err) {
       setError(messageFromError(err, "Action failed"));
     } finally {
@@ -229,13 +201,24 @@ function WorkforceModal() {
   }
 
   function switchEmployee() {
-    acceptedVerifyRef.current = null;
     pinPadOpenRef.current = false;
-    if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
+    void clearSession();
     setVerified(null);
     setMode("pin");
     setError(null);
     setLoading(false);
+    // Open PIN pad immediately — no intermediate chooser step.
+    setTimeout(() => showNativePinPad(), 0);
+  }
+
+  if (booting) {
+    return (
+      <s-page heading="StaffTime">
+        <s-scroll-box>
+          <s-text>Loading...</s-text>
+        </s-scroll-box>
+      </s-page>
+    );
   }
 
   if (!verified) {
@@ -247,7 +230,10 @@ function WorkforceModal() {
             <s-stack direction="inline" gap="base">
               <s-button
                 variant={mode === "pin" ? "primary" : "secondary"}
-                onClick={() => setMode("pin")}
+                onClick={() => {
+                  setMode("pin");
+                  showNativePinPad();
+                }}
               >
                 PIN
               </s-button>
@@ -405,15 +391,4 @@ function formatElapsed(
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
   return `${h}h ${m}m ${s}s`;
-}
-
-function errorMessageFromResponse(data: unknown): string | null {
-  if (!data || typeof data !== "object" || !("error" in data)) return null;
-
-  const error = (data as { error?: unknown }).error;
-  return typeof error === "string" && error.trim() ? error : null;
-}
-
-function messageFromError(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message.trim() ? error.message : fallback;
 }
