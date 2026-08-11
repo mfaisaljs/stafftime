@@ -438,7 +438,7 @@ function MainScreen(props: {
                         gap="small"
                         alignItems="center"
                       >
-                        <s-icon type="play-circle" color="strong" />
+                        <s-text>🍴</s-text>
                         <s-text>Start Break</s-text>
                       </s-stack>
                     </s-button>
@@ -455,7 +455,7 @@ function MainScreen(props: {
                         gap="small"
                         alignItems="center"
                       >
-                        <s-icon type="check" color="strong" />
+                        <s-text>🍴</s-text>
                         <s-text>End Break</s-text>
                       </s-stack>
                     </s-button>
@@ -562,13 +562,7 @@ function HistoryScreen(props: {
                           gap="small"
                           alignItems="center"
                         >
-                          <s-icon
-                            type={historyIcon(event.type)}
-                            color="strong"
-                            tone={
-                              event.tone === "neutral" ? "auto" : event.tone
-                            }
-                          />
+                          <s-text>{historyVisual(event.type).emoji}</s-text>
                           <s-stack direction="block" gap="none">
                             <s-text>{event.label}</s-text>
                             <s-text>Time: {event.atLabel}</s-text>
@@ -665,17 +659,16 @@ function InfoRow(props: {
   );
 }
 
-function historyIcon(
-  type: PosHistoryEvent["type"],
-): "clock" | "play-circle" | "check" {
+function historyVisual(type: PosHistoryEvent["type"]): {
+  emoji: string;
+} {
   switch (type) {
     case "CLOCK_IN":
     case "CLOCK_OUT":
-      return "clock";
+      return { emoji: "🕰️" };
     case "BREAK_START":
-      return "play-circle";
     case "BREAK_END":
-      return "check";
+      return { emoji: "🍴" };
   }
 }
 
