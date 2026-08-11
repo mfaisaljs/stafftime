@@ -1541,6 +1541,27 @@
         "app/routes/app.time-off._index.tsx"
       ],
       "lastUpdated": "2026-08-11T16:00:00.000Z"
+    },
+    {
+      "id": "ST085",
+      "taskId": "T009",
+      "title": "Block duplicate time off for same staff and dates",
+      "description": "Reject new time off when the same employee already has pending or approved leave on overlapping dates.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST084"],
+      "acceptanceCriteria": [
+        "Admin Create Time Off rejects overlapping PENDING/APPROVED requests for same employee",
+        "POS time off create rejects overlapping PENDING/APPROVED requests",
+        "Declined requests do not block new applications for same dates"
+      ],
+      "files": [
+        "app/services/time-off-shifts.server.ts",
+        "app/services/time-off-pos.server.ts",
+        "app/routes/app.time-off.new.tsx",
+        "app/services/time-off-overlap.test.ts"
+      ],
+      "lastUpdated": "2026-08-11T16:05:00.000Z"
     }
   ]
 }

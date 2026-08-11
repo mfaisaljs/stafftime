@@ -169,6 +169,48 @@ export async function approveTimeOffRequestForShop(params: {
   return { request: updated, cancelledShiftCount };
 }
 
+export function timeOffRangesOverlap(
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string,
+) {
+  return startA <= endB && endA >= startB;
+}
+
+export async function assertNoOverlappingTimeOffRequest(params: {
+  shopId: string;
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  excludeRequestId?: string;
+  employeeName?: string;
+}) {
+  const overlapping = await prisma.timeOffRequest.findFirst({
+    where: {
+      shopId: params.shopId,
+      employeeId: params.employeeId,
+      status: { in: ["PENDING", "APPROVED"] },
+      startDate: { lte: params.endDate },
+      endDate: { gte: params.startDate },
+      ...(params.excludeRequestId
+        ? { id: { not: params.excludeRequestId } }
+        : {}),
+    },
+  });
+
+  if (!overlapping) return;
+
+  const rangeLabel = `${formatLeaveDate(overlapping.startDate)} – ${formatLeaveDate(overlapping.endDate)}`;
+  const statusLabel =
+    overlapping.status === "APPROVED" ? "approved leave" : "a pending time off request";
+  const subject = params.employeeName ?? "You";
+
+  throw new Error(
+    `${subject} already ${params.employeeName ? "has" : "have"} ${statusLabel} for overlapping dates (${rangeLabel}).`,
+  );
+}
+
 export async function createApprovedTimeOffRequestForShop(params: {
   shopId: string;
   employeeId: string;
@@ -177,7 +219,16 @@ export async function createApprovedTimeOffRequestForShop(params: {
   startDate: string;
   endDate: string;
   reason?: string | null;
+  employeeName?: string;
 }) {
+  await assertNoOverlappingTimeOffRequest({
+    shopId: params.shopId,
+    employeeId: params.employeeId,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    employeeName: params.employeeName,
+  });
+
   const created = await prisma.timeOffRequest.create({
     data: {
       shopId: params.shopId,

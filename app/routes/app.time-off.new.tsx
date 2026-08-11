@@ -103,6 +103,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       startDate,
       endDate,
       reason: reason || null,
+      employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
     });
   } catch (error) {
     return {

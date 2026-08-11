@@ -4,6 +4,7 @@ import { ensureShop } from "./workforce.server";
 import { isManagerRole } from "./settings.server";
 import {
   approveTimeOffRequestForShop,
+  assertNoOverlappingTimeOffRequest,
   findOverlappingScheduledShifts,
   summarizeOverlappingShifts,
 } from "./time-off-shifts.server";
@@ -292,6 +293,13 @@ export async function createTimeOffRequestForPos(params: {
   if (!locationId) {
     throw new Error("No location available for this request");
   }
+
+  await assertNoOverlappingTimeOffRequest({
+    shopId: shop.id,
+    employeeId: employee.id,
+    startDate: params.startDate,
+    endDate: params.endDate,
+  });
 
   const created = await prisma.timeOffRequest.create({
     data: {
