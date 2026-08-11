@@ -1,6 +1,6 @@
 {
   "name": "Staff Profile",
   "tile_heading": "Staff Profile",
-  "tile_subheading": "Profile & shifts",
-  "modal_heading": "Staff Profile"
+  "tile_subheading": "Overview, shifts & payroll",
+  "modal_heading": "Staff Dashboard"
 }

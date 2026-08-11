@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
-import { getEmployeeProfileForPos } from "../services/profile.server";
+import { getStaffProfileForPos } from "../services/staff-profile.server";
 import {
   errorResponse,
   jsonResponse,
@@ -15,22 +15,30 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { employeeId } = body as { employeeId?: string };
+  const { employeeId, start, end, days } = body as {
+    employeeId?: string;
+    start?: string;
+    end?: string;
+    days?: number;
+  };
 
   if (!employeeId) {
     return cors(errorResponse("employeeId is required"));
   }
 
   try {
-    const payload = await getEmployeeProfileForPos({
+    const payload = await getStaffProfileForPos({
       shopDomain: sessionToken.dest,
       employeeId,
+      start,
+      end,
+      days,
     });
     return cors(jsonResponse(payload));
   } catch (error) {
     return cors(
       errorResponse(
-        error instanceof Error ? error.message : "Could not load profile",
+        error instanceof Error ? error.message : "Could not load staff profile",
         409,
       ),
     );

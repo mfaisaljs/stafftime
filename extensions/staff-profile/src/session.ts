@@ -2,52 +2,56 @@ export type ProfileEmployee = {
   id: string;
   firstName: string;
   lastName: string;
-  fullName?: string;
-  titlePrefix?: string;
+  roleLabel?: string;
 };
 
-export type PosShiftRange = "upcoming" | "today" | "week" | "month";
+export type StaffProfileTab = "overview" | "shifts" | "payroll";
 
-export type PosShiftRow = {
+export type ProfileShiftRow = {
   id: string;
   dateLabel: string;
-  dayLabel: string;
   timeRangeLabel: string;
-  status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED";
-  statusLabel: string;
-  tone: "warning" | "info" | "neutral";
+  locationName: string;
+  isToday: boolean;
+  badge: string;
+  tone: "info" | "neutral" | "success" | "warning";
   startsAt: string;
   endsAt: string;
-  locationName: string;
 };
 
-export type StaffProfile = {
-  employee: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-    titlePrefix: string;
-    roleLabel: string;
-    position: string;
-    department: string;
-    email: string;
-    phone: string;
-    statusLabel: string;
-    locationName: string;
+export type StaffProfileResponse = {
+  employee: ProfileEmployee & {
+    role?: string;
+    position?: string | null;
+    locationName?: string | null;
   };
-  clockStatus: "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
-  clockStatusLabel: string;
-  todayShift: {
-    timeRangeLabel: string;
-  } | null;
-  serverTime?: number;
-};
-
-export type ShiftsResponse = {
-  employee: ProfileEmployee;
-  range: PosShiftRange;
-  shifts: PosShiftRow[];
+  range: { start: string; end: string; days: number };
+  overview: {
+    totalHours: string;
+    workingHours: string;
+    breakTime: string;
+    absentDays: number;
+    baseEarnings: string;
+    totalCommission: string;
+    totalBonus: string;
+    totalEarnings: string;
+    paidAmount: string;
+    remainingAmount: string;
+  };
+  payroll: {
+    baseEarnings: string;
+    commission: string;
+    totalBonus: string;
+    totalEarnings: string;
+    paidAmount: string;
+    remainingAmount: string;
+    unpaidSalary: string;
+    unpaidCommission: string;
+  };
+  shifts: {
+    upcoming: ProfileShiftRow[];
+    past: ProfileShiftRow[];
+  };
   serverTime?: number;
 };
 
@@ -83,21 +87,24 @@ export function parseStoredProfileSession(
       id: employee.id,
       firstName: employee.firstName,
       lastName: employee.lastName,
-      fullName:
-        typeof employee.fullName === "string" ? employee.fullName : undefined,
-      titlePrefix:
-        typeof employee.titlePrefix === "string"
-          ? employee.titlePrefix
+      roleLabel:
+        typeof employee.roleLabel === "string"
+          ? employee.roleLabel
           : undefined,
     },
   };
 }
 
-/** Matches screenshot title style: "Mh's Shifts" */
-export function shiftsTitleForEmployee(employee: ProfileEmployee) {
-  const first = employee.firstName.trim() || "Staff";
-  const possessive =
-    employee.titlePrefix?.replace(/\s*(Profile|Shifts)$/i, "").trim() ||
-    (first.endsWith("s") || first.endsWith("S") ? `${first}'` : `${first}'s`);
-  return `${possessive} Shifts`;
+export function toDateKey(value = new Date()) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function rangeForDays(days: number) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
+  return { start: toDateKey(start), end: toDateKey(end), days };
 }

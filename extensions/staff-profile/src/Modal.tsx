@@ -1,8 +1,7 @@
 import { render } from "preact";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
-  fetchProfile,
-  fetchShifts,
+  fetchStaffProfile,
   messageFromError,
   persistProfileSession,
   showToast,
@@ -11,32 +10,33 @@ import {
 import {
   ACTIVE_SESSION_STORAGE_KEY,
   parseStoredProfileSession,
-  shiftsTitleForEmployee,
-  type PosShiftRange,
-  type PosShiftRow,
+  rangeForDays,
   type ProfileEmployee,
-  type StaffProfile,
+  type ProfileShiftRow,
+  type StaffProfileResponse,
+  type StaffProfileTab,
 } from "./session";
 
-type ProfileTab = "profile" | PosShiftRange;
-
-const TABS: Array<{ id: ProfileTab; label: string }> = [
-  { id: "profile", label: "Profile" },
-  { id: "upcoming", label: "Upcoming" },
-  { id: "today", label: "Today" },
-  { id: "week", label: "This Week" },
-  { id: "month", label: "This Month" },
+const TABS: Array<{ id: StaffProfileTab; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "shifts", label: "Shifts" },
+  { id: "payroll", label: "Payroll" },
 ];
+
+const DAY_PRESETS = [7, 30, 90] as const;
 
 export default async function extension() {
   render(<StaffProfileModal />, document.body);
 }
 
 function StaffProfileModal() {
+  const initialRange = rangeForDays(7);
   const [employee, setEmployee] = useState<ProfileEmployee | null>(null);
-  const [profile, setProfile] = useState<StaffProfile | null>(null);
-  const [tab, setTab] = useState<ProfileTab>("upcoming");
-  const [shifts, setShifts] = useState<PosShiftRow[]>([]);
+  const [tab, setTab] = useState<StaffProfileTab>("overview");
+  const [start, setStart] = useState(initialRange.start);
+  const [end, setEnd] = useState(initialRange.end);
+  const [days, setDays] = useState(7);
+  const [profile, setProfile] = useState<StaffProfileResponse | null>(null);
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
   const pinPadOpenRef = useRef(false);
@@ -49,60 +49,48 @@ function StaffProfileModal() {
     }
     setEmployee(null);
     setProfile(null);
-    setShifts([]);
   }, []);
 
-  const loadProfile = useCallback(async (nextEmployee: ProfileEmployee) => {
-    const data = await fetchProfile(nextEmployee.id);
-    setProfile(data);
-    setEmployee({
-      id: data.employee.id,
-      firstName: data.employee.firstName,
-      lastName: data.employee.lastName,
-      fullName: data.employee.fullName,
-      titlePrefix: data.employee.titlePrefix,
-    });
-    return data;
-  }, []);
-
-  const loadShifts = useCallback(
-    async (nextEmployee: ProfileEmployee, range: PosShiftRange) => {
-      const data = await fetchShifts(nextEmployee.id, range);
-      setShifts(data.shifts);
-    },
-    [],
-  );
-
-  const loadTabData = useCallback(
-    async (nextEmployee: ProfileEmployee, nextTab: ProfileTab) => {
+  const loadProfile = useCallback(
+    async (
+      nextEmployee: ProfileEmployee,
+      nextStart: string,
+      nextEnd: string,
+      nextDays?: number,
+    ) => {
       setLoading(true);
       try {
-        if (nextTab === "profile") {
-          await loadProfile(nextEmployee);
-        } else {
-          await loadProfile(nextEmployee);
-          await loadShifts(nextEmployee, nextTab);
-        }
+        const data = await fetchStaffProfile({
+          employeeId: nextEmployee.id,
+          start: nextStart,
+          end: nextEnd,
+          days: nextDays,
+        });
+        setProfile(data);
+        setStart(data.range.start);
+        setEnd(data.range.end);
+        setDays(data.range.days || nextDays || 0);
+        setEmployee({
+          ...nextEmployee,
+          roleLabel: data.employee.roleLabel ?? nextEmployee.roleLabel,
+        });
       } catch (err) {
         showToast(messageFromError(err, "Could not load staff profile"));
-        if (nextTab !== "profile") setShifts([]);
       } finally {
         setLoading(false);
       }
     },
-    [loadProfile, loadShifts],
+    [],
   );
 
   const showNativePinPad = useCallback(() => {
     if (pinPadOpenRef.current) return;
-
     if (!shopify.pinPad || typeof shopify.pinPad.showPinPad !== "function") {
       showToast("PIN pad is unavailable on this POS version.");
       return;
     }
 
     pinPadOpenRef.current = true;
-
     try {
       shopify.pinPad.showPinPad(
         async (pinDigits) => {
@@ -135,8 +123,16 @@ function StaffProfileModal() {
                 );
                 if (!stored) return;
                 setEmployee(stored.employee);
-                setTab("upcoming");
-                await loadTabData(stored.employee, "upcoming");
+                const range = rangeForDays(7);
+                setStart(range.start);
+                setEnd(range.end);
+                setDays(7);
+                await loadProfile(
+                  stored.employee,
+                  range.start,
+                  range.end,
+                  7,
+                );
               })();
             }
           },
@@ -145,7 +141,7 @@ function StaffProfileModal() {
     } catch {
       pinPadOpenRef.current = false;
     }
-  }, [loadTabData]);
+  }, [loadProfile]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,8 +152,8 @@ function StaffProfileModal() {
         );
         if (!cancelled && stored) {
           setEmployee(stored.employee);
-          setTab("upcoming");
-          await loadTabData(stored.employee, "upcoming");
+          const range = rangeForDays(7);
+          await loadProfile(stored.employee, range.start, range.end, 7);
         }
       } catch {
         // Stay on unlock UI.
@@ -168,31 +164,48 @@ function StaffProfileModal() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- boot once
-  }, []);
+  }, [loadProfile]);
 
-  const onSelectTab = useCallback(
-    (nextTab: ProfileTab) => {
-      setTab(nextTab);
+  const applyPreset = useCallback(
+    (presetDays: number) => {
+      const range = rangeForDays(presetDays);
+      setStart(range.start);
+      setEnd(range.end);
+      setDays(presetDays);
       if (employee) {
-        void loadTabData(employee, nextTab);
+        void loadProfile(employee, range.start, range.end, presetDays);
       }
     },
-    [employee, loadTabData],
+    [employee, loadProfile],
   );
+
+  const updateData = useCallback(() => {
+    if (!employee) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      showToast("Use dates as YYYY-MM-DD");
+      return;
+    }
+    if (start > end) {
+      showToast("Start date must be before end date");
+      return;
+    }
+    setDays(0);
+    void loadProfile(employee, start, end);
+  }, [employee, end, loadProfile, start]);
 
   const handleTabsChange = useCallback(
     (event: { currentTarget: { value?: string | null } }) => {
       const next = event.currentTarget.value;
-      if (!isProfileTab(next) || next === tab) return;
-      onSelectTab(next);
+      if (next === "overview" || next === "shifts" || next === "payroll") {
+        setTab(next);
+      }
     },
-    [onSelectTab, tab],
+    [],
   );
 
   if (booting) {
     return (
-      <s-page heading="Staff Profile">
+      <s-page heading="Staff Dashboard">
         <s-scroll-box>
           <s-box padding="large">
             <s-text>Loading…</s-text>
@@ -204,11 +217,11 @@ function StaffProfileModal() {
 
   if (!employee) {
     return (
-      <s-page heading="Staff Profile">
+      <s-page heading="Staff Dashboard">
         <s-scroll-box>
           <s-box padding="large">
             <s-stack direction="block" gap="base">
-              <s-text>Enter your staff PIN to view your profile and shifts.</s-text>
+              <s-text>Enter your staff PIN to open your profile.</s-text>
               <s-button variant="primary" onClick={showNativePinPad}>
                 Enter PIN
               </s-button>
@@ -219,32 +232,55 @@ function StaffProfileModal() {
     );
   }
 
-  const heading = shiftsTitleForEmployee(employee);
-
-  const tabContent =
-    loading ? (
-      <s-text>Loading…</s-text>
-    ) : tab === "profile" ? (
-      profile ? (
-        <ProfilePanel profile={profile} />
-      ) : (
-        <s-text>Could not load profile.</s-text>
-      )
-    ) : shifts.length === 0 ? (
-      <s-text>No shifts in this range.</s-text>
-    ) : (
-      <s-stack direction="block" gap="base">
-        {shifts.map((shift) => (
-          <ShiftRow key={shift.id} shift={shift} />
-        ))}
-      </s-stack>
-    );
-
   return (
-    <s-page heading={heading}>
+    <s-page heading="Staff Dashboard">
       <s-scroll-box>
         <s-box padding="large">
           <s-stack direction="block" gap="large">
+            <s-stack direction="block" gap="small">
+              <s-heading>
+                Welcome, {employee.firstName} {employee.lastName}!
+              </s-heading>
+              <s-badge tone="info">
+                {employee.roleLabel ?? profile?.employee.roleLabel ?? "Staff"}
+              </s-badge>
+            </s-stack>
+
+            <s-section heading="Date Range">
+              <s-box padding="small none">
+                <s-stack direction="block" gap="base">
+                  <s-text-field
+                    label="Start Date"
+                    value={start}
+                    onInput={(event) => setStart(event.currentTarget.value)}
+                  />
+                  <s-text-field
+                    label="End Date"
+                    value={end}
+                    onInput={(event) => setEnd(event.currentTarget.value)}
+                  />
+                  <s-stack direction="inline" gap="small" alignItems="center">
+                    {DAY_PRESETS.map((preset) => (
+                      <s-button
+                        key={preset}
+                        variant={days === preset ? "primary" : "secondary"}
+                        onClick={() => applyPreset(preset)}
+                      >
+                        {preset} Days
+                      </s-button>
+                    ))}
+                  </s-stack>
+                  <s-button
+                    variant="primary"
+                    loading={loading}
+                    onClick={updateData}
+                  >
+                    Update Data
+                  </s-button>
+                </s-stack>
+              </s-box>
+            </s-section>
+
             <s-tabs value={tab} onChange={handleTabsChange}>
               <s-tab-list>
                 {TABS.map((item) => (
@@ -253,11 +289,36 @@ function StaffProfileModal() {
                   </s-tab>
                 ))}
               </s-tab-list>
-              {TABS.map((item) => (
-                <s-tab-panel key={item.id} id={item.id}>
-                  <s-box padding="base none">{tabContent}</s-box>
-                </s-tab-panel>
-              ))}
+
+              <s-tab-panel id="overview">
+                <s-box padding="base none">
+                  {profile ? (
+                    <OverviewTab overview={profile.overview} />
+                  ) : (
+                    <s-text>Loading overview…</s-text>
+                  )}
+                </s-box>
+              </s-tab-panel>
+
+              <s-tab-panel id="shifts">
+                <s-box padding="base none">
+                  {profile ? (
+                    <ShiftsTab shifts={profile.shifts} />
+                  ) : (
+                    <s-text>Loading shifts…</s-text>
+                  )}
+                </s-box>
+              </s-tab-panel>
+
+              <s-tab-panel id="payroll">
+                <s-box padding="base none">
+                  {profile ? (
+                    <PayrollTab payroll={profile.payroll} />
+                  ) : (
+                    <s-text>Loading payroll…</s-text>
+                  )}
+                </s-box>
+              </s-tab-panel>
             </s-tabs>
 
             <s-button
@@ -278,87 +339,154 @@ function StaffProfileModal() {
   );
 }
 
-function isProfileTab(value: unknown): value is ProfileTab {
+function MetricRow(props: { label: string; value: string }) {
   return (
-    value === "profile" ||
-    value === "upcoming" ||
-    value === "today" ||
-    value === "week" ||
-    value === "month"
-  );
-}
-
-function ProfilePanel(props: { profile: StaffProfile }) {
-  const { profile } = props;
-  const statusTone =
-    profile.clockStatus === "CLOCKED_IN"
-      ? "success"
-      : profile.clockStatus === "ON_BREAK"
-        ? "warning"
-        : "critical";
-
-  return (
-    <s-stack direction="block" gap="large">
-      <s-stack direction="block" gap="small">
-        <s-stack direction="inline" gap="small" alignItems="center">
-          <s-icon type="person-filled" color="strong" />
-          <s-heading>{profile.employee.fullName}</s-heading>
-        </s-stack>
-        <s-stack direction="inline" gap="small" alignItems="center">
-          <s-badge tone="info">{profile.employee.roleLabel}</s-badge>
-          <s-badge
-            tone={
-              profile.employee.statusLabel === "Active" ? "success" : "neutral"
-            }
-          >
-            {profile.employee.statusLabel}
-          </s-badge>
-          <s-badge tone={statusTone}>{profile.clockStatusLabel}</s-badge>
-        </s-stack>
-      </s-stack>
-
-      <s-stack direction="block" gap="none">
-        <InfoRow
-          emoji="💼"
-          label="Position"
-          value={profile.employee.position}
-          showDivider
-        />
-        <InfoRow
-          emoji="🏢"
-          label="Department"
-          value={profile.employee.department}
-          showDivider
-        />
-        <InfoRow
-          emoji="📍"
-          label="Location"
-          value={profile.employee.locationName}
-          showDivider
-        />
-        <InfoRow
-          emoji="✉️"
-          label="Email"
-          value={profile.employee.email}
-          showDivider
-        />
-        <InfoRow
-          emoji="📞"
-          label="Phone"
-          value={profile.employee.phone}
-          showDivider
-        />
-        <InfoRow
-          emoji="🕰️"
-          label="Today's shift"
-          value={profile.todayShift?.timeRangeLabel ?? "No shift today"}
-        />
-      </s-stack>
+    <s-stack
+      direction="inline"
+      gap="base"
+      alignItems="center"
+      justifyContent="space-between"
+      inlineSize="100%"
+    >
+      <s-text>{props.label}</s-text>
+      <s-text type="strong">{props.value}</s-text>
     </s-stack>
   );
 }
 
-function ShiftRow(props: { shift: PosShiftRow }) {
+function OverviewTab(props: {
+  overview: StaffProfileResponse["overview"];
+}) {
+  const { overview } = props;
+  return (
+    <s-stack direction="block" gap="large">
+      <s-section heading="Hours Summary">
+        <s-box padding="small none">
+          <s-stack direction="block" gap="small">
+            <MetricRow label="Total Hours" value={overview.totalHours} />
+            <MetricRow label="Working Hours" value={overview.workingHours} />
+            <MetricRow label="Break Time" value={overview.breakTime} />
+          </s-stack>
+        </s-box>
+      </s-section>
+
+      <s-section heading="Attendance">
+        <s-box padding="small none">
+          <MetricRow
+            label="Absent Days"
+            value={String(overview.absentDays)}
+          />
+        </s-box>
+      </s-section>
+
+      <s-section heading="Earnings Summary">
+        <s-box padding="small none">
+          <s-stack direction="block" gap="small">
+            <MetricRow label="Base Earnings" value={overview.baseEarnings} />
+            <MetricRow
+              label="Total Commission"
+              value={overview.totalCommission}
+            />
+            <MetricRow label="Total Bonus" value={overview.totalBonus} />
+            <MetricRow label="Total Earnings" value={overview.totalEarnings} />
+          </s-stack>
+        </s-box>
+      </s-section>
+
+      <s-section heading="Payment Status">
+        <s-box padding="small none">
+          <s-stack direction="block" gap="small">
+            <MetricRow label="Paid Amount" value={overview.paidAmount} />
+            <MetricRow
+              label="Remaining Amount"
+              value={overview.remainingAmount}
+            />
+          </s-stack>
+        </s-box>
+      </s-section>
+    </s-stack>
+  );
+}
+
+function PayrollTab(props: { payroll: StaffProfileResponse["payroll"] }) {
+  const { payroll } = props;
+  return (
+    <s-stack direction="block" gap="large">
+      <s-section heading="Earnings Summary">
+        <s-box padding="small none">
+          <s-stack direction="block" gap="small">
+            <MetricRow label="Base Earnings" value={payroll.baseEarnings} />
+            <MetricRow label="Commission" value={payroll.commission} />
+            <MetricRow label="Total Bonus" value={payroll.totalBonus} />
+            <MetricRow label="Total Earnings" value={payroll.totalEarnings} />
+          </s-stack>
+        </s-box>
+      </s-section>
+
+      <s-section heading="Payment Status">
+        <s-box padding="small none">
+          <s-stack direction="block" gap="small">
+            <MetricRow label="Paid Amount" value={payroll.paidAmount} />
+            <MetricRow
+              label="Remaining Amount"
+              value={payroll.remainingAmount}
+            />
+          </s-stack>
+        </s-box>
+      </s-section>
+
+      <s-section heading="Unpaid Details">
+        <s-box padding="small none">
+          <s-stack direction="block" gap="small">
+            <MetricRow label="Unpaid Salary" value={payroll.unpaidSalary} />
+            <MetricRow
+              label="Unpaid Commission"
+              value={payroll.unpaidCommission}
+            />
+          </s-stack>
+        </s-box>
+      </s-section>
+    </s-stack>
+  );
+}
+
+function ShiftsTab(props: {
+  shifts: StaffProfileResponse["shifts"];
+}) {
+  return (
+    <s-stack direction="block" gap="large">
+      <s-section heading="Upcoming Shifts">
+        <s-box padding="small none">
+          {props.shifts.upcoming.length === 0 ? (
+            <s-text>No upcoming shifts in this range.</s-text>
+          ) : (
+            <s-stack direction="block" gap="base">
+              {props.shifts.upcoming.map((shift) => (
+                <ShiftCard key={shift.id} shift={shift} />
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Past Shifts">
+        <s-box padding="small none">
+          {props.shifts.past.length === 0 ? (
+            <s-text>No past shifts in this range.</s-text>
+          ) : (
+            <s-stack direction="block" gap="base">
+              {props.shifts.past.map((shift) => (
+                <ShiftCard key={shift.id} shift={shift} />
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+    </s-stack>
+  );
+}
+
+function ShiftCard(props: { shift: ProfileShiftRow }) {
   const { shift } = props;
   return (
     <s-box padding="small none">
@@ -373,54 +501,15 @@ function ShiftRow(props: { shift: PosShiftRow }) {
           <s-stack direction="inline" gap="small" alignItems="center">
             <s-icon type="clock" color="strong" />
             <s-text type="strong">{shift.dateLabel}</s-text>
-            <s-badge tone="neutral">{shift.dayLabel}</s-badge>
           </s-stack>
+          <s-badge tone={shift.tone}>{shift.badge}</s-badge>
         </s-stack>
-        <s-stack
-          direction="inline"
-          gap="base"
-          alignItems="center"
-          justifyContent="space-between"
-          inlineSize="100%"
-        >
-          <s-heading>{shift.timeRangeLabel}</s-heading>
-          <s-badge tone={shift.tone}>{shift.statusLabel}</s-badge>
+        <s-text>{shift.timeRangeLabel}</s-text>
+        <s-stack direction="inline" gap="small" alignItems="center">
+          <s-text>📍</s-text>
+          <s-text>{shift.locationName}</s-text>
         </s-stack>
-        {shift.locationName ? (
-          <s-stack direction="inline" gap="small" alignItems="center">
-            <s-text>📍</s-text>
-            <s-text>{shift.locationName}</s-text>
-          </s-stack>
-        ) : null}
       </s-stack>
     </s-box>
-  );
-}
-
-function InfoRow(props: {
-  emoji: string;
-  label: string;
-  value: string;
-  showDivider?: boolean;
-}) {
-  return (
-    <s-stack direction="block" gap="none">
-      <s-box padding="small none">
-        <s-stack
-          direction="inline"
-          gap="base"
-          alignItems="center"
-          justifyContent="space-between"
-          inlineSize="100%"
-        >
-          <s-stack direction="inline" gap="small" alignItems="center">
-            <s-text>{props.emoji}</s-text>
-            <s-text>{props.label}</s-text>
-          </s-stack>
-          <s-text type="strong">{props.value}</s-text>
-        </s-stack>
-      </s-box>
-      {props.showDivider ? <s-divider /> : null}
-    </s-stack>
   );
 }

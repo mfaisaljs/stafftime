@@ -87,7 +87,7 @@ function StaffProfileTile() {
   return (
     <s-tile
       heading="Staff Profile"
-      subheading="Profile & shifts"
+      subheading="Overview, shifts & payroll"
       onClick={() => {
         void handleTileClick();
       }}

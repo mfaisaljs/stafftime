@@ -1433,24 +1433,25 @@
     {
       "id": "ST080",
       "taskId": "T004",
-      "title": "POS Staff Profile tile with possessive title",
-      "description": "Add a Staff Profile POS tile whose modal title matches competitor style: {Name}'s Profile (e.g. Mh's Profile).",
+      "title": "POS Staff Profile dashboard tile",
+      "description": "Add Staff Profile POS tile matching competitor Staff Dashboard: date range, Update Data, and Overview/Shifts/Payroll tabs after PIN.",
       "status": "completed",
-      "priority": "medium",
-      "dependencies": ["ST007"],
+      "priority": "high",
+      "dependencies": ["ST007", "ST077"],
       "acceptanceCriteria": [
-        "POS home shows a Staff Profile tile",
-        "After PIN, page heading is {firstName}'s Profile",
-        "Profile shows role, position, department, location, contact, clock status, and today's shift"
+        "POS home shows a Staff Profile tile (handle staff-profile)",
+        "PIN opens Staff Dashboard with welcome + role badge",
+        "Date range supports 7/30/90 presets and Update Data",
+        "Tabs Overview, Shifts, and Payroll show hours, shifts, and earnings/payment metrics"
       ],
       "files": [
         "extensions/staff-profile/src/Tile.tsx",
         "extensions/staff-profile/src/Modal.tsx",
         "extensions/staff-profile/shopify.extension.toml",
         "app/routes/api.pos.profile.tsx",
-        "app/services/profile.server.ts"
+        "app/services/staff-profile.server.ts"
       ],
-      "lastUpdated": "2026-08-11T12:30:00.000Z"
+      "lastUpdated": "2026-08-11T13:10:00.000Z"
     }
   ]
 }

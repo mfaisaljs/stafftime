@@ -199,13 +199,7 @@ function ViewShiftsModal() {
     );
 
   return (
-    <s-page
-      heading={`${
-        employee.firstName.endsWith("s") || employee.firstName.endsWith("S")
-          ? `${employee.firstName}'`
-          : `${employee.firstName}'s`
-      } Shifts`}
-    >
+    <s-page heading={`${employee.firstName}'s Shifts`}>
       <s-scroll-box>
         <s-box padding="large">
           <s-stack direction="block" gap="large">

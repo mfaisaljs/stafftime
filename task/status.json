@@ -6,10 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T13:05:00.000Z",
+  "lastUpdated": "2026-08-11T13:10:00.000Z",
   "notes": [
-    "Updated: Staff Profile matches screenshot — {Name}'s Shifts title, Profile/Upcoming/Today/This Week/This Month tabs, shift rows with clock/day/status.",
-    "ST080 complete: POS Staff Profile tile with {Name}'s Profile title style matching competitor screenshots.",
+    "ST080 complete: POS Staff Profile tile (staff-profile) with Overview/Shifts/Payroll dashboard matching competitor layout.",
     "Updated: Task List completions use period keys — Daily=day, Weekly=Sunday week start, Monthly=1st of month (POS + admin).",
     "Updated: POS Task List shows task item breakdown with Complete/Mark incomplete; timeline badge uses schedule type (not list name).",
     "Added Cursor rule extension-uid.mdc; regenerated view-tasklists uid as valid UUID v4.",

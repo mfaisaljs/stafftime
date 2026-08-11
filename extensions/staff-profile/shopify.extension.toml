@@ -3,9 +3,9 @@ api_version = "2026-01"
 [[extensions]]
 type = "ui_extension"
 name = "t:name"
-uid = "0be7d2f3-2eed-45f5-b7d9-7869c9de56fd"
+uid = "b24ef760-5cd7-4625-80d4-8395ad5b8be4"
 handle = "staff-profile"
-description = "Trubuild: Staff profile"
+description = "Trubuild: Staff dashboard profile"
 
 [extensions.supported_features]
 runs_offline = true
