@@ -11,7 +11,7 @@ export type PosShiftRow = {
   timeRangeLabel: string;
   status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED" | "ON_LEAVE";
   statusLabel: string;
-  tone: "warning" | "info" | "neutral";
+  tone: "warning" | "info" | "neutral" | "critical" | "success";
   startsAt: string;
   endsAt: string;
   locationName: string;

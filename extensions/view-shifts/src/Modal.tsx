@@ -276,6 +276,11 @@ function isPosShiftRange(value: unknown): value is PosShiftRange {
   );
 }
 
+/** POS s-text has no line-through; use combining stroke per character. */
+function strikeThroughText(value: string) {
+  return [...value].map((char) => `${char}\u0336`).join("");
+}
+
 function LeaveDayRow(props: { leave: PosLeaveDayRow }) {
   const { leave } = props;
   return (
@@ -295,6 +300,16 @@ function LeaveDayRow(props: { leave: PosLeaveDayRow }) {
 function ShiftRow(props: { shift: PosShiftRow }) {
   const { shift } = props;
   const cancelled = Boolean(shift.cancelledForLeave);
+  const dateLabel = cancelled
+    ? strikeThroughText(shift.dateLabel)
+    : shift.dateLabel;
+  const timeRangeLabel = cancelled
+    ? strikeThroughText(shift.timeRangeLabel)
+    : shift.timeRangeLabel;
+  const locationName = cancelled
+    ? strikeThroughText(shift.locationName)
+    : shift.locationName;
+
   return (
     <s-box padding="small none">
       <s-stack direction="block" gap="small">
@@ -306,8 +321,17 @@ function ShiftRow(props: { shift: PosShiftRow }) {
           inlineSize="100%"
         >
           <s-stack direction="inline" gap="small" alignItems="center">
-            <s-icon type="clock" color="strong" />
-            <s-text type={cancelled ? "generic" : "strong"}>{shift.dateLabel}</s-text>
+            <s-icon
+              type="clock"
+              color={cancelled ? "base" : "strong"}
+              tone={cancelled ? "critical" : "auto"}
+            />
+            <s-text
+              type={cancelled ? "generic" : "strong"}
+              tone={cancelled ? "critical" : "auto"}
+            >
+              {dateLabel}
+            </s-text>
             <s-badge tone="neutral">{shift.dayLabel}</s-badge>
           </s-stack>
         </s-stack>
@@ -318,12 +342,19 @@ function ShiftRow(props: { shift: PosShiftRow }) {
           justifyContent="space-between"
           inlineSize="100%"
         >
-          <s-text type={cancelled ? "generic" : "strong"}>
-            {shift.timeRangeLabel}
+          <s-text
+            type={cancelled ? "generic" : "strong"}
+            tone={cancelled ? "critical" : "auto"}
+          >
+            {timeRangeLabel}
           </s-text>
-          <s-badge tone={shift.tone}>{shift.statusLabel}</s-badge>
+          <s-badge tone={cancelled ? "critical" : shift.tone}>
+            {shift.statusLabel}
+          </s-badge>
         </s-stack>
-        {cancelled ? <s-text>{shift.locationName}</s-text> : null}
+        {cancelled ? (
+          <s-text tone="critical">{locationName}</s-text>
+        ) : null}
       </s-stack>
     </s-box>
   );

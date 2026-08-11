@@ -1504,6 +1504,23 @@
         "extensions/view-shifts/src/Modal.tsx"
       ],
       "lastUpdated": "2026-08-11T14:35:00.000Z"
+    },
+    {
+      "id": "ST083",
+      "taskId": "T009",
+      "title": "POS View Shifts strike-through for cancelled leave shifts",
+      "description": "Show visible strikethrough on cancelled shifts in POS View Shifts modal.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST082"],
+      "acceptanceCriteria": [
+        "Cancelled leave shifts in POS View Shifts show strikethrough on date, time, and location",
+        "Cancelled rows use subdued styling to distinguish from active shifts"
+      ],
+      "files": [
+        "extensions/view-shifts/src/Modal.tsx"
+      ],
+      "lastUpdated": "2026-08-11T15:45:00.000Z"
     }
   ]
 }

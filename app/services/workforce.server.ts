@@ -416,7 +416,7 @@ export type PosShiftRow = {
   timeRangeLabel: string;
   status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED" | "ON_LEAVE";
   statusLabel: string;
-  tone: "warning" | "info" | "neutral";
+  tone: "warning" | "info" | "neutral" | "critical" | "success";
   startsAt: string;
   endsAt: string;
   locationName: string;
@@ -487,7 +487,7 @@ function classifyShiftStatus(
   now: Date,
 ): Pick<PosShiftRow, "status" | "statusLabel" | "tone"> {
   if (now.getTime() < startsAt.getTime()) {
-    return { status: "UPCOMING", statusLabel: "Upcoming", tone: "info" };
+    return { status: "UPCOMING", statusLabel: "Upcoming", tone: "success" };
   }
   if (now.getTime() > endsAt.getTime()) {
     return { status: "COMPLETED", statusLabel: "Completed", tone: "neutral" };
@@ -586,7 +586,7 @@ export async function listEmployeeShiftsForPos(params: {
         timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat)} - ${formatPosClockLabel(shift.endsAt, timeFormat)}`,
         status: "ON_LEAVE",
         statusLabel: "On leave",
-        tone: "neutral",
+        tone: "critical",
         startsAt: shift.startsAt.toISOString(),
         endsAt: shift.endsAt.toISOString(),
         locationName: shift.location.name,
