@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T13:15:00.000Z",
+  "lastUpdated": "2026-08-11T14:05:00.000Z",
   "notes": [
+    "Fixed: absence/salary deductions no longer treat today or upcoming shifts as absences (was causing negative Total Earnings).",
     "Updated: Staff Profile date range uses s-date-field selectors instead of text fields.",
     "ST080 complete: POS Staff Profile tile (staff-profile) with Overview/Shifts/Payroll dashboard matching competitor layout.",
     "Updated: Task List completions use period keys — Daily=day, Weekly=Sunday week start, Monthly=1st of month (POS + admin).",

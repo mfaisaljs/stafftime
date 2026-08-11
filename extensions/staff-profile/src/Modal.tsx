@@ -390,6 +390,10 @@ function OverviewTab(props: {
           <s-stack direction="block" gap="small">
             <MetricRow label="Base Earnings" value={overview.baseEarnings} />
             <MetricRow
+              label="Salary adjustments"
+              value={overview.salaryAdjustment}
+            />
+            <MetricRow
               label="Total Commission"
               value={overview.totalCommission}
             />
@@ -422,6 +426,10 @@ function PayrollTab(props: { payroll: StaffProfileResponse["payroll"] }) {
         <s-box padding="small none">
           <s-stack direction="block" gap="small">
             <MetricRow label="Base Earnings" value={payroll.baseEarnings} />
+            <MetricRow
+              label="Salary adjustments"
+              value={payroll.salaryAdjustment}
+            />
             <MetricRow label="Commission" value={payroll.commission} />
             <MetricRow label="Total Bonus" value={payroll.totalBonus} />
             <MetricRow label="Total Earnings" value={payroll.totalEarnings} />

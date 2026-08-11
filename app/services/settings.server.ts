@@ -94,10 +94,19 @@ export type DayAttendanceContext = {
   leaveCompensation: "PAID" | "UNPAID" | null;
 };
 
+function localDateKey(value = new Date()) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function classifyAbsentDay(
   context: DayAttendanceContext,
   settings: Setting,
 ): boolean {
+  // Upcoming/today shifts are not absences yet — only completed past days.
+  if (context.dateKey >= localDateKey()) return false;
   if (!context.hasShift || context.hasClockIn) return false;
   if (context.isHoliday) return false;
 
@@ -156,9 +165,13 @@ export function computeSalaryAdjustments(input: SalaryAdjustmentInput): number {
     input;
   const rate = employee.hourlyRate;
   const dayAmount = settings.defaultDailyWorkingHours * rate;
+  const todayKey = localDateKey();
   let adjustment = 0;
 
   for (const dateKey of dateKeys) {
+    // Do not apply leave/absence money for future dates in the selected range.
+    if (dateKey > todayKey) continue;
+
     const leave = leaveCompensationForDate(requests, dateKey);
     if (leave === "PAID" && settings.autoAddPaidLeavesToSalary) {
       adjustment += dayAmount;

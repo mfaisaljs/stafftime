@@ -32,6 +32,7 @@ export type StaffProfileResponse = {
     breakTime: string;
     absentDays: number;
     baseEarnings: string;
+    salaryAdjustment: string;
     totalCommission: string;
     totalBonus: string;
     totalEarnings: string;
@@ -40,6 +41,7 @@ export type StaffProfileResponse = {
   };
   payroll: {
     baseEarnings: string;
+    salaryAdjustment: string;
     commission: string;
     totalBonus: string;
     totalEarnings: string;

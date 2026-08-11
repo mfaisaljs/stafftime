@@ -226,6 +226,7 @@ export async function getStaffProfileForPos(params: {
   const unpaidSalary = remainingAmount;
   const unpaidCommission = 0;
   const currency = employee.currency || "USD";
+  const salaryAdjustmentLabel = formatMoney(salaryAdjustment, currency);
 
   type ProfileShift = {
     id: string;
@@ -288,6 +289,7 @@ export async function getStaffProfileForPos(params: {
       breakTime: formatDurationHms(breakSeconds, hourFormat),
       absentDays: totalAbsents,
       baseEarnings: formatMoney(baseEarnings, currency),
+      salaryAdjustment: salaryAdjustmentLabel,
       totalCommission: formatMoney(totalCommission, currency),
       totalBonus: formatMoney(totalBonus, currency),
       totalEarnings: formatMoney(totalEarnings, currency),
@@ -296,6 +298,7 @@ export async function getStaffProfileForPos(params: {
     },
     payroll: {
       baseEarnings: formatMoney(baseEarnings, currency),
+      salaryAdjustment: salaryAdjustmentLabel,
       commission: formatMoney(totalCommission, currency),
       totalBonus: formatMoney(totalBonus, currency),
       totalEarnings: formatMoney(totalEarnings, currency),
