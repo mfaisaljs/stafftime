@@ -1,37 +1,37 @@
-import "@shopify/ui-extensions";
+import '@shopify/ui-extensions';
 
 //@ts-ignore
-declare module "./src/Tile.tsx" {
-  const shopify: import("@shopify/ui-extensions/pos.home.tile.render").Api;
+declare module './src/Tile.tsx' {
+  const shopify: import('@shopify/ui-extensions/pos.home.tile.render').Api;
   const globalThis: { shopify: typeof shopify };
 }
 
 //@ts-ignore
-declare module "./src/Modal.tsx" {
-  const shopify: import("@shopify/ui-extensions/pos.home.modal.render").Api;
+declare module './src/Modal.tsx' {
+  const shopify: import('@shopify/ui-extensions/pos.home.modal.render').Api;
   const globalThis: { shopify: typeof shopify };
 }
 
 //@ts-ignore
-declare module "./src/session.ts" {
+declare module './src/posApi.ts' {
   const shopify:
-    | import("@shopify/ui-extensions/pos.home.tile.render").Api
-    | import("@shopify/ui-extensions/pos.home.modal.render").Api;
+    | import('@shopify/ui-extensions/pos.home.tile.render').Api
+    | import('@shopify/ui-extensions/pos.home.modal.render').Api;
   const globalThis: { shopify: typeof shopify };
 }
 
 //@ts-ignore
-declare module "./src/posApi.ts" {
+declare module './src/session.ts' {
   const shopify:
-    | import("@shopify/ui-extensions/pos.home.tile.render").Api
-    | import("@shopify/ui-extensions/pos.home.modal.render").Api;
+    | import('@shopify/ui-extensions/pos.home.tile.render').Api
+    | import('@shopify/ui-extensions/pos.home.modal.render').Api;
   const globalThis: { shopify: typeof shopify };
 }
 
 //@ts-ignore
-declare module "./src/appUrl.ts" {
+declare module './src/appUrl.ts' {
   const shopify:
-    | import("@shopify/ui-extensions/pos.home.tile.render").Api
-    | import("@shopify/ui-extensions/pos.home.modal.render").Api;
+    | import('@shopify/ui-extensions/pos.home.tile.render').Api
+    | import('@shopify/ui-extensions/pos.home.modal.render').Api;
   const globalThis: { shopify: typeof shopify };
 }
