@@ -270,16 +270,20 @@ function CommissionAttributionModal() {
                             onProgramSelectionChange(values);
                           }}
                         >
-                          {availablePrograms.map((program) => (
-                            <s-choice key={program.id} value={program.id}>
-                              {program.name} · {program.commissionLabel} ·{" "}
-                              {program.productScope === "specific"
+                          {availablePrograms.map((program) => {
+                            const scopeLabel =
+                              program.productScope === "specific"
                                 ? "Specific products"
-                                : "All products"}{" "}
-                              ({program.lineCount} item
-                              {program.lineCount === 1 ? "" : "s"})
-                            </s-choice>
-                          ))}
+                                : "All products";
+                            const itemLabel =
+                              program.lineCount === 1 ? "1 item" : `${program.lineCount} items`;
+                            const label = `${program.name} · ${program.commissionLabel} · ${scopeLabel} (${itemLabel})`;
+                            return (
+                              <s-choice key={program.id} value={program.id}>
+                                {label}
+                              </s-choice>
+                            );
+                          })}
                         </s-choice-list>
                       )}
                     </s-stack>
