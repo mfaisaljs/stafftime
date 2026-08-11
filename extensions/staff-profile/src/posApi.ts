@@ -1,6 +1,8 @@
 import { resolveAppUrl } from "./appUrl";
 import {
   ACTIVE_SESSION_STORAGE_KEY,
+  type PosShiftRange,
+  type ShiftsResponse,
   type StaffProfile,
   type VerifyResponse,
 } from "./session";
@@ -43,6 +45,16 @@ export async function fetchProfile(
   employeeId: string,
 ): Promise<StaffProfile> {
   return (await apiFetch("/api/pos/profile", { employeeId })) as StaffProfile;
+}
+
+export async function fetchShifts(
+  employeeId: string,
+  range: PosShiftRange,
+): Promise<ShiftsResponse> {
+  return (await apiFetch("/api/pos/shifts", {
+    employeeId,
+    range,
+  })) as ShiftsResponse;
 }
 
 export async function persistProfileSession(

@@ -6,6 +6,21 @@ export type ProfileEmployee = {
   titlePrefix?: string;
 };
 
+export type PosShiftRange = "upcoming" | "today" | "week" | "month";
+
+export type PosShiftRow = {
+  id: string;
+  dateLabel: string;
+  dayLabel: string;
+  timeRangeLabel: string;
+  status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED";
+  statusLabel: string;
+  tone: "warning" | "info" | "neutral";
+  startsAt: string;
+  endsAt: string;
+  locationName: string;
+};
+
 export type StaffProfile = {
   employee: {
     id: string;
@@ -26,6 +41,13 @@ export type StaffProfile = {
   todayShift: {
     timeRangeLabel: string;
   } | null;
+  serverTime?: number;
+};
+
+export type ShiftsResponse = {
+  employee: ProfileEmployee;
+  range: PosShiftRange;
+  shifts: PosShiftRow[];
   serverTime?: number;
 };
 
@@ -71,11 +93,11 @@ export function parseStoredProfileSession(
   };
 }
 
-export function pageTitleForEmployee(employee: ProfileEmployee) {
-  const prefix =
-    employee.titlePrefix ||
-    (employee.firstName.endsWith("s") || employee.firstName.endsWith("S")
-      ? `${employee.firstName}'`
-      : `${employee.firstName}'s`);
-  return `${prefix} Profile`;
+/** Matches screenshot title style: "Mh's Shifts" */
+export function shiftsTitleForEmployee(employee: ProfileEmployee) {
+  const first = employee.firstName.trim() || "Staff";
+  const possessive =
+    employee.titlePrefix?.replace(/\s*(Profile|Shifts)$/i, "").trim() ||
+    (first.endsWith("s") || first.endsWith("S") ? `${first}'` : `${first}'s`);
+  return `${possessive} Shifts`;
 }
