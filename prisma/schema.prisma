@@ -209,17 +209,19 @@ model CommissionProgram {
 
 /// One commission attribution per shop order (credits staff from program product rules).
 model CommissionAttribution {
-  id               String   @id @default(cuid())
-  shopId           String
-  employeeId       String
-  orderId          String
-  orderName        String?
-  commissionTotal  Float
-  currency         String   @default("USD")
-  programIds       String   @default("[]")
-  lineItemsJson    String   @default("[]")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  shopId               String
+  employeeId           String
+  orderId              String
+  orderName            String?
+  /// Shopify order displayFinancialStatus (e.g. PAID), not staff payout status.
+  orderFinancialStatus String   @default("PAID")
+  commissionTotal      Float
+  currency             String   @default("USD")
+  programIds           String   @default("[]")
+  lineItemsJson        String   @default("[]")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 

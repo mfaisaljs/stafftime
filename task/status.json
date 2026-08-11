@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T20:50:00.000Z",
+  "lastUpdated": "2026-08-11T20:55:00.000Z",
   "notes": [
+    "Fixed: Commission Orders Status shows Shopify order payment (Paid); metric cards are staff payout pending/paid-out.",
     "Fixed: Staff detail Commission tab loads POS CommissionAttribution rows (was hardcoded empty/zero).",
     "ST091 complete: POS Commission attribution on Order details + Post-purchase using program product rules (fixed/percentage, all/specific).",
     "ST090 complete: commission Include Specific Products list supports per-row remove and Remove Selected for checked products.",

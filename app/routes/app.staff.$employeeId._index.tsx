@@ -183,9 +183,20 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     orderName: string;
     programId: string;
     programName: string;
-    status: "paid" | "unpaid";
+    /** Shopify order financial status (e.g. paid), not staff commission payout. */
+    status: string;
+    statusLabel: string;
     amount: number;
     createdAt: string;
+  };
+
+  const toOrderStatus = (raw: string | null | undefined) => {
+    const status = String(raw || "PAID").toLowerCase();
+    const label = status
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+    return { status, statusLabel: label || "Paid" };
   };
 
   const commissionOrders: CommissionOrderRow[] = [];
@@ -231,13 +242,15 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
         programIds = [];
       }
       const programId = programIds[0] || "unknown";
+      const orderStatus = toOrderStatus(attribution.orderFinancialStatus);
       commissionOrders.push({
         id: attribution.id,
         orderId: attribution.orderId,
         orderName: attribution.orderName || `#${attribution.orderId}`,
         programId,
         programName: programNameById.get(programId) || "Commission Program",
-        status: "unpaid",
+        status: orderStatus.status,
+        statusLabel: orderStatus.statusLabel,
         amount: attribution.commissionTotal,
         createdAt: attribution.createdAt.toISOString(),
       });
@@ -245,13 +258,15 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     }
 
     for (const [programId, entry] of amountByProgram) {
+      const orderStatus = toOrderStatus(attribution.orderFinancialStatus);
       commissionOrders.push({
         id: `${attribution.id}:${programId}`,
         orderId: attribution.orderId,
         orderName: attribution.orderName || `#${attribution.orderId}`,
         programId,
         programName: entry.name,
-        status: "unpaid",
+        status: orderStatus.status,
+        statusLabel: orderStatus.statusLabel,
         amount: Number(entry.amount.toFixed(2)),
         createdAt: attribution.createdAt.toISOString(),
       });
@@ -263,7 +278,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       .reduce((sum, order) => sum + order.amount, 0)
       .toFixed(2),
   );
-  // Paid/unpaid split lands with payroll commission payouts; attributed = unpaid for now.
+  // Metric cards track commission payout to staff (not Shopify order payment).
+  // Until payroll marks commission as paid out, attributed earnings stay pending.
   const commissionEarnings = {
     total: commissionTotal,
     paid: 0,
@@ -674,7 +690,8 @@ function CommissionTab({
       orderName: string;
       programId: string;
       programName: string;
-      status: "paid" | "unpaid";
+      status: string;
+      statusLabel: string;
       amount: number;
       createdAt: string;
     }>;
@@ -712,13 +729,13 @@ function CommissionTab({
         <MetricCard
           icon={<CheckCircle size={20} />}
           tone="green"
-          label="Paid Commission"
+          label="Paid out to staff"
           value={formatCurrency(commission.paid)}
         />
         <MetricCard
           icon={<AlertCircle size={20} />}
           tone="yellow"
-          label="Unpaid Commission"
+          label="Pending payout"
           value={formatCurrency(commission.unpaid)}
         />
       </div>
@@ -745,14 +762,17 @@ function CommissionTab({
             </select>
           </label>
           <label>
-            <span className="visually-hidden">Status</span>
+            <span className="visually-hidden">Order payment status</span>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.currentTarget.value)}
             >
-              <option value="all">All Orders</option>
+              <option value="all">All payment statuses</option>
               <option value="paid">Paid</option>
-              <option value="unpaid">Unpaid</option>
+              <option value="partially_paid">Partially paid</option>
+              <option value="pending">Pending</option>
+              <option value="authorized">Authorized</option>
+              <option value="refunded">Refunded</option>
             </select>
           </label>
           <label>
@@ -793,7 +813,7 @@ function CommissionTab({
                   <th>Order</th>
                   <th>Date</th>
                   <th>Program</th>
-                  <th>Status</th>
+                  <th>Order payment</th>
                   <th>Amount</th>
                 </tr>
               </thead>
@@ -803,7 +823,7 @@ function CommissionTab({
                     <td>{order.orderName}</td>
                     <td>{formatTableDate(order.createdAt)}</td>
                     <td>{order.programName}</td>
-                    <td>{order.status === "paid" ? "Paid" : "Unpaid"}</td>
+                    <td>{order.statusLabel}</td>
                     <td>{formatCurrency(order.amount)}</td>
                   </tr>
                 ))}

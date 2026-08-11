@@ -16,6 +16,7 @@ export type CommissionOrderAttribution = {
   orderId: string;
   orderName: string;
   currency: string;
+  orderFinancialStatus: string;
   attributed: boolean;
   attributedTo: {
     id: string;
@@ -113,6 +114,8 @@ async function fetchShopifyOrderForCommission(params: {
           name
           createdAt
           currencyCode
+          displayFinancialStatus
+          fullyPaid
           lineItems(first: 100) {
             nodes {
               title
@@ -146,6 +149,8 @@ async function fetchShopifyOrderForCommission(params: {
         name: string;
         createdAt: string;
         currencyCode?: string | null;
+        displayFinancialStatus?: string | null;
+        fullyPaid?: boolean | null;
         lineItems?: {
           nodes?: Array<{
             title?: string | null;
@@ -194,11 +199,16 @@ async function fetchShopifyOrderForCommission(params: {
     })
     .filter((line) => line.quantity > 0);
 
+  const financialStatus =
+    order.displayFinancialStatus ||
+    (order.fullyPaid ? "PAID" : "PENDING");
+
   return {
     orderId: String(params.orderId).replace(/^gid:\/\/shopify\/Order\//i, ""),
     orderName: order.name,
     createdAt: new Date(order.createdAt),
     currency: order.currencyCode || "USD",
+    financialStatus,
     lines,
   };
 }
@@ -278,6 +288,8 @@ export async function getCommissionOrderAttribution(params: {
       orderId,
       orderName: existing.orderName || order.orderName,
       currency: existing.currency,
+      orderFinancialStatus:
+        existing.orderFinancialStatus || order.financialStatus || "PAID",
       attributed: true,
       attributedTo,
       commissionTotal: existing.commissionTotal,
@@ -294,6 +306,7 @@ export async function getCommissionOrderAttribution(params: {
       orderId,
       orderName: order.orderName,
       currency: order.currency,
+      orderFinancialStatus: order.financialStatus,
       attributed: false,
       attributedTo: null,
       commissionTotal: 0,
@@ -327,6 +340,7 @@ export async function getCommissionOrderAttribution(params: {
       orderId,
       orderName: order.orderName,
       currency: order.currency,
+      orderFinancialStatus: order.financialStatus,
       attributed: false,
       attributedTo: null,
       commissionTotal: 0,
@@ -348,6 +362,7 @@ export async function getCommissionOrderAttribution(params: {
       orderId,
       orderName: order.orderName,
       currency: order.currency,
+      orderFinancialStatus: order.financialStatus,
       attributed: false,
       attributedTo: null,
       commissionTotal: 0,
@@ -364,6 +379,7 @@ export async function getCommissionOrderAttribution(params: {
     orderId,
     orderName: order.orderName,
     currency: order.currency,
+    orderFinancialStatus: order.financialStatus,
     attributed: false,
     attributedTo: null,
     commissionTotal: calculated.commissionTotal,
@@ -411,6 +427,7 @@ export async function attributeOrderToCommission(params: {
       employeeId: params.employeeId,
       orderId,
       orderName: preview.orderName,
+      orderFinancialStatus: preview.orderFinancialStatus || "PAID",
       commissionTotal: preview.commissionTotal,
       currency: preview.currency,
       programIds: JSON.stringify(
