@@ -698,7 +698,7 @@ function StaffRequestsTab(props: {
                       Approve
                     </s-button>
                     <s-button
-                      variant="secondary"
+                      variant="primary"
                       tone="critical"
                       loading={reviewingId === request.id}
                       disabled={reviewingId !== null}
@@ -709,7 +709,7 @@ function StaffRequestsTab(props: {
                   </s-stack>
                 ) : request.status === "APPROVED" ? (
                   <s-button
-                    variant="secondary"
+                    variant="primary"
                     tone="critical"
                     loading={reviewingId === request.id}
                     disabled={reviewingId !== null}
@@ -782,7 +782,7 @@ function ApprovalsTab(props: {
                       Approve
                     </s-button>
                     <s-button
-                      variant="secondary"
+                      variant="primary"
                       tone="critical"
                       loading={reviewingId === request.id}
                       disabled={reviewingId !== null}
@@ -823,7 +823,7 @@ function ApprovalsTab(props: {
                 <s-stack direction="block" gap="base">
                   <RequestCard request={request} />
                   <s-button
-                    variant="secondary"
+                    variant="primary"
                     tone="critical"
                     loading={reviewingId === request.id}
                     disabled={reviewingId !== null}

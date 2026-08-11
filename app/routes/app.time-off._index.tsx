@@ -270,7 +270,11 @@ export default function TimeOffIndexPage() {
                           <Form method="post">
                             <input type="hidden" name="requestId" value={item.id} />
                             <input type="hidden" name="status" value="DECLINED" />
-                            <s-button type="submit" variant="secondary">
+                            <s-button
+                              type="submit"
+                              variant="primary"
+                              tone="critical"
+                            >
                               Decline
                             </s-button>
                           </Form>
@@ -278,7 +282,7 @@ export default function TimeOffIndexPage() {
                       ) : item.status === "approved" ? (
                         <s-button
                           type="button"
-                          variant="secondary"
+                          variant="primary"
                           tone="critical"
                           onClick={() => setDeclineTarget(item)}
                         >
