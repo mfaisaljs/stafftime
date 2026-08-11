@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T10:15:00.000Z",
+  "lastUpdated": "2026-08-11T10:18:00.000Z",
   "notes": [
+    "Updated: Today's History clock in/out rows use the same clock icon as First clock in.",
+    "Updated: Actions section title uses ⚡ emoji icon.",
     "Updated: Shift Info Location row uses 📍 emoji icon.",
     "Updated: Shift Info Date row uses 📅 emoji icon.",
     "Updated: Shift Info section title uses 📌 emoji icon.",

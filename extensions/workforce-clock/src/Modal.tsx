@@ -418,7 +418,7 @@ function MainScreen(props: {
             <s-section>
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
-                  <SectionTitle icon="bolt-filled" label="Actions" />
+                  <SectionTitle emoji="⚡" label="Actions" />
 
                   <s-button variant="secondary" onClick={props.onViewHistory}>
                     <s-stack direction="inline" gap="small" alignItems="center">
@@ -667,12 +667,11 @@ function InfoRow(props: {
 
 function historyIcon(
   type: PosHistoryEvent["type"],
-): "check-circle-filled" | "phone-out" | "play-circle" | "check" {
+): "clock" | "play-circle" | "check" {
   switch (type) {
     case "CLOCK_IN":
-      return "check-circle-filled";
     case "CLOCK_OUT":
-      return "phone-out";
+      return "clock";
     case "BREAK_START":
       return "play-circle";
     case "BREAK_END":
