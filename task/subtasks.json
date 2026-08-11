@@ -1404,6 +1404,29 @@
         "shopify.app.local.toml"
       ],
       "lastUpdated": "2026-08-11T10:35:00.000Z"
+    },
+    {
+      "id": "ST079",
+      "taskId": "T004",
+      "title": "POS Task List tile with timeline tabs",
+      "description": "Add a POS smart-grid Task List tile that shows lists assigned to the verified Staff or Manager role, with All/Daily/Weekly/Monthly tabs.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST057", "ST007"],
+      "acceptanceCriteria": [
+        "POS home shows a Task List tile separate from Clock and View Shifts",
+        "PIN verify loads only task lists assigned to the employee role (Staff or Manager)",
+        "Modal has All, Daily, Weekly, and Monthly tabs using native s-tabs",
+        "Each row shows list name, timeline badges, role badge, and today's progress"
+      ],
+      "files": [
+        "extensions/view-tasklists/src/Tile.tsx",
+        "extensions/view-tasklists/src/Modal.tsx",
+        "extensions/view-tasklists/shopify.extension.toml",
+        "app/routes/api.pos.tasklists.tsx",
+        "app/services/tasklists.server.ts"
+      ],
+      "lastUpdated": "2026-08-11T11:00:00.000Z"
     }
   ]
 }

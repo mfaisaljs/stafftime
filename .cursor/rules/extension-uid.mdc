@@ -1,0 +1,32 @@
+---
+description: Require valid UUID v4 for shopify.extension.toml uid fields
+globs: "**/shopify.extension.toml"
+alwaysApply: false
+---
+
+# Extension UID Format
+
+When generating or editing the `uid` field in any `shopify.extension.toml` file, always use a properly formatted UUID v4 string in standard `8-4-4-4-12` hexadecimal format — exactly 36 characters including hyphens (32 hex digits + 4 hyphens).
+
+## Valid example
+
+```text
+f1971c5b-3b8a-4c12-84ef-46b88e2ff145
+```
+
+## Segment lengths (exact)
+
+| Segment | Length |
+|---|---|
+| 1 | 8 hex characters |
+| 2 | 4 hex characters |
+| 3 | 4 hex characters |
+| 4 | 4 hex characters |
+| 5 | 12 hex characters |
+
+## Rules
+
+- Generate a fresh UUID with `node -e "console.log(require('crypto').randomUUID())"` (or equivalent).
+- Never truncate, duplicate, concatenate, or pad any segment.
+- Never keep scaffolded/malformed uids that are longer or shorter than 36 characters.
+- Before saving, verify: total length is 36, and split-by-`-` lengths are `8,4,4,4,12`.
