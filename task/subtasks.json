@@ -1650,6 +1650,24 @@
         "prisma/migrations/20260811170000_sales_target_attributions/migration.sql"
       ],
       "lastUpdated": "2026-08-11T16:45:00.000Z"
+    },
+    {
+      "id": "ST090",
+      "taskId": "T017",
+      "title": "Remove products from commission Include Specific Products list",
+      "description": "Allow removing individual or checked products from the commission program specific-products list without reopening the resource picker.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST049"],
+      "acceptanceCriteria": [
+        "Each product row has a remove control that drops that product from the list",
+        "Remove Selected removes all checked products from the list",
+        "Removing products marks the form dirty for the save bar"
+      ],
+      "files": [
+        "app/components/commission-programs/CommissionProgramForm.tsx"
+      ],
+      "lastUpdated": "2026-08-11T20:30:00.000Z"
     }
   ]
 }

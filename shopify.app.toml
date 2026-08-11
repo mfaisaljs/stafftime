@@ -1,35 +1,35 @@
-# StaffTime — Workforce OS for Shopify POS
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
 name = "Trubuild: Staff Management"
 application_url = "https://largely-main-ringtail.ngrok-free.app"
 embedded = true
 
-[pos]
-embedded = true
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "spaceraceplayground.myshopify.com"
+
+[webhooks]
+api_version = "2026-10"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/scopes_update"
+  topics = [ "app/scopes_update" ]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = [ "app/uninstalled" ]
 
 [access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "read_locations,read_orders,read_products"
 
 [auth]
 redirect_urls = [
   "https://largely-main-ringtail.ngrok-free.app/auth/callback",
   "https://largely-main-ringtail.ngrok-free.app/auth/shopify/callback",
-  "https://largely-main-ringtail.ngrok-free.app/api/auth/callback",
+  "https://largely-main-ringtail.ngrok-free.app/api/auth/callback"
 ]
 
-[webhooks]
-api_version = "2026-10"
-
-  [[webhooks.subscriptions]]
-  uri = "/webhooks/app/uninstalled"
-  topics = ["app/uninstalled"]
-
-  [[webhooks.subscriptions]]
-  topics = ["app/scopes_update"]
-  uri = "/webhooks/app/scopes_update"
-
-[build]
-automatically_update_urls_on_dev = true
-dev_store_url = "spaceraceplayground.myshopify.com"
+[pos]
+embedded = true

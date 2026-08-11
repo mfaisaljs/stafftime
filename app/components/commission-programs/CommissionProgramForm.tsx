@@ -271,6 +271,28 @@ export default function CommissionProgramForm({
     markDirty();
   };
 
+  const removeProduct = (productId: string) => {
+    setSelectedProducts((current) =>
+      current.filter((product) => product.id !== productId),
+    );
+    setCheckedProductIds((current) => {
+      if (!current.has(productId)) return current;
+      const next = new Set(current);
+      next.delete(productId);
+      return next;
+    });
+    markDirty();
+  };
+
+  const removeCheckedProducts = () => {
+    if (checkedProductIds.size === 0) return;
+    setSelectedProducts((current) =>
+      current.filter((product) => !checkedProductIds.has(product.id)),
+    );
+    setCheckedProductIds(new Set());
+    markDirty();
+  };
+
   const handleDiscard = () => {
     const today = toDateKey(new Date());
     const nextDateRange =
@@ -589,13 +611,24 @@ export default function CommissionProgramForm({
                           {checkedProductIds.size} of {selectedProducts.length} Products
                           selected
                         </span>
-                        <button
-                          type="button"
-                          className="text-action"
-                          onClick={() => toggleAllProductsChecked(true)}
-                        >
-                          Select All Products
-                        </button>
+                        <div className="product-manager-toolbar-actions">
+                          {checkedProductIds.size > 0 && (
+                            <button
+                              type="button"
+                              className="text-action text-action-critical"
+                              onClick={removeCheckedProducts}
+                            >
+                              Remove Selected
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="text-action"
+                            onClick={() => toggleAllProductsChecked(true)}
+                          >
+                            Select All Products
+                          </button>
+                        </div>
                       </div>
 
                       <div className="product-list-card">
@@ -653,6 +686,14 @@ export default function CommissionProgramForm({
                                 }
                               />
                             </div>
+                            <s-button
+                              variant="tertiary"
+                              tone="critical"
+                              icon="x"
+                              accessibilityLabel={`Remove ${product.title}`}
+                              type="button"
+                              onClick={() => removeProduct(product.id)}
+                            ></s-button>
                           </div>
                         ))}
                       </div>
@@ -1336,6 +1377,12 @@ const CREATE_COMMISSION_STYLES = `
     justify-content: space-between;
   }
 
+  .product-manager-toolbar-actions {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+  }
+
   .text-action {
     background: transparent;
     border: 0;
@@ -1344,6 +1391,10 @@ const CREATE_COMMISSION_STYLES = `
     font: inherit;
     font-weight: 650;
     text-decoration: underline;
+  }
+
+  .text-action-critical {
+    color: #8e1f0b;
   }
 
   .product-list-card,
@@ -1368,7 +1419,7 @@ const CREATE_COMMISSION_STYLES = `
     border-bottom: 1px solid #ececec;
     display: grid;
     gap: 12px;
-    grid-template-columns: auto 42px 1fr 180px;
+    grid-template-columns: auto 42px 1fr 180px auto;
     padding: 12px 14px;
   }
 
