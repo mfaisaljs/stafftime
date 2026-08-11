@@ -46,7 +46,7 @@ function WorkforceModal() {
   const [now, setNow] = useState(Date.now());
   const clockOffsetRef = useRef(0);
   const pendingVerifyRef = useRef<VerifyResponse | null>(null);
-  const pinPadOpenedRef = useRef(false);
+  const pinPadOpenRef = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -56,10 +56,7 @@ function WorkforceModal() {
   const syncClockOffset = useCallback((status: EmployeeStatus, serverTime?: number) => {
     if (typeof serverTime !== "number") return;
     clockOffsetRef.current = serverTime - Date.now();
-    if (typeof status.clockInAtMs === "number") {
-      // Anchor timer to server time to avoid device clock drift.
-      return;
-    }
+    if (typeof status.clockInAtMs === "number") return;
     if (status.clockInAt) {
       status.clockInAtMs = new Date(status.clockInAt).getTime();
     }
@@ -116,75 +113,84 @@ function WorkforceModal() {
   }, []);
 
   const applyVerified = useCallback(
-    async (data: VerifyResponse) => {
+    (data: VerifyResponse) => {
       syncClockOffset(data.status, data.serverTime);
       setVerified(data);
-      await persistClockState(data.status.status, data.employee.id);
       setQrCode("");
       setError(null);
+      void persistClockState(data.status.status, data.employee.id);
     },
     [persistClockState, syncClockOffset],
   );
 
   const showNativePinPad = useCallback(() => {
-    if (!shopify.pinPad?.showPinPad) {
+    if (pinPadOpenRef.current) return;
+
+    try {
+      if (typeof shopify.pinPad?.showPinPad !== "function") {
+        setError("PIN pad is unavailable on this POS version.");
+        return;
+      }
+    } catch {
       setError("PIN pad is unavailable on this POS version.");
       return;
     }
 
+    setMode("pin");
     setError(null);
     pendingVerifyRef.current = null;
+    pinPadOpenRef.current = true;
 
-    shopify.pinPad.showPinPad(
-      async (pinDigits) => {
-        const pin = pinDigits.join("");
-        try {
-          const data = (await apiFetch("/api/pos/verify", { pin })) as VerifyResponse;
-          pendingVerifyRef.current = data;
-          return { result: "accept" as const };
-        } catch (err) {
-          pendingVerifyRef.current = null;
-          return {
-            result: "reject" as const,
-            errorMessage: messageFromError(err, "Invalid PIN"),
-          };
-        }
-      },
-      {
-        // Native POS login pad: masked dots, 4-digit staff PIN, auto-submit.
-        title: "Enter PIN",
-        label: "Enter your PIN",
-        masked: true,
-        minPinLength: 4,
-        maxPinLength: 4,
-        autoSubmit: true,
-        onDismissed: (result) => {
-          if (!result.completed) {
+    try {
+      shopify.pinPad.showPinPad(
+        async (pinDigits) => {
+          const pin = pinDigits.join("");
+          try {
+            const data = (await apiFetch("/api/pos/verify", { pin })) as VerifyResponse;
+            pendingVerifyRef.current = data;
+            return { result: "accept" as const };
+          } catch (err) {
             pendingVerifyRef.current = null;
-            return;
-          }
-          const data = pendingVerifyRef.current;
-          pendingVerifyRef.current = null;
-          if (data) {
-            void applyVerified(data);
+            return {
+              result: "reject" as const,
+              errorMessage: messageFromError(err, "Invalid PIN"),
+            };
           }
         },
-      },
-    );
-  }, [apiFetch, applyVerified]);
+        {
+          title: "Enter PIN",
+          label: "Enter your PIN",
+          masked: true,
+          minPinLength: 4,
+          maxPinLength: 4,
+          autoSubmit: true,
+          onDismissed: (result) => {
+            pinPadOpenRef.current = false;
+            const data = pendingVerifyRef.current;
+            pendingVerifyRef.current = null;
 
-  useEffect(() => {
-    if (verified || mode !== "pin" || pinPadOpenedRef.current) return;
-    pinPadOpenedRef.current = true;
-    showNativePinPad();
-  }, [verified, mode, showNativePinPad]);
+            if (!result.completed || !data) return;
+
+            // Wait until the native pad is fully dismissed before updating UI.
+            setTimeout(() => {
+              applyVerified(data);
+            }, 50);
+          },
+        },
+      );
+    } catch (err) {
+      pinPadOpenRef.current = false;
+      pendingVerifyRef.current = null;
+      setError(messageFromError(err, "Could not open PIN pad"));
+    }
+  }, [apiFetch, applyVerified]);
 
   async function verifyWithQr() {
     setLoading(true);
     setError(null);
     try {
       const data = (await apiFetch("/api/pos/verify", { qrCode })) as VerifyResponse;
-      await applyVerified(data);
+      applyVerified(data);
     } catch (err) {
       setError(messageFromError(err, "Verification failed"));
     } finally {
@@ -214,7 +220,7 @@ function WorkforceModal() {
     setVerified(null);
     setMode("pin");
     setError(null);
-    pinPadOpenedRef.current = false;
+    pinPadOpenRef.current = false;
   }
 
   if (!verified) {
@@ -222,14 +228,11 @@ function WorkforceModal() {
       <s-page heading="Enter PIN">
         <s-scroll-box>
           <s-stack direction="block" gap="base">
-            <s-text>Use the PIN pad to clock in or out.</s-text>
+            <s-text>Enter your staff PIN to clock in or out.</s-text>
             <s-stack direction="inline" gap="base">
               <s-button
                 variant={mode === "pin" ? "primary" : "secondary"}
-                onClick={() => {
-                  setMode("pin");
-                  showNativePinPad();
-                }}
+                onClick={showNativePinPad}
               >
                 Enter PIN
               </s-button>
@@ -259,7 +262,7 @@ function WorkforceModal() {
               </s-button>
             ) : (
               <s-button variant="primary" onClick={showNativePinPad}>
-                Show PIN pad
+                Enter PIN
               </s-button>
             )}
           </s-stack>
