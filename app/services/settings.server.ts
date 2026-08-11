@@ -194,18 +194,26 @@ export function computeSalaryAdjustments(input: SalaryAdjustmentInput): number {
     // Do not apply leave/absence money for future dates in the selected range.
     if (dateKey > todayKey) continue;
 
+    const hasShift = shiftsByDate.get(dateKey) ?? false;
     const leave = leaveCompensationForDate(requests, dateKey);
-    if (leave === "PAID" && settings.autoAddPaidLeavesToSalary) {
-      adjustment += dayAmount;
-    }
-    if (leave === "UNPAID" && settings.autoDeductUnpaidLeavesFromSalary) {
-      adjustment -= dayAmount;
+
+    // Leave pay adjustments only apply on scheduled work days (including shifts
+    // soft-cancelled for leave). Calendar leave days with no shift do not
+    // add/deduct a full day amount — that was causing large false unpaid-leave
+    // deductions for days the employee was never scheduled.
+    if (hasShift) {
+      if (leave === "PAID" && settings.autoAddPaidLeavesToSalary) {
+        adjustment += dayAmount;
+      }
+      if (leave === "UNPAID" && settings.autoDeductUnpaidLeavesFromSalary) {
+        adjustment -= dayAmount;
+      }
     }
 
     const absent = classifyAbsentDay(
       {
         dateKey,
-        hasShift: shiftsByDate.get(dateKey) ?? false,
+        hasShift,
         hasClockIn: clockedDates.has(dateKey),
         isHoliday: isHolidayDateKey(dateKey, settings),
         leaveCompensation: leave,

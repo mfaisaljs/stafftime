@@ -167,7 +167,9 @@ export async function getStaffProfileForPos(params: {
       where: {
         shopId: shop.id,
         employeeId: employee.id,
-        status: SHIFT_STATUS.SCHEDULED,
+        status: {
+          in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE],
+        },
         startsAt: { gte: startDate, lte: endDate },
       },
       include: { location: true },

@@ -129,4 +129,60 @@ describe("absence / salary adjustments ignore upcoming shifts", () => {
 
     expect(adjustment).toBe(-80);
   });
+
+  it("does not deduct unpaid leave on calendar days with no scheduled shift", () => {
+    const settings = fakeSettings({
+      autoDeductUnpaidLeavesFromSalary: true,
+    });
+    const requests = [
+      {
+        employeeId: "emp-1",
+        startDate: yesterdayKey,
+        endDate: tomorrowKey,
+        status: "APPROVED",
+        policy: { compensation: "UNPAID" },
+      },
+    ] as any;
+
+    const adjustment = computeSalaryAdjustments({
+      employee: { hourlyRate: 20 },
+      dateKeys: [yesterdayKey, todayKey, tomorrowKey],
+      shiftsByDate: new Map(),
+      clockedDates: new Set<string>(),
+      requests,
+      settings,
+    });
+
+    expect(adjustment).toBe(0);
+  });
+
+  it("deducts unpaid leave only on past/today work days covered by leave", () => {
+    const settings = fakeSettings({
+      autoDeductUnpaidLeavesFromSalary: true,
+    });
+    const requests = [
+      {
+        employeeId: "emp-1",
+        startDate: yesterdayKey,
+        endDate: tomorrowKey,
+        status: "APPROVED",
+        policy: { compensation: "UNPAID" },
+      },
+    ] as any;
+
+    const adjustment = computeSalaryAdjustments({
+      employee: { hourlyRate: 20 },
+      dateKeys: [yesterdayKey, todayKey, tomorrowKey],
+      shiftsByDate: new Map([
+        [yesterdayKey, true],
+        [tomorrowKey, true],
+      ]),
+      clockedDates: new Set<string>(),
+      requests,
+      settings,
+    });
+
+    // Yesterday work day on unpaid leave: -(8h * $20). Tomorrow is future → skipped.
+    expect(adjustment).toBe(-160);
+  });
 });

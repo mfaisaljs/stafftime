@@ -107,7 +107,9 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       where: {
         shopId: shop.id,
         employeeId,
-        status: SHIFT_STATUS.SCHEDULED,
+        status: {
+          in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE],
+        },
         startsAt: { gte: effectiveStart, lte: endDate },
       },
     }),

@@ -44,7 +44,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     prisma.shift.findMany({
       where: {
         shopId: shop.id,
-        status: SHIFT_STATUS.SCHEDULED,
+        status: {
+          in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE],
+        },
         startsAt: { gte: periodStart, lte: periodEnd },
       },
     }),
