@@ -2,7 +2,7 @@ import { render } from "preact";
 
 export default async function extension() {
   render(<SalesTargetAttributionBlock />, document.body);
-}
+} 
 
 function SalesTargetAttributionBlock() {
   const orderName =
