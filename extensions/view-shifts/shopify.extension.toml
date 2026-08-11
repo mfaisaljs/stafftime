@@ -3,7 +3,7 @@ api_version = "2026-01"
 [[extensions]]
 type = "ui_extension"
 name = "t:name"
-uid = "ca463ae1-11f4-4ec2-4a18-283934eaed17407c5059"
+uid = "5f32c9c2-f9dc-423e-8eac-1d2e6b5ebaff"
 handle = "view-shifts"
 description = "Trubuild: View upcoming shifts"
 

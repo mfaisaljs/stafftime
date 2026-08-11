@@ -4,7 +4,7 @@ api_version = "2025-10"
 type = "ui_extension"
 name = "Workforce Clock"
 handle = "workforce-clock"
-uid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+uid = "b9d4c7ed-3d7c-47ee-92dc-66c60d6152a6"
 description = "Trubuild: Clock in/out"
 
 [extensions.supported_features]
