@@ -129,8 +129,14 @@ export async function getTimeOffBootstrapForPos(params: {
   );
   const canApprove = isManagerRole(employee.role);
 
-  const [policies, myRequests, staff, pendingRequests, approvedRequests] =
-    await Promise.all([
+  const [
+    policies,
+    myRequests,
+    staff,
+    pendingRequests,
+    approvedRequests,
+    declinedRequests,
+  ] = await Promise.all([
     prisma.timeOffPolicy.findMany({
       where: { shopId: shop.id, active: true },
       orderBy: { name: "asc" },
@@ -173,11 +179,18 @@ export async function getTimeOffBootstrapForPos(params: {
           orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([]),
+    canApprove
+      ? prisma.timeOffRequest.findMany({
+          where: { shopId: shop.id, status: "DECLINED" },
+          include: { policy: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
   ]);
 
-  const pendingWithConflicts = canApprove
+  const reviewableWithConflicts = canApprove
     ? await Promise.all(
-        pendingRequests.map(async (request) => {
+        [...pendingRequests, ...declinedRequests].map(async (request) => {
           const overlapping = await findOverlappingScheduledShifts({
             shopId: shop.id,
             employeeId: request.employeeId,
@@ -192,6 +205,12 @@ export async function getTimeOffBootstrapForPos(params: {
         }),
       )
     : [];
+  const pendingWithConflicts = reviewableWithConflicts.filter(
+    ({ request }) => request.status === "PENDING",
+  );
+  const declinedWithConflicts = reviewableWithConflicts.filter(
+    ({ request }) => request.status === "DECLINED",
+  );
 
   const employeeNameById = new Map<string, string>([
     [employee.id, `${employee.firstName} ${employee.lastName}`.trim()],
@@ -204,9 +223,18 @@ export async function getTimeOffBootstrapForPos(params: {
     ),
   ]);
 
-  // Resolve names for pending/approved requesters who may not be in staff list (edge).
-  if (canApprove && (pendingRequests.length > 0 || approvedRequests.length > 0)) {
-    const missingIds = [...pendingRequests, ...approvedRequests]
+  // Resolve names for requesters who may not be in staff list (edge).
+  if (
+    canApprove &&
+    (pendingRequests.length > 0 ||
+      approvedRequests.length > 0 ||
+      declinedRequests.length > 0)
+  ) {
+    const missingIds = [
+      ...pendingRequests,
+      ...approvedRequests,
+      ...declinedRequests,
+    ]
       .map((item) => item.employeeId)
       .filter((id) => !employeeNameById.has(id));
     if (missingIds.length > 0) {
@@ -252,11 +280,26 @@ export async function getTimeOffBootstrapForPos(params: {
       name: `${item.firstName} ${item.lastName}`.trim(),
       roleLabel: roleBadgeLabel(item.role, item.position),
     })),
-    pendingApprovals: pendingWithConflicts.map(({ request, overlappingShiftCount, overlappingShifts }) =>
-      mapRequest(request, employeeNameById, overlappingShiftCount, overlappingShifts),
+    pendingApprovals: pendingWithConflicts.map(
+      ({ request, overlappingShiftCount, overlappingShifts }) =>
+        mapRequest(
+          request,
+          employeeNameById,
+          overlappingShiftCount,
+          overlappingShifts,
+        ),
     ),
     approvedApprovals: approvedRequests.map((request) =>
       mapRequest(request, employeeNameById),
+    ),
+    declinedApprovals: declinedWithConflicts.map(
+      ({ request, overlappingShiftCount, overlappingShifts }) =>
+        mapRequest(
+          request,
+          employeeNameById,
+          overlappingShiftCount,
+          overlappingShifts,
+        ),
     ),
     serverTime: Date.now(),
   };

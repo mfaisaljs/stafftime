@@ -55,6 +55,7 @@ export type TimeOffBootstrap = {
   staff: StaffOption[];
   pendingApprovals: TimeOffRequestRow[];
   approvedApprovals: TimeOffRequestRow[];
+  declinedApprovals: TimeOffRequestRow[];
   serverTime?: number;
 };
 

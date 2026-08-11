@@ -309,6 +309,7 @@ function TimeOffModal() {
   const staff = bootstrap?.staff ?? [];
   const pendingApprovals = bootstrap?.pendingApprovals ?? [];
   const approvedApprovals = bootstrap?.approvedApprovals ?? [];
+  const declinedApprovals = bootstrap?.declinedApprovals ?? [];
 
   return (
     <s-page heading="Time Off">
@@ -386,6 +387,7 @@ function TimeOffModal() {
                     <ApprovalsTab
                       pendingRequests={pendingApprovals}
                       approvedRequests={approvedApprovals}
+                      declinedRequests={declinedApprovals}
                       reviewingId={reviewingId}
                       onReview={handleReview}
                     />
@@ -629,6 +631,17 @@ function StaffRequestsTab(props: {
                   >
                     Decline
                   </s-button>
+                ) : request.status === "DECLINED" ? (
+                  <s-button
+                    variant="primary"
+                    loading={reviewingId === request.id}
+                    disabled={reviewingId !== null}
+                    onClick={() => {
+                      void onReview(request.id, "APPROVED");
+                    }}
+                  >
+                    Approve
+                  </s-button>
                 ) : null}
               </s-stack>
             </s-box>
@@ -642,13 +655,20 @@ function StaffRequestsTab(props: {
 function ApprovalsTab(props: {
   pendingRequests: TimeOffRequestRow[];
   approvedRequests: TimeOffRequestRow[];
+  declinedRequests: TimeOffRequestRow[];
   reviewingId: string | null;
   onReview: (
     requestId: string,
     status: "APPROVED" | "DECLINED",
   ) => Promise<void>;
 }) {
-  const { pendingRequests, approvedRequests, reviewingId, onReview } = props;
+  const {
+    pendingRequests,
+    approvedRequests,
+    declinedRequests,
+    reviewingId,
+    onReview,
+  } = props;
 
   return (
     <s-stack direction="block" gap="large">
@@ -740,6 +760,45 @@ function ApprovalsTab(props: {
                     }}
                   >
                     Decline
+                  </s-button>
+                </s-stack>
+              </s-box>
+            </s-section>
+          ))}
+        </s-stack>
+      )}
+
+      <s-stack
+        direction="inline"
+        gap="small"
+        alignItems="center"
+        justifyContent="space-between"
+        inlineSize="100%"
+      >
+        <s-heading>Declined Requests</s-heading>
+        <s-badge tone={declinedRequests.length === 0 ? "neutral" : "critical"}>
+          {declinedRequests.length} Declined
+        </s-badge>
+      </s-stack>
+
+      {declinedRequests.length === 0 ? (
+        <s-text>No declined requests to review.</s-text>
+      ) : (
+        <s-stack direction="block" gap="base">
+          {declinedRequests.map((request) => (
+            <s-section key={request.id} heading={request.employeeName}>
+              <s-box padding="small none">
+                <s-stack direction="block" gap="base">
+                  <RequestCard request={request} />
+                  <s-button
+                    variant="primary"
+                    loading={reviewingId === request.id}
+                    disabled={reviewingId !== null}
+                    onClick={() => {
+                      void onReview(request.id, "APPROVED");
+                    }}
+                  >
+                    Approve
                   </s-button>
                 </s-stack>
               </s-box>
