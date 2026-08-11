@@ -147,6 +147,15 @@ function ViewShiftsModal() {
     [employee, loadShifts],
   );
 
+  const handleTabsChange = useCallback(
+    (event: { currentTarget: { value?: string | null } }) => {
+      const next = event.currentTarget.value;
+      if (!isPosShiftRange(next) || next === range) return;
+      onSelectRange(next);
+    },
+    [onSelectRange, range],
+  );
+
   if (booting) {
     return (
       <s-page heading="View Shifts">
@@ -176,34 +185,38 @@ function ViewShiftsModal() {
     );
   }
 
+  const shiftList =
+    loading ? (
+      <s-text>Loading shifts…</s-text>
+    ) : shifts.length === 0 ? (
+      <s-text>No shifts in this range.</s-text>
+    ) : (
+      <s-stack direction="block" gap="base">
+        {shifts.map((shift) => (
+          <ShiftRow key={shift.id} shift={shift} />
+        ))}
+      </s-stack>
+    );
+
   return (
     <s-page heading={`${employee.firstName}'s Shifts`}>
       <s-scroll-box>
         <s-box padding="large">
           <s-stack direction="block" gap="large">
-            <s-stack direction="inline" gap="small" alignItems="center">
-              {TABS.map((tab) => (
-                <s-button
-                  key={tab.id}
-                  variant={range === tab.id ? "primary" : "secondary"}
-                  onClick={() => onSelectRange(tab.id)}
-                >
-                  {tab.label}
-                </s-button>
-              ))}
-            </s-stack>
-
-            {loading ? (
-              <s-text>Loading shifts…</s-text>
-            ) : shifts.length === 0 ? (
-              <s-text>No shifts in this range.</s-text>
-            ) : (
-              <s-stack direction="block" gap="base">
-                {shifts.map((shift) => (
-                  <ShiftRow key={shift.id} shift={shift} />
+            <s-tabs value={range} onChange={handleTabsChange}>
+              <s-tab-list>
+                {TABS.map((tab) => (
+                  <s-tab key={tab.id} controls={tab.id}>
+                    {tab.label}
+                  </s-tab>
                 ))}
-              </s-stack>
-            )}
+              </s-tab-list>
+              {TABS.map((tab) => (
+                <s-tab-panel key={tab.id} id={tab.id}>
+                  <s-box padding="base none">{shiftList}</s-box>
+                </s-tab-panel>
+              ))}
+            </s-tabs>
 
             <s-button
               variant="secondary"
@@ -220,6 +233,15 @@ function ViewShiftsModal() {
         </s-box>
       </s-scroll-box>
     </s-page>
+  );
+}
+
+function isPosShiftRange(value: unknown): value is PosShiftRange {
+  return (
+    value === "upcoming" ||
+    value === "today" ||
+    value === "week" ||
+    value === "month"
   );
 }
 
