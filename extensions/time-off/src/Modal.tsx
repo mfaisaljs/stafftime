@@ -40,12 +40,6 @@ function TimeOffModal() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const [approveTarget, setApproveTarget] = useState<TimeOffRequestRow | null>(
-    null,
-  );
-  const [declineTarget, setDeclineTarget] = useState<TimeOffRequestRow | null>(
-    null,
-  );
   const pinPadOpenRef = useRef(false);
 
   const clearSession = useCallback(async () => {
@@ -250,8 +244,6 @@ function TimeOffModal() {
     async (requestId: string, status: "APPROVED" | "DECLINED") => {
       if (!employee) return;
       setReviewingId(requestId);
-      setApproveTarget(null);
-      setDeclineTarget(null);
       try {
         const result = await reviewTimeOffRequest({
           employeeId: employee.id,
@@ -376,8 +368,7 @@ function TimeOffModal() {
                       requests={staffRequests}
                       loading={loading}
                       reviewingId={reviewingId}
-                      onApprove={(request) => setApproveTarget(request)}
-                      onDecline={(request) => setDeclineTarget(request)}
+                      onReview={handleReview}
                       onSelectStaff={(id) => {
                         setSelectedStaffId(id);
                         if (employee) {
@@ -396,8 +387,7 @@ function TimeOffModal() {
                       pendingRequests={pendingApprovals}
                       approvedRequests={approvedApprovals}
                       reviewingId={reviewingId}
-                      onApprove={(request) => setApproveTarget(request)}
-                      onDecline={(request) => setDeclineTarget(request)}
+                      onReview={handleReview}
                     />
                   </s-box>
                 </s-tab-panel>
@@ -418,91 +408,6 @@ function TimeOffModal() {
           </s-stack>
         </s-box>
       </s-scroll-box>
-
-      {approveTarget ? (
-        <s-modal heading="Approve time off?" open onClose={() => setApproveTarget(null)}>
-          <s-box padding="base">
-            <s-stack direction="block" gap="base">
-              <s-text>
-                Approve {approveTarget.employeeName}&apos;s {approveTarget.policyName}{" "}
-                request?
-              </s-text>
-              {(approveTarget.overlappingShiftCount ?? 0) > 0 ? (
-                <s-banner tone="warning" heading="Overlapping shifts will be cancelled">
-                  <s-text>
-                    {approveTarget.overlappingShiftCount} scheduled shift
-                    {(approveTarget.overlappingShiftCount ?? 0) === 1 ? "" : "s"}{" "}
-                    will be cancelled.
-                  </s-text>
-                </s-banner>
-              ) : null}
-              <s-stack direction="inline" gap="small">
-                <s-button
-                  variant="primary"
-                  loading={reviewingId === approveTarget.id}
-                  disabled={reviewingId !== null}
-                  onClick={() => {
-                    void handleReview(approveTarget.id, "APPROVED");
-                  }}
-                >
-                  Approve
-                </s-button>
-                <s-button
-                  variant="secondary"
-                  onClick={() => setApproveTarget(null)}
-                >
-                  Cancel
-                </s-button>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-modal>
-      ) : null}
-
-      {declineTarget ? (
-        <s-modal
-          heading={
-            declineTarget.status === "APPROVED"
-              ? "Decline approved time off?"
-              : "Decline time off?"
-          }
-          open
-          onClose={() => setDeclineTarget(null)}
-        >
-          <s-box padding="base">
-            <s-stack direction="block" gap="base">
-              <s-text>
-                Decline {declineTarget.employeeName}&apos;s {declineTarget.policyName}{" "}
-                request?
-              </s-text>
-              {declineTarget.status === "APPROVED" ? (
-                <s-text>
-                  Cancelled shifts for this leave will be restored to the schedule.
-                </s-text>
-              ) : null}
-              <s-stack direction="inline" gap="small">
-                <s-button
-                  variant="primary"
-                  tone="critical"
-                  loading={reviewingId === declineTarget.id}
-                  disabled={reviewingId !== null}
-                  onClick={() => {
-                    void handleReview(declineTarget.id, "DECLINED");
-                  }}
-                >
-                  Decline
-                </s-button>
-                <s-button
-                  variant="secondary"
-                  onClick={() => setDeclineTarget(null)}
-                >
-                  Cancel
-                </s-button>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-modal>
-      ) : null}
     </s-page>
   );
 }
@@ -631,8 +536,10 @@ function StaffRequestsTab(props: {
   requests: TimeOffRequestRow[];
   loading: boolean;
   reviewingId: string | null;
-  onApprove: (request: TimeOffRequestRow) => void;
-  onDecline: (request: TimeOffRequestRow) => void;
+  onReview: (
+    requestId: string,
+    status: "APPROVED" | "DECLINED",
+  ) => Promise<void>;
   onSelectStaff: (id: string) => void;
 }) {
   const {
@@ -641,8 +548,7 @@ function StaffRequestsTab(props: {
     requests,
     loading,
     reviewingId,
-    onApprove,
-    onDecline,
+    onReview,
     onSelectStaff,
   } = props;
 
@@ -693,7 +599,9 @@ function StaffRequestsTab(props: {
                       variant="primary"
                       loading={reviewingId === request.id}
                       disabled={reviewingId !== null}
-                      onClick={() => onApprove(request)}
+                      onClick={() => {
+                        void onReview(request.id, "APPROVED");
+                      }}
                     >
                       Approve
                     </s-button>
@@ -702,7 +610,9 @@ function StaffRequestsTab(props: {
                       tone="critical"
                       loading={reviewingId === request.id}
                       disabled={reviewingId !== null}
-                      onClick={() => onDecline(request)}
+                      onClick={() => {
+                        void onReview(request.id, "DECLINED");
+                      }}
                     >
                       Decline
                     </s-button>
@@ -713,7 +623,9 @@ function StaffRequestsTab(props: {
                     tone="critical"
                     loading={reviewingId === request.id}
                     disabled={reviewingId !== null}
-                    onClick={() => onDecline(request)}
+                    onClick={() => {
+                      void onReview(request.id, "DECLINED");
+                    }}
                   >
                     Decline
                   </s-button>
@@ -731,16 +643,12 @@ function ApprovalsTab(props: {
   pendingRequests: TimeOffRequestRow[];
   approvedRequests: TimeOffRequestRow[];
   reviewingId: string | null;
-  onApprove: (request: TimeOffRequestRow) => void;
-  onDecline: (request: TimeOffRequestRow) => void;
+  onReview: (
+    requestId: string,
+    status: "APPROVED" | "DECLINED",
+  ) => Promise<void>;
 }) {
-  const {
-    pendingRequests,
-    approvedRequests,
-    reviewingId,
-    onApprove,
-    onDecline,
-  } = props;
+  const { pendingRequests, approvedRequests, reviewingId, onReview } = props;
 
   return (
     <s-stack direction="block" gap="large">
@@ -776,7 +684,7 @@ function ApprovalsTab(props: {
                       loading={reviewingId === request.id}
                       disabled={reviewingId !== null}
                       onClick={() => {
-                        onApprove(request);
+                        void onReview(request.id, "APPROVED");
                       }}
                     >
                       Approve
@@ -787,7 +695,7 @@ function ApprovalsTab(props: {
                       loading={reviewingId === request.id}
                       disabled={reviewingId !== null}
                       onClick={() => {
-                        onDecline(request);
+                        void onReview(request.id, "DECLINED");
                       }}
                     >
                       Decline
@@ -828,7 +736,7 @@ function ApprovalsTab(props: {
                     loading={reviewingId === request.id}
                     disabled={reviewingId !== null}
                     onClick={() => {
-                      onDecline(request);
+                      void onReview(request.id, "DECLINED");
                     }}
                   >
                     Decline

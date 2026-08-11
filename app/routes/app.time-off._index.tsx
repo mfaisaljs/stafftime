@@ -4,8 +4,8 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import type { ReactNode } from "react";
-import { Form, Link, useActionData, useLoaderData, useNavigate, useSearchParams } from "react-router";
-import { useState } from "react";
+import { Link, useActionData, useFetcher, useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { useEffect, useState } from "react";
 import { ArrowUpDown, Search } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -136,6 +136,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function TimeOffIndexPage() {
   const { timeOffs, created, status } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const fetcher = useFetcher<typeof action>();
+  const reviewFeedback = fetcher.data ?? actionData;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tab = statusTab(searchParams.get("status") ?? status);
@@ -146,6 +148,25 @@ export default function TimeOffIndexPage() {
   const [declineTarget, setDeclineTarget] = useState<
     (typeof timeOffs)[number] | null
   >(null);
+
+  const submitReview = (requestId: string, reviewStatus: "APPROVED" | "DECLINED") => {
+    const formData = new FormData();
+    formData.set("requestId", requestId);
+    formData.set("status", reviewStatus);
+    fetcher.submit(formData, { method: "post" });
+  };
+
+  const reviewingRequestId =
+    fetcher.state !== "idle"
+      ? String(fetcher.formData?.get("requestId") ?? "")
+      : "";
+
+  useEffect(() => {
+    if (reviewFeedback && "success" in reviewFeedback && reviewFeedback.success) {
+      setApproveTarget(null);
+      setDeclineTarget(null);
+    }
+  }, [reviewFeedback]);
 
   return (
     <s-page heading="Time Off Management" inlineSize="large">
@@ -169,11 +190,11 @@ export default function TimeOffIndexPage() {
       {created && (
         <s-banner tone="success" heading="Time off created and approved." />
       )}
-      {actionData && "error" in actionData && actionData.error && (
-        <s-banner tone="critical" heading={actionData.error} />
+      {reviewFeedback && "error" in reviewFeedback && reviewFeedback.error && (
+        <s-banner tone="critical" heading={reviewFeedback.error} />
       )}
-      {actionData && "success" in actionData && actionData.success && (
-        <s-banner tone="success" heading={actionData.success} />
+      {reviewFeedback && "success" in reviewFeedback && reviewFeedback.success && (
+        <s-banner tone="success" heading={reviewFeedback.success} />
       )}
 
       <section className="timeoff-card">
@@ -267,23 +288,24 @@ export default function TimeOffIndexPage() {
                           >
                             Approve
                           </s-button>
-                          <Form method="post">
-                            <input type="hidden" name="requestId" value={item.id} />
-                            <input type="hidden" name="status" value="DECLINED" />
-                            <s-button
-                              type="submit"
-                              variant="primary"
-                              tone="critical"
-                            >
-                              Decline
-                            </s-button>
-                          </Form>
+                          <s-button
+                            type="button"
+                            variant="primary"
+                            tone="critical"
+                            loading={reviewingRequestId === item.id}
+                            disabled={fetcher.state !== "idle"}
+                            onClick={() => submitReview(item.id, "DECLINED")}
+                          >
+                            Decline
+                          </s-button>
                         </div>
                       ) : item.status === "approved" ? (
                         <s-button
                           type="button"
                           variant="primary"
                           tone="critical"
+                          loading={reviewingRequestId === item.id}
+                          disabled={fetcher.state !== "idle"}
                           onClick={() => setDeclineTarget(item)}
                         >
                           Decline
@@ -336,13 +358,21 @@ export default function TimeOffIndexPage() {
               ) : null}
             </s-stack>
           </s-box>
-          <Form method="post" slot="primary-action">
-            <input type="hidden" name="requestId" value={approveTarget.id} />
-            <input type="hidden" name="status" value="APPROVED" />
-            <s-button type="submit" variant="primary">
-              Approve
-            </s-button>
-          </Form>
+          <s-button
+            slot="primary-action"
+            variant="primary"
+            loading={
+              approveTarget !== null && reviewingRequestId === approveTarget.id
+            }
+            disabled={fetcher.state !== "idle"}
+            onClick={() => {
+              if (approveTarget) {
+                submitReview(approveTarget.id, "APPROVED");
+              }
+            }}
+          >
+            Approve
+          </s-button>
           <s-button
             slot="secondary-actions"
             variant="secondary"
@@ -372,13 +402,22 @@ export default function TimeOffIndexPage() {
               </s-text>
             </s-stack>
           </s-box>
-          <Form method="post" slot="primary-action">
-            <input type="hidden" name="requestId" value={declineTarget.id} />
-            <input type="hidden" name="status" value="DECLINED" />
-            <s-button type="submit" variant="primary" tone="critical">
-              Decline
-            </s-button>
-          </Form>
+          <s-button
+            slot="primary-action"
+            variant="primary"
+            tone="critical"
+            loading={
+              declineTarget !== null && reviewingRequestId === declineTarget.id
+            }
+            disabled={fetcher.state !== "idle"}
+            onClick={() => {
+              if (declineTarget) {
+                submitReview(declineTarget.id, "DECLINED");
+              }
+            }}
+          >
+            Decline
+          </s-button>
           <s-button
             slot="secondary-actions"
             variant="secondary"
