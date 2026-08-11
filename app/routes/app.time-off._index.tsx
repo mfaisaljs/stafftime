@@ -97,16 +97,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!existing) {
     return { error: "Time off request not found." };
   }
-  if (existing.status !== "PENDING") {
-    return { error: "This time off request has already been reviewed." };
+  if (status === "APPROVED" && existing.status !== "PENDING") {
+    return { error: "Only pending requests can be approved." };
+  }
+  if (status === "DECLINED" && existing.status === "DECLINED") {
+    return { error: "This time off request has already been declined." };
   }
 
   try {
-    const { cancelledShiftCount } = await approveTimeOffRequestForShop({
-      shopId: shop.id,
-      requestId: existing.id,
-      status: status as "APPROVED" | "DECLINED",
-    });
+    const { cancelledShiftCount, restoredShiftCount } =
+      await approveTimeOffRequestForShop({
+        shopId: shop.id,
+        requestId: existing.id,
+        status: status as "APPROVED" | "DECLINED",
+      });
 
     if (status === "APPROVED") {
       return {
@@ -116,7 +120,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             : "Time off approved.",
       };
     }
-    return { success: "Time off declined." };
+    return {
+      success:
+        restoredShiftCount > 0
+          ? `Time off declined. ${restoredShiftCount} cancelled shift${restoredShiftCount === 1 ? "" : "s"} restored.`
+          : "Time off declined.",
+    };
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Could not review request.",
@@ -132,6 +141,9 @@ export default function TimeOffIndexPage() {
   const tab = statusTab(searchParams.get("status") ?? status);
   const isEmpty = timeOffs.length === 0;
   const [approveTarget, setApproveTarget] = useState<
+    (typeof timeOffs)[number] | null
+  >(null);
+  const [declineTarget, setDeclineTarget] = useState<
     (typeof timeOffs)[number] | null
   >(null);
 
@@ -263,6 +275,15 @@ export default function TimeOffIndexPage() {
                             </s-button>
                           </Form>
                         </div>
+                      ) : item.status === "approved" ? (
+                        <s-button
+                          type="button"
+                          variant="secondary"
+                          tone="critical"
+                          onClick={() => setDeclineTarget(item)}
+                        >
+                          Decline
+                        </s-button>
                       ) : (
                         "—"
                       )}
@@ -322,6 +343,42 @@ export default function TimeOffIndexPage() {
             slot="secondary-actions"
             variant="secondary"
             onClick={() => setApproveTarget(null)}
+          >
+            Cancel
+          </s-button>
+        </s-modal>
+      ) : null}
+
+      {declineTarget ? (
+        <s-modal
+          heading="Decline approved time off?"
+          open
+          onClose={() => setDeclineTarget(null)}
+        >
+          <s-box padding="base">
+            <s-stack direction="block" gap="base">
+              <s-text>
+                Decline {declineTarget.staffName}&apos;s approved{" "}
+                {declineTarget.policyName} request ({formatDate(declineTarget.startDate)}{" "}
+                – {formatDate(declineTarget.endDate)})?
+              </s-text>
+              <s-text>
+                Any shifts cancelled for this leave will be restored to the
+                schedule.
+              </s-text>
+            </s-stack>
+          </s-box>
+          <Form method="post" slot="primary-action">
+            <input type="hidden" name="requestId" value={declineTarget.id} />
+            <input type="hidden" name="status" value="DECLINED" />
+            <s-button type="submit" variant="primary" tone="critical">
+              Decline
+            </s-button>
+          </Form>
+          <s-button
+            slot="secondary-actions"
+            variant="secondary"
+            onClick={() => setDeclineTarget(null)}
           >
             Cancel
           </s-button>

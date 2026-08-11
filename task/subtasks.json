@@ -1562,6 +1562,28 @@
         "app/services/time-off-overlap.test.ts"
       ],
       "lastUpdated": "2026-08-11T16:05:00.000Z"
+    },
+    {
+      "id": "ST086",
+      "taskId": "T009",
+      "title": "Decline approved time off (Admin + POS)",
+      "description": "Allow managers to decline/revoke approved leave; restore CANCELLED_LEAVE shifts back to SCHEDULED.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST085"],
+      "acceptanceCriteria": [
+        "Admin Time Off list shows Decline on approved rows",
+        "POS Approvals tab lists approved requests with Decline action",
+        "Declining approved leave restores cancelled shifts in date range"
+      ],
+      "files": [
+        "app/services/time-off-shifts.server.ts",
+        "app/services/time-off-pos.server.ts",
+        "app/routes/app.time-off._index.tsx",
+        "extensions/time-off/src/Modal.tsx",
+        "extensions/time-off/src/session.ts"
+      ],
+      "lastUpdated": "2026-08-11T16:10:00.000Z"
     }
   ]
 }

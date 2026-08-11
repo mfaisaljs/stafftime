@@ -127,6 +127,29 @@ export async function cancelShiftsForApprovedLeave(
   return result.count;
 }
 
+export async function restoreShiftsCancelledForLeave(
+  tx: Prisma.TransactionClient,
+  params: {
+    shopId: string;
+    employeeId: string;
+    startDate: string;
+    endDate: string;
+  },
+) {
+  const rangeStart = startOfDayFromKey(params.startDate);
+  const rangeEnd = endOfDayFromKey(params.endDate);
+  const result = await tx.shift.updateMany({
+    where: {
+      shopId: params.shopId,
+      employeeId: params.employeeId,
+      status: SHIFT_STATUS.CANCELLED_LEAVE,
+      startsAt: { gte: rangeStart, lte: rangeEnd },
+    },
+    data: { status: SHIFT_STATUS.SCHEDULED },
+  });
+  return result.count;
+}
+
 export async function approveTimeOffRequestForShop(params: {
   shopId: string;
   requestId: string;
@@ -139,14 +162,23 @@ export async function approveTimeOffRequestForShop(params: {
   if (!existing) {
     throw new Error("Time off request not found");
   }
-  if (existing.status !== "PENDING") {
-    throw new Error("This time off request has already been reviewed");
-  }
   if (params.status !== "APPROVED" && params.status !== "DECLINED") {
     throw new Error("Select a valid review action");
   }
+  if (params.status === "APPROVED" && existing.status !== "PENDING") {
+    throw new Error("Only pending requests can be approved");
+  }
+  if (params.status === "DECLINED") {
+    if (existing.status === "DECLINED") {
+      throw new Error("This time off request has already been declined");
+    }
+    if (existing.status !== "PENDING" && existing.status !== "APPROVED") {
+      throw new Error("This time off request cannot be declined");
+    }
+  }
 
   let cancelledShiftCount = 0;
+  let restoredShiftCount = 0;
   const updated = await prisma.$transaction(async (tx) => {
     const request = await tx.timeOffRequest.update({
       where: { id: existing.id },
@@ -161,12 +193,19 @@ export async function approveTimeOffRequestForShop(params: {
         startDate: request.startDate,
         endDate: request.endDate,
       });
+    } else if (existing.status === "APPROVED") {
+      restoredShiftCount = await restoreShiftsCancelledForLeave(tx, {
+        shopId: params.shopId,
+        employeeId: request.employeeId,
+        startDate: request.startDate,
+        endDate: request.endDate,
+      });
     }
 
     return request;
   });
 
-  return { request: updated, cancelledShiftCount };
+  return { request: updated, cancelledShiftCount, restoredShiftCount };
 }
 
 export function timeOffRangesOverlap(

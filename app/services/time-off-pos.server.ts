@@ -129,7 +129,8 @@ export async function getTimeOffBootstrapForPos(params: {
   );
   const canApprove = isManagerRole(employee.role);
 
-  const [policies, myRequests, staff, pendingRequests] = await Promise.all([
+  const [policies, myRequests, staff, pendingRequests, approvedRequests] =
+    await Promise.all([
     prisma.timeOffPolicy.findMany({
       where: { shopId: shop.id, active: true },
       orderBy: { name: "asc" },
@@ -165,6 +166,13 @@ export async function getTimeOffBootstrapForPos(params: {
           orderBy: { createdAt: "asc" },
         })
       : Promise.resolve([]),
+    canApprove
+      ? prisma.timeOffRequest.findMany({
+          where: { shopId: shop.id, status: "APPROVED" },
+          include: { policy: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
   ]);
 
   const pendingWithConflicts = canApprove
@@ -196,9 +204,9 @@ export async function getTimeOffBootstrapForPos(params: {
     ),
   ]);
 
-  // Resolve names for pending requesters who may not be in staff list (edge).
-  if (canApprove && pendingRequests.length > 0) {
-    const missingIds = pendingRequests
+  // Resolve names for pending/approved requesters who may not be in staff list (edge).
+  if (canApprove && (pendingRequests.length > 0 || approvedRequests.length > 0)) {
+    const missingIds = [...pendingRequests, ...approvedRequests]
       .map((item) => item.employeeId)
       .filter((id) => !employeeNameById.has(id));
     if (missingIds.length > 0) {
@@ -246,6 +254,9 @@ export async function getTimeOffBootstrapForPos(params: {
     })),
     pendingApprovals: pendingWithConflicts.map(({ request, overlappingShiftCount, overlappingShifts }) =>
       mapRequest(request, employeeNameById, overlappingShiftCount, overlappingShifts),
+    ),
+    approvedApprovals: approvedRequests.map((request) =>
+      mapRequest(request, employeeNameById),
     ),
     serverTime: Date.now(),
   };
@@ -380,7 +391,7 @@ export async function reviewTimeOffRequestForPos(params: {
     throw new Error("Only managers can approve or decline requests");
   }
 
-  const { request: updated, cancelledShiftCount } =
+  const { request: updated, cancelledShiftCount, restoredShiftCount } =
     await approveTimeOffRequestForShop({
       shopId: shop.id,
       requestId: params.requestId,
@@ -405,11 +416,14 @@ export async function reviewTimeOffRequestForPos(params: {
       ? cancelledShiftCount > 0
         ? `Time off approved. ${cancelledShiftCount} overlapping shift${cancelledShiftCount === 1 ? "" : "s"} cancelled.`
         : "Time off approved"
-      : "Time off declined";
+      : restoredShiftCount > 0
+        ? `Time off declined. ${restoredShiftCount} shift${restoredShiftCount === 1 ? "" : "s"} restored.`
+        : "Time off declined";
 
   return {
     request: mapRequest(updated, employeeNameById),
     cancelledShiftCount,
+    restoredShiftCount,
     message,
   };
 }
