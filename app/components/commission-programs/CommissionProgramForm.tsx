@@ -89,6 +89,10 @@ export default function CommissionProgramForm({
   const [commissionType, setCommissionType] = useState(
     initialProgram?.commissionType || "fixed",
   );
+  const isPercentage = commissionType === "percentage";
+  const commissionPlaceholder = isPercentage
+    ? "Enter percentage commission"
+    : "Enter fixed commission";
   const [commissionValue, setCommissionValue] = useState(() =>
     commissionValueFromInitial(initialProgram),
   );
@@ -559,11 +563,12 @@ export default function CommissionProgramForm({
                   <label>
                     Commission for All Products
                     <div className="money-input">
-                      <span>$</span>
+                      <span>{isPercentage ? "%" : "$"}</span>
                       <input
                         name="commissionValue"
                         inputMode="decimal"
                         value={commissionValue}
+                        placeholder={commissionPlaceholder}
                         onChange={(event) => {
                           setCommissionValue(event.currentTarget.value);
                           markDirty();
@@ -571,7 +576,11 @@ export default function CommissionProgramForm({
                       />
                     </div>
                   </label>
-                  <p>Set a fixed commission value in fixed amount</p>
+                  <p>
+                    {isPercentage
+                      ? "Set a percentage commission for all products"
+                      : "Set a fixed commission value in fixed amount"}
+                  </p>
                 </>
               ) : (
                 <>
@@ -673,10 +682,10 @@ export default function CommissionProgramForm({
                               </div>
                             </div>
                             <div className="money-input product-commission-input">
-                              <span>$</span>
+                              <span>{isPercentage ? "%" : "$"}</span>
                               <input
                                 inputMode="decimal"
-                                placeholder="Enter fixed commission"
+                                placeholder={commissionPlaceholder}
                                 value={product.commission}
                                 onChange={(event) =>
                                   updateProductCommission(
@@ -703,9 +712,10 @@ export default function CommissionProgramForm({
                         <p>Set commission for all selected products</p>
                         <div className="bulk-update-row">
                           <div className="money-input">
-                            <span>$</span>
+                            <span>{isPercentage ? "%" : "$"}</span>
                             <input
                               inputMode="decimal"
+                              placeholder={commissionPlaceholder}
                               value={bulkCommission}
                               onChange={(event) =>
                                 setBulkCommission(event.currentTarget.value)
@@ -723,7 +733,10 @@ export default function CommissionProgramForm({
                             Apply to Selected
                           </s-button>
                         </div>
-                        <p>Apply fixed commission value to all selected products</p>
+                        <p>
+                          Apply {isPercentage ? "percentage" : "fixed"} commission
+                          value to all selected products
+                        </p>
                         <p>
                           This will update the commission for selected products{" "}
                           {checkedProductIds.size} Products
