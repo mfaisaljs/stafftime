@@ -44,13 +44,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     ]),
   );
 
-  const pendingRequests = requests.filter((request) => request.status === "PENDING");
+  const reviewableForApprove = requests.filter(
+    (request) =>
+      request.status === "PENDING" || request.status === "DECLINED",
+  );
   const overlapByRequestId = new Map<
     string,
     ReturnType<typeof summarizeOverlappingShifts>
   >();
   await Promise.all(
-    pendingRequests.map(async (request) => {
+    reviewableForApprove.map(async (request) => {
       const overlapping = await findOverlappingScheduledShifts({
         shopId: shop.id,
         employeeId: request.employeeId,
@@ -97,8 +100,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!existing) {
     return { error: "Time off request not found." };
   }
-  if (status === "APPROVED" && existing.status !== "PENDING") {
-    return { error: "Only pending requests can be approved." };
+  if (
+    status === "APPROVED" &&
+    existing.status !== "PENDING" &&
+    existing.status !== "DECLINED"
+  ) {
+    return { error: "Only pending or declined requests can be approved." };
   }
   if (status === "DECLINED" && existing.status === "DECLINED") {
     return { error: "This time off request has already been declined." };
@@ -337,6 +344,15 @@ export default function TimeOffIndexPage() {
                           onClick={() => openDeclineModal(item)}
                         >
                           Decline
+                        </s-button>
+                      ) : item.status === "declined" ? (
+                        <s-button
+                          type="button"
+                          variant="primary"
+                          disabled={fetcher.state !== "idle"}
+                          onClick={() => openApproveModal(item)}
+                        >
+                          Approve
                         </s-button>
                       ) : (
                         "—"

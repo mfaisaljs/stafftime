@@ -165,8 +165,17 @@ export async function approveTimeOffRequestForShop(params: {
   if (params.status !== "APPROVED" && params.status !== "DECLINED") {
     throw new Error("Select a valid review action");
   }
-  if (params.status === "APPROVED" && existing.status !== "PENDING") {
-    throw new Error("Only pending requests can be approved");
+  if (params.status === "APPROVED") {
+    if (existing.status !== "PENDING" && existing.status !== "DECLINED") {
+      throw new Error("Only pending or declined requests can be approved");
+    }
+    await assertNoOverlappingTimeOffRequest({
+      shopId: params.shopId,
+      employeeId: existing.employeeId,
+      startDate: existing.startDate,
+      endDate: existing.endDate,
+      excludeRequestId: existing.id,
+    });
   }
   if (params.status === "DECLINED") {
     if (existing.status === "DECLINED") {
