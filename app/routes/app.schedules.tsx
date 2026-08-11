@@ -2133,20 +2133,25 @@ const SCHEDULE_STYLES = `
   }
 
   .schedule-cell {
+    box-sizing: border-box;
     display: grid;
     gap: 7px;
     min-height: 80px;
+    min-width: 0;
+    width: 100%;
   }
 
   .unavailable-pill {
     background: #fde2e2;
     border: 1px solid #f6c6c6;
     border-radius: 5px;
+    box-sizing: border-box;
     color: #8e1f0b;
     cursor: pointer;
     font-size: 11px;
     font-weight: 700;
     min-height: 26px;
+    width: 100%;
   }
 
   .empty-slot {
@@ -2154,6 +2159,7 @@ const SCHEDULE_STYLES = `
     background: #fafafa;
     border: 1px dashed #e3e3e3;
     border-radius: 5px;
+    box-sizing: border-box;
     color: #616161;
     cursor: pointer;
     display: inline-flex;
@@ -2176,16 +2182,24 @@ const SCHEDULE_STYLES = `
     background: #fff4d6;
     border: 1px solid #f0d48a;
     border-radius: 5px;
+    box-sizing: border-box;
     color: #8a5700;
-    font-size: 12px;
+    display: block;
+    font-size: 11px;
     font-weight: 650;
-    margin-bottom: 6px;
-    padding: 8px 10px;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 8px 6px;
     text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     width: 100%;
   }
 
   .shift-card {
+    box-sizing: border-box;
+    width: 100%;
     background: #000;
     border-radius: 5px;
     color: #fff;
