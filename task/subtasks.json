@@ -1668,6 +1668,29 @@
         "app/components/commission-programs/CommissionProgramForm.tsx"
       ],
       "lastUpdated": "2026-08-11T20:30:00.000Z"
+    },
+    {
+      "id": "ST091",
+      "taskId": "T017",
+      "title": "POS Commission order attribution (product rules)",
+      "description": "Add Commission POS blocks on Order details and Post-purchase; calculate earnings from commission program product rules after PIN.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST047", "ST089"],
+      "acceptanceCriteria": [
+        "commission extension targets order-details and purchase.post block/menu/modal",
+        "Commission calculated from active programs (all/specific products, fixed/percentage, after discount, limited time)",
+        "One attribution per order persists commission total and line breakdown"
+      ],
+      "files": [
+        "extensions/commission/",
+        "app/services/commission.server.ts",
+        "app/services/commission-calc.ts",
+        "app/routes/api.pos.commission.attribution.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260811200000_commission_attributions/migration.sql"
+      ],
+      "lastUpdated": "2026-08-11T20:40:00.000Z"
     }
   ]
 }

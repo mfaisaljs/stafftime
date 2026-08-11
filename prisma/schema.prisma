@@ -93,6 +93,7 @@ model Shop {
   salesTargets        SalesTarget[]
   salesTargetSnapshots SalesTargetSnapshot[]
   salesTargetAttributions SalesTargetAttribution[]
+  commissionAttributions CommissionAttribution[]
   taskLists           TaskList[]
   taskListCompletions TaskListCompletion[]
   timeOffPolicies     TimeOffPolicy[]
@@ -204,6 +205,26 @@ model CommissionProgram {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, createdAt])
+}
+
+/// One commission attribution per shop order (credits staff from program product rules).
+model CommissionAttribution {
+  id               String   @id @default(cuid())
+  shopId           String
+  employeeId       String
+  orderId          String
+  orderName        String?
+  commissionTotal  Float
+  currency         String   @default("USD")
+  programIds       String   @default("[]")
+  lineItemsJson    String   @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, orderId])
+  @@index([shopId, employeeId, createdAt])
 }
 
 model SalesTarget {

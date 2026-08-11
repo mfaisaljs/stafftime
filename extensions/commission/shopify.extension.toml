@@ -1,0 +1,35 @@
+api_version = "2026-01"
+
+[[extensions]]
+type = "ui_extension"
+name = "t:name"
+uid = "14cb1251-9ecb-42f4-a7f1-2bd8ab02e156"
+handle = "commission"
+description = "Trubuild: Attribute order commission from program product rules"
+
+[extensions.supported_features]
+runs_offline = true
+
+[[extensions.targeting]]
+module = "./src/AttributionBlock.tsx"
+target = "pos.order-details.block.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionMenuItem.tsx"
+target = "pos.order-details.action.menu-item.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionModal.tsx"
+target = "pos.order-details.action.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionBlock.tsx"
+target = "pos.purchase.post.block.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionMenuItem.tsx"
+target = "pos.purchase.post.action.menu-item.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionModal.tsx"
+target = "pos.purchase.post.action.render"
