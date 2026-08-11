@@ -1607,6 +1607,24 @@
         "app/services/sales-targets.server.ts"
       ],
       "lastUpdated": "2026-08-11T16:25:00.000Z"
+    },
+    {
+      "id": "ST088",
+      "taskId": "T017",
+      "title": "Edit sales target must not create new staff rows",
+      "description": "Editing a sales target should update that row only; adding/changing staff must not createMany extra entries.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST052"],
+      "acceptanceCriteria": [
+        "updateTarget updates the existing SalesTarget row only",
+        "Edit modal uses single-staff selection",
+        "Saving an edit does not create additional list entries"
+      ],
+      "files": [
+        "app/routes/app.sales-targets._index.tsx"
+      ],
+      "lastUpdated": "2026-08-11T16:35:00.000Z"
     }
   ]
 }

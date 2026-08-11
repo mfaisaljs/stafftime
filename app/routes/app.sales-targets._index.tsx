@@ -298,40 +298,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "updateTarget") {
     if (!targetId) return { ok: false, error: "Target not found." };
+    if (employeeIds.length !== 1) {
+      return { ok: false, error: "When editing, select exactly one staff member." };
+    }
 
     const existing = await prisma.salesTarget.findFirst({
       where: { id: targetId, shopId: shop.id },
     });
     if (!existing) return { ok: false, error: "Target not found." };
 
-    // Keep a single list row for this target (one primary staff), matching edit UI.
+    const nextEmployeeId = employeeIds[0];
+
+    // Edit updates this row only — never create additional staff target entries.
     await prisma.salesTarget.update({
       where: { id: targetId },
       data: {
         amount,
-        employeeIds: JSON.stringify(employeeIds.slice(0, 1)),
+        employeeIds: JSON.stringify([nextEmployeeId]),
         locationIds: JSON.stringify(locationIds),
       },
     });
 
-    // If edit selected additional staff, create rows for the new ones only.
-    const extraStaff = employeeIds.slice(1);
-    if (extraStaff.length > 0) {
-      await prisma.salesTarget.createMany({
-        data: extraStaff.map((employeeId) => ({
-          shopId: shop.id,
-          yearMonth: existing.yearMonth,
-          amount,
-          currency: existing.currency,
-          employeeIds: JSON.stringify([employeeId]),
-          locationIds: JSON.stringify(locationIds),
-        })),
-      });
-    }
-
     await upsertTargetGoalSnapshots({
       shopId: shop.id,
-      employeeIds,
+      employeeIds: [nextEmployeeId],
       yearMonth: existing.yearMonth || currentYearMonth(),
       amount,
       currency: existing.currency,
@@ -439,6 +429,10 @@ export default function SalesTargetsIndex() {
 
   const toggleStaff = (id: string, checked: boolean) => {
     setSelectedStaffIds((current) => {
+      // Edit mode is single-staff: picking someone replaces the selection.
+      if (isEditing) {
+        return checked ? new Set([id]) : new Set();
+      }
       const next = new Set(current);
       if (checked) next.add(id);
       else next.delete(id);
@@ -466,6 +460,10 @@ export default function SalesTargetsIndex() {
   const submitTarget = () => {
     if (selectedStaffIds.size === 0) {
       setFormError("Select at least one staff member.");
+      return;
+    }
+    if (isEditing && selectedStaffIds.size !== 1) {
+      setFormError("When editing, select exactly one staff member.");
       return;
     }
     if (selectedLocationIds.size === 0) {
@@ -665,14 +663,16 @@ export default function SalesTargetsIndex() {
           <div className="target-section">
             <div className="target-section-header">
               <strong>Staff members</strong>
-              <button
-                type="button"
-                className="select-all-link"
-                onClick={selectAllStaff}
-                disabled={employees.length === 0 || allStaffSelected}
-              >
-                Select all
-              </button>
+              {!isEditing ? (
+                <button
+                  type="button"
+                  className="select-all-link"
+                  onClick={selectAllStaff}
+                  disabled={employees.length === 0 || allStaffSelected}
+                >
+                  Select all
+                </button>
+              ) : null}
             </div>
             <div className="selection-box">
               {employees.length === 0 ? (
