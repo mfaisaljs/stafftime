@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T09:45:00.000Z",
+  "lastUpdated": "2026-08-11T09:55:00.000Z",
   "notes": [
+    "ST076: Post-PIN POS UI matches Clock In/Out dashboard (timers, shift info, history) with Start/End Break actions.",
     "Updated: POS errors/success use native shopify.toast instead of s-banner.",
     "Updated: tile tap opens native PIN pad first; modal opens only after successful PIN (skips PIN/QR chooser).",
     "Fixed: after PIN accept, session is persisted to extension storage and restored so clock UI shows even if modal remounts.",

@@ -20,6 +20,8 @@ import {
 import {
   formatClockTime,
   formatDuration,
+  formatTimerHms,
+  summarizeTimeEntrySeconds,
   type HourFormat,
   type TimeFormat,
 } from "./time-tracking.server";
@@ -401,6 +403,7 @@ export async function getOpenTimeEntry(employeeId: string) {
   return prisma.timeEntry.findFirst({
     where: { employeeId, status: "OPEN" },
     include: {
+      location: true,
       breaks: {
         where: { endedAt: null },
         orderBy: { startedAt: "desc" },
@@ -411,22 +414,145 @@ export async function getOpenTimeEntry(employeeId: string) {
   });
 }
 
+export type PosHistoryEvent = {
+  id: string;
+  type: "CLOCK_IN" | "CLOCK_OUT" | "BREAK_START" | "BREAK_END";
+  label: string;
+  at: string;
+  atLabel: string;
+  badge: string;
+  tone: "success" | "critical" | "warning" | "neutral";
+};
+
+function startOfLocalDay(value = new Date()) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function startOfLocalWeek(value = new Date()) {
+  const date = startOfLocalDay(value);
+  date.setDate(date.getDate() - date.getDay());
+  return date;
+}
+
+function formatPosClockLabel(value: Date, timeFormat: TimeFormat) {
+  if (timeFormat === "24H") {
+    const hours = String(value.getHours()).padStart(2, "0");
+    const minutes = String(value.getMinutes()).padStart(2, "0");
+    const seconds = String(value.getSeconds()).padStart(2, "0");
+    return `${hours}:${minutes}:${seconds}`;
+  }
+  return value.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function buildTodayHistory(
+  entries: Array<{
+    id: string;
+    clockInAt: Date;
+    clockOutAt: Date | null;
+    breaks: Array<{ id: string; startedAt: Date; endedAt: Date | null }>;
+  }>,
+  timeFormat: TimeFormat,
+): PosHistoryEvent[] {
+  const events: PosHistoryEvent[] = [];
+  for (const entry of entries) {
+    events.push({
+      id: `${entry.id}-in`,
+      type: "CLOCK_IN",
+      label: "Clock In",
+      at: entry.clockInAt.toISOString(),
+      atLabel: formatPosClockLabel(entry.clockInAt, timeFormat),
+      badge: "IN",
+      tone: "success",
+    });
+    for (const breakEntry of entry.breaks) {
+      events.push({
+        id: `${breakEntry.id}-start`,
+        type: "BREAK_START",
+        label: "Start Break",
+        at: breakEntry.startedAt.toISOString(),
+        atLabel: formatPosClockLabel(breakEntry.startedAt, timeFormat),
+        badge: "BRK",
+        tone: "warning",
+      });
+      if (breakEntry.endedAt) {
+        events.push({
+          id: `${breakEntry.id}-end`,
+          type: "BREAK_END",
+          label: "End Break",
+          at: breakEntry.endedAt.toISOString(),
+          atLabel: formatPosClockLabel(breakEntry.endedAt, timeFormat),
+          badge: "END",
+          tone: "neutral",
+        });
+      }
+    }
+    if (entry.clockOutAt) {
+      events.push({
+        id: `${entry.id}-out`,
+        type: "CLOCK_OUT",
+        label: "Clock Out",
+        at: entry.clockOutAt.toISOString(),
+        atLabel: formatPosClockLabel(entry.clockOutAt, timeFormat),
+        badge: "OUT",
+        tone: "critical",
+      });
+    }
+  }
+  return events.sort(
+    (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime(),
+  );
+}
+
 export async function buildEmployeeStatus(employeeId: string) {
   const employee = await prisma.employee.findUniqueOrThrow({
     where: { id: employeeId },
+    include: { location: true },
   });
   const settings = await getShopSettings(employee.shopId);
-  const [entry, shift, payrollStats] = await Promise.all([
-    getOpenTimeEntry(employeeId),
-    getEmployeeShiftToday(employeeId),
-    getManagerPayrollStatsForToday(employee.shopId, employeeId, settings),
-  ]);
+  const now = new Date();
+  const dayStart = startOfLocalDay(now);
+  const weekStart = startOfLocalWeek(now);
+
+  const [entry, shift, payrollStats, dayEntries, weekEntries] =
+    await Promise.all([
+      getOpenTimeEntry(employeeId),
+      getEmployeeShiftToday(employeeId),
+      getManagerPayrollStatsForToday(employee.shopId, employeeId, settings),
+      prisma.timeEntry.findMany({
+        where: {
+          employeeId,
+          clockInAt: { gte: dayStart },
+        },
+        include: {
+          location: true,
+          breaks: { orderBy: { startedAt: "asc" } },
+        },
+        orderBy: { clockInAt: "asc" },
+      }),
+      prisma.timeEntry.findMany({
+        where: {
+          employeeId,
+          clockInAt: { gte: weekStart },
+        },
+        include: {
+          breaks: true,
+        },
+      }),
+    ]);
+
+  const openEntryFull =
+    dayEntries.find((item) => item.clockOutAt == null) ?? null;
+  const openBreak = openEntryFull?.breaks.find((item) => item.endedAt == null);
 
   let status: WorkforceStatus = "CLOCKED_OUT";
   let breakStartAt: string | undefined;
-
-  if (entry) {
-    const openBreak = entry.breaks[0];
+  if (openEntryFull) {
     if (openBreak) {
       status = "ON_BREAK";
       breakStartAt = openBreak.startedAt.toISOString();
@@ -435,18 +561,73 @@ export async function buildEmployeeStatus(employeeId: string) {
     }
   }
 
+  const summarizeOptions = { deductBreakTime: settings.deductBreakTime };
+  const dayTotalSeconds = dayEntries.reduce(
+    (sum, item) =>
+      sum +
+      summarizeTimeEntrySeconds(item, now, summarizeOptions).paidSeconds,
+    0,
+  );
+  const weekTotalSeconds = weekEntries.reduce(
+    (sum, item) =>
+      sum +
+      summarizeTimeEntrySeconds(item, now, summarizeOptions).paidSeconds,
+    0,
+  );
+  const sessionSeconds = openEntryFull
+    ? summarizeTimeEntrySeconds(openEntryFull, now, summarizeOptions)
+        .paidSeconds
+    : 0;
+
+  const firstClockIn = dayEntries[0]?.clockInAt ?? openEntryFull?.clockInAt;
+  const currentClockIn =
+    openEntryFull?.clockInAt ?? dayEntries.at(-1)?.clockInAt;
+  const locationName =
+    openEntryFull?.location?.name ??
+    entry?.location?.name ??
+    employee.location?.name ??
+    "POS";
+
   return {
     employeeId,
-    employeeName: "",
+    employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
     status,
-    clockInAt: entry?.clockInAt.toISOString(),
-    clockInAtMs: entry?.clockInAt.getTime(),
+    clockInAt: openEntryFull?.clockInAt.toISOString(),
+    clockInAtMs: openEntryFull?.clockInAt.getTime(),
     breakStartAt,
     shiftStart: shift?.startsAt.toISOString(),
     shiftEnd: shift?.endsAt.toISOString(),
-    serverTime: Date.now(),
+    serverTime: now.getTime(),
     timeFormat: settings.timeFormat as TimeFormat,
     hourFormat: settings.hourFormat as HourFormat,
+    locationName,
+    dateLabel: now.toLocaleString(undefined, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+    }),
+    firstClockInAt: firstClockIn?.toISOString(),
+    firstClockInLabel: firstClockIn
+      ? formatPosClockLabel(firstClockIn, settings.timeFormat as TimeFormat)
+      : "—",
+    currentClockInAt: currentClockIn?.toISOString(),
+    currentClockInLabel: currentClockIn
+      ? formatPosClockLabel(currentClockIn, settings.timeFormat as TimeFormat)
+      : "—",
+    dayTotalSeconds,
+    dayTotalLabel: formatTimerHms(dayTotalSeconds),
+    sessionSeconds,
+    sessionLabel: formatTimerHms(sessionSeconds),
+    weekTotalSeconds,
+    weekTotalLabel: formatTimerHms(weekTotalSeconds),
+    isRunning: status === "CLOCKED_IN" || status === "ON_BREAK",
+    history: buildTodayHistory(
+      dayEntries,
+      settings.timeFormat as TimeFormat,
+    ),
     payrollStats: payrollStats
       ? {
           hours: payrollStats.hours,
@@ -557,6 +738,7 @@ export async function clockIn(params: {
 export async function clockOut(params: {
   shopDomain: string;
   employeeId: string;
+  notes?: string;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const entry = await getOpenTimeEntry(params.employeeId);
@@ -572,11 +754,13 @@ export async function clockOut(params: {
     });
   }
 
+  const notes = params.notes?.trim();
   const updated = await prisma.timeEntry.update({
     where: { id: entry.id },
     data: {
       clockOutAt: new Date(),
       status: "CLOSED",
+      ...(notes ? { notes } : {}),
     },
   });
 

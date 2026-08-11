@@ -18,7 +18,10 @@ export async function handlePosPreflight({ request }: LoaderFunctionArgs) {
 export async function handlePosClockAction(request: Request, action: PosAction) {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { employeeId } = body as { employeeId?: string };
+  const { employeeId, notes } = body as {
+    employeeId?: string;
+    notes?: string;
+  };
 
   if (!employeeId) {
     return cors(errorResponse("employeeId is required"));
@@ -31,7 +34,11 @@ export async function handlePosClockAction(request: Request, action: PosAction) 
         status = await clockIn({ shopDomain: sessionToken.dest, employeeId });
         break;
       case "clock-out":
-        status = await clockOut({ shopDomain: sessionToken.dest, employeeId });
+        status = await clockOut({
+          shopDomain: sessionToken.dest,
+          employeeId,
+          notes,
+        });
         break;
       case "break-start":
         status = await startBreak({ shopDomain: sessionToken.dest, employeeId });

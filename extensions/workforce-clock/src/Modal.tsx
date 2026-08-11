@@ -1,10 +1,13 @@
 import { render } from "preact";
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
   ACTIVE_SESSION_STORAGE_KEY,
+  formatTimerHms,
+  liveTimerSeconds,
   parseStoredVerifySession,
   type ClockStatus,
-  type StoredVerifySession,
+  type EmployeeStatus,
+  type PosHistoryEvent,
 } from "./clockStatus";
 import {
   apiFetch,
@@ -15,11 +18,7 @@ import {
   verifyPin,
 } from "./posApi";
 
-type EmployeeStatus = StoredVerifySession["status"] & {
-  employeeId: string;
-  employeeName: string;
-  status: ClockStatus;
-};
+type Screen = "main" | "history";
 
 export default async function extension() {
   render(<WorkforceModal />, document.body);
@@ -28,6 +27,8 @@ export default async function extension() {
 function WorkforceModal() {
   const [qrCode, setQrCode] = useState("");
   const [mode, setMode] = useState<"pin" | "qr">("pin");
+  const [screen, setScreen] = useState<Screen>("main");
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [booting, setBooting] = useState(true);
   const [verified, setVerified] = useState<VerifyResponse | null>(null);
@@ -57,12 +58,13 @@ function WorkforceModal() {
       const next: VerifyResponse = {
         employee: data.employee,
         status: { ...data.status },
-        serverTime: data.serverTime,
+        serverTime: data.serverTime ?? data.status.serverTime,
       };
-      syncClockOffset(next.status as EmployeeStatus, next.serverTime);
+      syncClockOffset(next.status, next.serverTime);
       setVerified(next);
       setQrCode("");
       setMode("pin");
+      setScreen("main");
       if (options?.persist !== false) {
         void persistVerifySession(next);
       }
@@ -128,7 +130,6 @@ function WorkforceModal() {
     }
   }, [loadSessionIntoUi]);
 
-  // Restore session written by the tile PIN pad (or a prior modal verify).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -137,7 +138,7 @@ function WorkforceModal() {
           await shopify.storage.get(ACTIVE_SESSION_STORAGE_KEY),
         );
         if (!cancelled && stored) {
-          syncClockOffset(stored.status as EmployeeStatus, stored.serverTime);
+          syncClockOffset(stored.status, stored.serverTime);
           setVerified(stored);
         }
       } catch {
@@ -157,14 +158,26 @@ function WorkforceModal() {
     return () => clearInterval(timer);
   }, []);
 
-  const elapsedLabel = useMemo(() => {
-    const clockInAtMs = verified?.status.clockInAtMs;
-    if (!clockInAtMs) return "Not clocked in";
-
-    const adjustedNow = now + clockOffsetRef.current;
-    const seconds = Math.max(0, Math.floor((adjustedNow - clockInAtMs) / 1000));
-    return formatElapsed(seconds, verified?.status.hourFormat ?? "STANDARD");
-  }, [now, verified?.status.clockInAtMs, verified?.status.hourFormat]);
+  const adjustedNow = now + clockOffsetRef.current;
+  const status = verified?.status;
+  const isRunning = Boolean(status?.isRunning);
+  const dayTimer = formatTimerHms(
+    liveTimerSeconds(
+      status?.dayTotalSeconds,
+      status?.serverTime ?? verified?.serverTime,
+      adjustedNow,
+      isRunning,
+    ),
+  );
+  const sessionTimer = formatTimerHms(
+    liveTimerSeconds(
+      status?.sessionSeconds,
+      status?.serverTime ?? verified?.serverTime,
+      adjustedNow,
+      isRunning,
+    ),
+  );
+  const weekTimer = status?.weekTotalLabel ?? formatTimerHms(status?.weekTotalSeconds ?? 0);
 
   async function verifyWithQr() {
     setLoading(true);
@@ -185,12 +198,14 @@ function WorkforceModal() {
     try {
       const data = (await apiFetch(`/api/pos/${action}`, {
         employeeId: verified.employee.id,
+        ...(action === "clock-out" && note.trim() ? { notes: note.trim() } : {}),
       })) as { status: EmployeeStatus; serverTime?: number };
       applyVerified({
         ...verified,
         status: data.status,
         serverTime: data.serverTime,
       });
+      if (action === "clock-out") setNote("");
       showToast(successMessageForAction(action));
     } catch (err) {
       showToast(messageFromError(err, "Action failed"));
@@ -204,14 +219,15 @@ function WorkforceModal() {
     void clearSession();
     setVerified(null);
     setMode("pin");
+    setScreen("main");
+    setNote("");
     setLoading(false);
-    // Open PIN pad immediately — no intermediate chooser step.
     setTimeout(() => showNativePinPad(), 0);
   }
 
   if (booting) {
     return (
-      <s-page heading="StaffTime">
+      <s-page heading="Clock In/Out">
         <s-scroll-box>
           <s-text>Loading...</s-text>
         </s-scroll-box>
@@ -219,9 +235,9 @@ function WorkforceModal() {
     );
   }
 
-  if (!verified) {
+  if (!verified || !status) {
     return (
-      <s-page heading="StaffTime">
+      <s-page heading="Clock In/Out">
         <s-scroll-box>
           <s-stack direction="block" gap="base">
             <s-text>Enter your staff PIN to clock in or out.</s-text>
@@ -242,7 +258,6 @@ function WorkforceModal() {
                 QR Code
               </s-button>
             </s-stack>
-
             {mode === "pin" ? (
               <s-button variant="primary" onClick={showNativePinPad}>
                 Enter PIN
@@ -270,96 +285,241 @@ function WorkforceModal() {
     );
   }
 
-  const status = verified.status;
-  const statusLabel =
-    status.status === "ON_BREAK"
-      ? "On break"
-      : status.status === "CLOCKED_IN"
-        ? "Working"
-        : "Clocked out";
+  if (screen === "history") {
+    return (
+      <HistoryScreen
+        history={status.history ?? []}
+        onBack={() => setScreen("main")}
+      />
+    );
+  }
 
   return (
-    <s-page heading={`Hello, ${verified.employee.firstName}`}>
+    <MainScreen
+      firstName={verified.employee.firstName}
+      status={status.status}
+      dayTimer={dayTimer}
+      sessionTimer={sessionTimer}
+      weekTimer={weekTimer}
+      isRunning={isRunning}
+      dateLabel={status.dateLabel ?? "—"}
+      locationName={status.locationName ?? "POS"}
+      firstClockInLabel={status.firstClockInLabel ?? "—"}
+      currentClockInLabel={status.currentClockInLabel ?? "—"}
+      note={note}
+      loading={loading}
+      onNoteChange={setNote}
+      onViewHistory={() => setScreen("history")}
+      onClockIn={() => void performAction("clock-in")}
+      onClockOut={() => void performAction("clock-out")}
+      onBreakStart={() => void performAction("break-start")}
+      onBreakEnd={() => void performAction("break-end")}
+      onSwitchEmployee={switchEmployee}
+    />
+  );
+}
+
+function MainScreen(props: {
+  firstName: string;
+  status: ClockStatus;
+  dayTimer: string;
+  sessionTimer: string;
+  weekTimer: string;
+  isRunning: boolean;
+  dateLabel: string;
+  locationName: string;
+  firstClockInLabel: string;
+  currentClockInLabel: string;
+  note: string;
+  loading: boolean;
+  onNoteChange: (value: string) => void;
+  onViewHistory: () => void;
+  onClockIn: () => void;
+  onClockOut: () => void;
+  onBreakStart: () => void;
+  onBreakEnd: () => void;
+  onSwitchEmployee: () => void;
+}) {
+  const statusCopy = statusBadgeCopy(props.status);
+
+  return (
+    <s-page heading="Clock In/Out">
       <s-scroll-box>
-        <s-stack direction="block" gap="base">
-          <s-badge
-            tone={
-              status.status === "CLOCKED_IN"
-                ? "success"
-                : status.status === "ON_BREAK"
-                  ? "warning"
-                  : "critical"
-            }
-          >
-            {statusLabel}
-          </s-badge>
-          <s-text>Shift timer: {elapsedLabel}</s-text>
-          {status.payrollStats && (
-            <s-text>
-              Today: {status.payrollStats.hoursLabel} · $
-              {status.payrollStats.earningsLabel}
-            </s-text>
-          )}
-          {status.shiftStart && status.shiftEnd && (
-            <s-text>
-              Today&apos;s shift: {formatTime(status.shiftStart, status.timeFormat)} –{" "}
-              {formatTime(status.shiftEnd, status.timeFormat)}
-            </s-text>
-          )}
-          <s-stack direction="inline" gap="base">
-            {status.status === "CLOCKED_OUT" && (
-              <s-button
-                variant="primary"
-                loading={loading}
-                onClick={() => void performAction("clock-in")}
-              >
-                Clock In
+        <s-stack direction="block" gap="large">
+          <s-stack direction="block" gap="small">
+            <s-heading>Welcome, {props.firstName}!</s-heading>
+            <s-badge tone={statusCopy.tone}>{statusCopy.label}</s-badge>
+          </s-stack>
+
+          <s-section heading="Time Tracking">
+            <s-stack direction="block" gap="base">
+              <TimerRow
+                label="Day total"
+                value={props.dayTimer}
+                running={props.isRunning}
+              />
+              <TimerRow
+                label="Current session"
+                value={props.sessionTimer}
+                running={props.isRunning}
+              />
+              <InfoRow label="Week total" value={props.weekTimer} />
+            </s-stack>
+          </s-section>
+
+          <s-section heading="Shift Info">
+            <s-stack direction="block" gap="base">
+              <InfoRow label="Date" value={props.dateLabel} />
+              <InfoRow label="Location" value={props.locationName} />
+              <InfoRow
+                label="First clock in today"
+                value={props.firstClockInLabel}
+              />
+              <InfoRow
+                label="Current clock in"
+                value={props.currentClockInLabel}
+              />
+            </s-stack>
+          </s-section>
+
+          <s-section heading="Actions">
+            <s-stack direction="block" gap="base">
+              <s-button variant="secondary" onClick={props.onViewHistory}>
+                View Today&apos;s History
               </s-button>
-            )}
-            {status.status === "CLOCKED_IN" && (
-              <s-stack direction="inline" gap="base">
+
+              {props.status === "CLOCKED_IN" && (
                 <s-button
                   variant="secondary"
-                  loading={loading}
-                  onClick={() => void performAction("break-start")}
+                  loading={props.loading}
+                  onClick={props.onBreakStart}
                 >
                   Start Break
                 </s-button>
+              )}
+
+              {props.status === "ON_BREAK" && (
                 <s-button
                   variant="primary"
-                  loading={loading}
-                  onClick={() => void performAction("clock-out")}
-                >
-                  Clock Out
-                </s-button>
-              </s-stack>
-            )}
-            {status.status === "ON_BREAK" && (
-              <s-stack direction="inline" gap="base">
-                <s-button
-                  variant="primary"
-                  loading={loading}
-                  onClick={() => void performAction("break-end")}
+                  loading={props.loading}
+                  onClick={props.onBreakEnd}
                 >
                   End Break
                 </s-button>
+              )}
+
+              {(props.status === "CLOCKED_IN" || props.status === "ON_BREAK") && (
+                <s-text-area
+                  label="Note before clock out (optional)"
+                  value={props.note}
+                  placeholder="e.g. Forgot to clock out — actual end time was 6:00 PM"
+                  onInput={(event) =>
+                    props.onNoteChange(event.currentTarget.value)
+                  }
+                />
+              )}
+
+              {props.status === "CLOCKED_OUT" ? (
                 <s-button
-                  variant="secondary"
-                  loading={loading}
-                  onClick={() => void performAction("clock-out")}
+                  variant="primary"
+                  loading={props.loading}
+                  onClick={props.onClockIn}
+                >
+                  Clock In
+                </s-button>
+              ) : (
+                <s-button
+                  variant="primary"
+                  tone="critical"
+                  loading={props.loading}
+                  onClick={props.onClockOut}
                 >
                   Clock Out
                 </s-button>
-              </s-stack>
-            )}
-          </s-stack>
-          <s-button variant="secondary" onClick={switchEmployee}>
-            Switch employee
-          </s-button>
+              )}
+
+              <s-button variant="secondary" onClick={props.onSwitchEmployee}>
+                Switch employee
+              </s-button>
+            </s-stack>
+          </s-section>
         </s-stack>
       </s-scroll-box>
     </s-page>
   );
+}
+
+function HistoryScreen(props: {
+  history: PosHistoryEvent[];
+  onBack: () => void;
+}) {
+  return (
+    <s-page heading="Today's History">
+      <s-scroll-box>
+        <s-stack direction="block" gap="base">
+          <s-button variant="secondary" onClick={props.onBack}>
+            Back to Main
+          </s-button>
+
+          <s-section heading="Time Records">
+            <s-stack direction="block" gap="base">
+              {props.history.length === 0 ? (
+                <s-text>No time records yet today.</s-text>
+              ) : (
+                props.history.map((event) => (
+                  <s-stack key={event.id} direction="inline" gap="base">
+                    <s-stack direction="block" gap="none">
+                      <s-text>{event.label}</s-text>
+                      <s-text>Time: {event.atLabel}</s-text>
+                    </s-stack>
+                    <s-badge tone={event.tone}>{event.badge}</s-badge>
+                  </s-stack>
+                ))
+              )}
+            </s-stack>
+          </s-section>
+        </s-stack>
+      </s-scroll-box>
+    </s-page>
+  );
+}
+
+function TimerRow(props: {
+  label: string;
+  value: string;
+  running?: boolean;
+}) {
+  return (
+    <s-stack direction="block" gap="none">
+      <s-stack direction="inline" gap="small">
+        <s-text>{props.label}</s-text>
+        {props.running ? <s-badge tone="success">Running</s-badge> : null}
+      </s-stack>
+      <s-heading>{props.value}</s-heading>
+    </s-stack>
+  );
+}
+
+function InfoRow(props: { label: string; value: string }) {
+  return (
+    <s-stack direction="inline" gap="base">
+      <s-text>{props.label}</s-text>
+      <s-text>{props.value}</s-text>
+    </s-stack>
+  );
+}
+
+function statusBadgeCopy(status: ClockStatus): {
+  label: string;
+  tone: "success" | "warning" | "critical" | "neutral";
+} {
+  if (status === "CLOCKED_IN") {
+    return { label: "Currently Working", tone: "success" };
+  }
+  if (status === "ON_BREAK") {
+    return { label: "On Break", tone: "warning" };
+  }
+  return { label: "Clocked Out", tone: "critical" };
 }
 
 function successMessageForAction(action: string): string {
@@ -375,30 +535,4 @@ function successMessageForAction(action: string): string {
     default:
       return "Done";
   }
-}
-
-function formatTime(iso: string, timeFormat: "24H" | "12H" = "12H") {
-  const date = new Date(iso);
-  if (timeFormat === "24H") {
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
-  }
-  return date.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatElapsed(
-  totalSeconds: number,
-  hourFormat: "STANDARD" | "DECIMAL" = "STANDARD",
-) {
-  if (hourFormat === "DECIMAL") {
-    return `${(totalSeconds / 3600).toFixed(2)}h`;
-  }
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  return `${h}h ${m}m ${s}s`;
 }

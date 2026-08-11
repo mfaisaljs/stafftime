@@ -1,5 +1,49 @@
 export type ClockStatus = "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
 
+export type PosHistoryEvent = {
+  id: string;
+  type: "CLOCK_IN" | "CLOCK_OUT" | "BREAK_START" | "BREAK_END";
+  label: string;
+  at: string;
+  atLabel: string;
+  badge: string;
+  tone: "success" | "critical" | "warning" | "neutral";
+};
+
+export type EmployeeStatus = {
+  employeeId: string;
+  employeeName: string;
+  status: ClockStatus;
+  clockInAt?: string;
+  clockInAtMs?: number;
+  breakStartAt?: string;
+  shiftStart?: string;
+  shiftEnd?: string;
+  serverTime?: number;
+  timeFormat?: "24H" | "12H";
+  hourFormat?: "STANDARD" | "DECIMAL";
+  locationName?: string;
+  dateLabel?: string;
+  firstClockInAt?: string;
+  firstClockInLabel?: string;
+  currentClockInAt?: string;
+  currentClockInLabel?: string;
+  dayTotalSeconds?: number;
+  dayTotalLabel?: string;
+  sessionSeconds?: number;
+  sessionLabel?: string;
+  weekTotalSeconds?: number;
+  weekTotalLabel?: string;
+  isRunning?: boolean;
+  history?: PosHistoryEvent[];
+  payrollStats?: {
+    hours: number;
+    earnings: number;
+    hoursLabel: string;
+    earningsLabel: string;
+  } | null;
+};
+
 export type StoredClockState = {
   status: ClockStatus;
   employeeId?: string;
@@ -8,25 +52,7 @@ export type StoredClockState = {
 
 export type StoredVerifySession = {
   employee: { id: string; firstName: string; lastName: string };
-  status: {
-    employeeId?: string;
-    employeeName?: string;
-    status: ClockStatus;
-    clockInAt?: string;
-    clockInAtMs?: number;
-    breakStartAt?: string;
-    shiftStart?: string;
-    shiftEnd?: string;
-    serverTime?: number;
-    timeFormat?: "24H" | "12H";
-    hourFormat?: "STANDARD" | "DECIMAL";
-    payrollStats?: {
-      hours: number;
-      earnings: number;
-      hoursLabel: string;
-      earningsLabel: string;
-    } | null;
-  };
+  status: EmployeeStatus;
   serverTime?: number;
 };
 
@@ -91,8 +117,30 @@ export function parseStoredVerifySession(value: unknown): StoredVerifySession | 
     status: {
       ...status,
       status: status.status,
+      employeeId: status.employeeId ?? employee.id,
+      employeeName:
+        status.employeeName ?? `${employee.firstName} ${employee.lastName}`.trim(),
     },
     serverTime:
       typeof record.serverTime === "number" ? record.serverTime : undefined,
   };
+}
+
+export function formatTimerHms(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hours = String(Math.floor(safe / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((safe % 3600) / 60)).padStart(2, "0");
+  const seconds = String(safe % 60).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+export function liveTimerSeconds(
+  baseSeconds: number | undefined,
+  serverTime: number | undefined,
+  nowMs: number,
+  isRunning: boolean | undefined,
+): number {
+  const base = typeof baseSeconds === "number" ? baseSeconds : 0;
+  if (!isRunning || typeof serverTime !== "number") return base;
+  return base + Math.max(0, Math.floor((nowMs - serverTime) / 1000));
 }

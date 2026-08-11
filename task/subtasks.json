@@ -1337,6 +1337,29 @@
         "extensions/workforce-clock/src/Modal.tsx"
       ],
       "lastUpdated": "2026-08-11T09:15:00.000Z"
+    },
+    {
+      "id": "ST076",
+      "taskId": "T004",
+      "title": "POS post-login dashboard with breaks and history",
+      "description": "Rebuild Clock In/Out modal after PIN to match competitor layout: welcome, live timers, shift info, actions including Start/End Break, optional clock-out note, and Today's History.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST075"],
+      "acceptanceCriteria": [
+        "After PIN, main screen shows welcome, status, day/session/week timers, and shift info",
+        "Start Break shown when clocked in; End Break shown when on break",
+        "Clock Out supports optional note",
+        "View Today's History lists clock/break events for the day"
+      ],
+      "files": [
+        "extensions/workforce-clock/src/Modal.tsx",
+        "extensions/workforce-clock/src/clockStatus.ts",
+        "app/services/workforce.server.ts",
+        "app/services/time-tracking.server.ts",
+        "app/utils/pos-api.server.ts"
+      ],
+      "lastUpdated": "2026-08-11T09:55:00.000Z"
     }
   ]
 }
