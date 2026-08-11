@@ -1,0 +1,19 @@
+api_version = "2026-01"
+
+[[extensions]]
+type = "ui_extension"
+name = "t:name"
+uid = "7376a1bc-b5b2-43fc-a918-5dbed049fd88"
+handle = "sales-target"
+description = "Trubuild: Monthly sales target progress"
+
+[extensions.supported_features]
+runs_offline = true
+
+[[extensions.targeting]]
+module = "./src/Tile.tsx"
+target = "pos.home.tile.render"
+
+[[extensions.targeting]]
+module = "./src/Modal.tsx"
+target = "pos.home.modal.render"

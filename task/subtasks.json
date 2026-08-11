@@ -1584,6 +1584,29 @@
         "extensions/time-off/src/session.ts"
       ],
       "lastUpdated": "2026-08-11T16:10:00.000Z"
+    },
+    {
+      "id": "ST087",
+      "taskId": "T017",
+      "title": "POS Sales Targets tile (PIN-first)",
+      "description": "Add Sales Targets POS tile matching competitor layout: PIN first, then greeting and Monthly Sales Target status/sold/progress/remaining.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST052"],
+      "acceptanceCriteria": [
+        "Tile tap always prompts for PIN before opening modal",
+        "Modal shows greeting, monthly progress copy, and Status/Sold/Progress/Remaining rows",
+        "API returns employee monthly target progress for POS after verify"
+      ],
+      "files": [
+        "extensions/sales-target/src/Tile.tsx",
+        "extensions/sales-target/src/Modal.tsx",
+        "extensions/sales-target/src/posApi.ts",
+        "extensions/sales-target/shopify.extension.toml",
+        "app/routes/api.pos.sales-target.tsx",
+        "app/services/sales-targets.server.ts"
+      ],
+      "lastUpdated": "2026-08-11T16:25:00.000Z"
     }
   ]
 }
