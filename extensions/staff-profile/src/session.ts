@@ -14,9 +14,10 @@ export type ProfileShiftRow = {
   locationName: string;
   isToday: boolean;
   badge: string;
-  tone: "info" | "neutral" | "success" | "warning";
+  tone: "info" | "neutral" | "success" | "warning" | "critical";
   startsAt: string;
   endsAt: string;
+  cancelledForLeave?: boolean;
 };
 
 export type StaffProfileResponse = {

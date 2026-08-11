@@ -500,8 +500,24 @@ function ShiftsTab(props: {
   );
 }
 
+/** POS s-text has no line-through; use combining stroke per character. */
+function strikeThroughText(value: string) {
+  return [...value].map((char) => `${char}\u0336`).join("");
+}
+
 function ShiftCard(props: { shift: ProfileShiftRow }) {
   const { shift } = props;
+  const cancelled = Boolean(shift.cancelledForLeave);
+  const dateLabel = cancelled
+    ? strikeThroughText(shift.dateLabel)
+    : shift.dateLabel;
+  const timeRangeLabel = cancelled
+    ? strikeThroughText(shift.timeRangeLabel)
+    : shift.timeRangeLabel;
+  const locationName = cancelled
+    ? strikeThroughText(shift.locationName)
+    : shift.locationName;
+
   return (
     <s-box padding="small none">
       <s-stack direction="block" gap="small">
@@ -513,15 +529,26 @@ function ShiftCard(props: { shift: ProfileShiftRow }) {
           inlineSize="100%"
         >
           <s-stack direction="inline" gap="small" alignItems="center">
-            <s-icon type="clock" color="strong" />
-            <s-text type="strong">{shift.dateLabel}</s-text>
+            <s-icon
+              type="clock"
+              color={cancelled ? "base" : "strong"}
+              tone={cancelled ? "critical" : "auto"}
+            />
+            <s-text
+              type={cancelled ? "generic" : "strong"}
+              tone={cancelled ? "critical" : "auto"}
+            >
+              {dateLabel}
+            </s-text>
           </s-stack>
-          <s-badge tone={shift.tone}>{shift.badge}</s-badge>
+          <s-badge tone={cancelled ? "critical" : shift.tone}>
+            {shift.badge}
+          </s-badge>
         </s-stack>
-        <s-text>{shift.timeRangeLabel}</s-text>
+        <s-text tone={cancelled ? "critical" : "auto"}>{timeRangeLabel}</s-text>
         <s-stack direction="inline" gap="small" alignItems="center">
           <s-text>📍</s-text>
-          <s-text>{shift.locationName}</s-text>
+          <s-text tone={cancelled ? "critical" : "auto"}>{locationName}</s-text>
         </s-stack>
       </s-stack>
     </s-box>

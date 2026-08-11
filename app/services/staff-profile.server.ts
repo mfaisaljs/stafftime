@@ -12,6 +12,8 @@ import {
 import {
   filterRequestsForEmployee,
   SHIFT_STATUS,
+  shiftIsCancelledForLeave,
+  syncApprovedLeaveShiftCancellations,
 } from "./time-off-shifts.server";
 import {
   formatClockTime,
@@ -153,6 +155,13 @@ export async function getStaffProfileForPos(params: {
   );
   const effectiveStartKey = toDateKeyLocal(startDate);
 
+  // Include upcoming shifts beyond the payroll overview end date (default range ends today).
+  const shiftsEnd = new Date();
+  shiftsEnd.setDate(shiftsEnd.getDate() + 90);
+  const shiftsEndKey = toDateKeyLocal(shiftsEnd);
+
+  await syncApprovedLeaveShiftCancellations(shop.id);
+
   const [timeEntries, shifts, timeOffRequests, payments] = await Promise.all([
     prisma.timeEntry.findMany({
       where: {
@@ -170,12 +179,12 @@ export async function getStaffProfileForPos(params: {
         status: {
           in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE],
         },
-        startsAt: { gte: startDate, lte: endDate },
+        startsAt: { gte: startDate, lte: shiftsEnd },
       },
       include: { location: true },
       orderBy: { startsAt: "asc" },
     }),
-    getApprovedTimeOffForRange(shop.id, effectiveStartKey, range.end),
+    getApprovedTimeOffForRange(shop.id, effectiveStartKey, shiftsEndKey),
     prisma.payrollPayment.findMany({
       where: { shopId: shop.id, employeeId: employee.id },
       select: { amount: true, paymentType: true },
@@ -245,13 +254,19 @@ export async function getStaffProfileForPos(params: {
     startsAt: string;
     endsAt: string;
     badge: string;
-    tone: "info" | "neutral" | "success";
+    tone: "info" | "neutral" | "success" | "critical";
+    cancelledForLeave: boolean;
   };
   const upcomingShifts: ProfileShift[] = [];
   const pastShifts: ProfileShift[] = [];
   for (const shift of shifts) {
     const isToday =
       toDateKeyLocal(shift.startsAt) === toDateKeyLocal(now);
+    const cancelledForLeave = shiftIsCancelledForLeave(
+      shift,
+      employeeTimeOff,
+      employee.id,
+    );
     const row = {
       id: shift.id,
       dateLabel: formatShiftDateLabel(shift.startsAt, now),
@@ -260,18 +275,19 @@ export async function getStaffProfileForPos(params: {
       isToday,
       startsAt: shift.startsAt.toISOString(),
       endsAt: shift.endsAt.toISOString(),
+      cancelledForLeave,
     };
     if (shift.endsAt.getTime() >= now.getTime()) {
       upcomingShifts.push({
         ...row,
-        badge: isToday ? "Today" : "Upcoming",
-        tone: isToday ? "info" : "neutral",
+        badge: cancelledForLeave ? "On leave" : isToday ? "Today" : "Upcoming",
+        tone: cancelledForLeave ? "critical" : isToday ? "info" : "neutral",
       });
     } else {
       pastShifts.push({
         ...row,
-        badge: "Work",
-        tone: "success",
+        badge: cancelledForLeave ? "On leave" : "Work",
+        tone: cancelledForLeave ? "critical" : "success",
       });
     }
   }
