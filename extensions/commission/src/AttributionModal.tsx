@@ -26,21 +26,27 @@ function CommissionAttributionModal() {
 
   const [employee, setEmployee] = useState<CommissionEmployee | null>(null);
   const [status, setStatus] = useState<CommissionOrderAttribution | null>(null);
+  const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
   const [attributing, setAttributing] = useState(false);
   const pinPadOpenRef = useRef(false);
 
   const loadStatus = useCallback(
-    async (nextEmployee?: CommissionEmployee | null) => {
+    async (
+      nextEmployee?: CommissionEmployee | null,
+      programIds: string[] = [],
+    ) => {
       if (orderId === undefined || orderId === null) return;
       setLoading(true);
       try {
         const next = await fetchCommissionAttributionStatus({
           orderId,
           employeeId: nextEmployee?.id,
+          programIds,
         });
         setStatus(next);
+        setSelectedProgramIds(next.selectedProgramIds ?? programIds);
       } catch (err) {
         showToast(messageFromError(err, "Could not load commission"));
       } finally {
@@ -90,7 +96,8 @@ function CommissionAttributionModal() {
                 );
                 if (!stored) return;
                 setEmployee(stored.employee);
-                await loadStatus(stored.employee);
+                setSelectedProgramIds([]);
+                await loadStatus(stored.employee, []);
               })();
             }
           },
@@ -101,13 +108,40 @@ function CommissionAttributionModal() {
     }
   }, [loadStatus]);
 
+  const onProgramSelectionChange = useCallback(
+    (values: string[]) => {
+      if (!employee) return;
+      const available = status?.availablePrograms ?? [];
+      let nextValues = values;
+
+      // Single-select when only one program applies or multi is not allowed.
+      if (!status?.allowMultiSelect && values.length > 1) {
+        nextValues = values.slice(-1);
+      }
+
+      // Keep only programs that are available for this order.
+      nextValues = nextValues.filter((id) =>
+        available.some((program) => program.id === id),
+      );
+
+      setSelectedProgramIds(nextValues);
+      void loadStatus(employee, nextValues);
+    },
+    [employee, loadStatus, status?.allowMultiSelect, status?.availablePrograms],
+  );
+
   const attributeCommission = useCallback(async () => {
     if (!employee || orderId === undefined || orderId === null) return;
+    if (selectedProgramIds.length === 0) {
+      showToast("Select at least one commission program");
+      return;
+    }
     setAttributing(true);
     try {
       const result = await attributeOrderToCommission({
         employeeId: employee.id,
         orderId,
+        programIds: selectedProgramIds,
       });
       setStatus(result);
       showToast(
@@ -118,7 +152,7 @@ function CommissionAttributionModal() {
     } finally {
       setAttributing(false);
     }
-  }, [employee, orderId]);
+  }, [employee, orderId, selectedProgramIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,9 +163,9 @@ function CommissionAttributionModal() {
         );
         if (!cancelled && stored) {
           setEmployee(stored.employee);
-          await loadStatus(stored.employee);
+          await loadStatus(stored.employee, []);
         } else if (!cancelled) {
-          await loadStatus(null);
+          await loadStatus(null, []);
         }
       } finally {
         if (!cancelled) setBooting(false);
@@ -165,6 +199,8 @@ function CommissionAttributionModal() {
       </s-page>
     );
   }
+
+  const availablePrograms = status?.availablePrograms ?? [];
 
   return (
     <s-page heading="Commission">
@@ -207,24 +243,64 @@ function CommissionAttributionModal() {
               </s-stack>
             ) : (
               <s-stack direction="block" gap="large">
+                <s-section heading="Select program">
+                  <s-box padding="small none">
+                    <s-stack direction="block" gap="base">
+                      <s-text>
+                        {status?.allowMultiSelect
+                          ? "This order matches multiple programs. Select the programs to attribute."
+                          : "Select a commission program for this order."}
+                      </s-text>
+                      {availablePrograms.length === 0 ? (
+                        <s-text>
+                          {status?.message ||
+                            "No matching commission programs for this order."}
+                        </s-text>
+                      ) : (
+                        <s-choice-list
+                          values={selectedProgramIds}
+                          multiple={Boolean(status?.allowMultiSelect)}
+                          onChange={(event) => {
+                            const values =
+                              (
+                                event.currentTarget as unknown as {
+                                  values?: string[];
+                                }
+                              ).values ?? [];
+                            onProgramSelectionChange(values);
+                          }}
+                        >
+                          {availablePrograms.map((program) => (
+                            <s-choice key={program.id} value={program.id}>
+                              {program.name} · {program.commissionLabel} ·{" "}
+                              {program.productScope === "specific"
+                                ? "Specific products"
+                                : "All products"}{" "}
+                              ({program.lineCount} item
+                              {program.lineCount === 1 ? "" : "s"})
+                            </s-choice>
+                          ))}
+                        </s-choice-list>
+                      )}
+                    </s-stack>
+                  </s-box>
+                </s-section>
+
                 <s-section heading="Estimated commission">
                   <s-box padding="small none">
                     <s-stack direction="block" gap="base">
                       <s-text type="strong">
                         {employee.firstName} {employee.lastName}
                       </s-text>
-                      {status?.message ? (
-                        <s-text>{status.message}</s-text>
+                      {selectedProgramIds.length === 0 ? (
+                        <s-text>
+                          {status?.message || "Select a program to continue."}
+                        </s-text>
                       ) : (
                         <s-text type="strong">
                           {status?.commissionLabel ?? "—"}
                         </s-text>
                       )}
-                      {status?.programNames?.length ? (
-                        <s-text>
-                          Programs: {status.programNames.join(", ")}
-                        </s-text>
-                      ) : null}
                     </s-stack>
                   </s-box>
                 </s-section>
@@ -263,6 +339,7 @@ function CommissionAttributionModal() {
                     disabled={
                       attributing ||
                       loading ||
+                      selectedProgramIds.length === 0 ||
                       !status?.eligible ||
                       (status?.commissionTotal ?? 0) <= 0
                     }
@@ -270,9 +347,7 @@ function CommissionAttributionModal() {
                       void attributeCommission();
                     }}
                   >
-                    {attributing
-                      ? "Attributing…"
-                      : "Attribute commission"}
+                    {attributing ? "Attributing…" : "Attribute commission"}
                   </s-button>
                   <s-button
                     variant="secondary"
@@ -288,7 +363,8 @@ function CommissionAttributionModal() {
                         }
                         setEmployee(null);
                         setStatus(null);
-                        await loadStatus(null);
+                        setSelectedProgramIds([]);
+                        await loadStatus(null, []);
                         showNativePinPad();
                       })();
                     }}

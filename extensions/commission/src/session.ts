@@ -16,16 +16,29 @@ export type CommissionLineBreakdown = {
   commissionAmount: number;
 };
 
+export type AvailableCommissionProgram = {
+  id: string;
+  name: string;
+  productScope: "all" | "specific";
+  estimatedTotal: number;
+  commissionLabel: string;
+  lineCount: number;
+};
+
 export type CommissionOrderAttribution = {
   orderId: string;
   orderName: string;
   currency: string;
+  orderFinancialStatus?: string;
   attributed: boolean;
   attributedTo: CommissionEmployee | null;
   commissionTotal: number;
   commissionLabel: string;
   programNames: string[];
   lines: CommissionLineBreakdown[];
+  availablePrograms: AvailableCommissionProgram[];
+  allowMultiSelect: boolean;
+  selectedProgramIds: string[];
   eligible: boolean;
   message: string | null;
 };

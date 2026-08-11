@@ -10,6 +10,13 @@ import {
   posPreflightResponse,
 } from "../utils/http.server";
 
+function parseProgramIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (request.method === "OPTIONS") return posPreflightResponse();
   return errorResponse("Method not allowed", 405);
@@ -21,6 +28,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent?: string;
     orderId?: string | number;
     employeeId?: string;
+    programIds?: unknown;
   };
 
   const intent = String(body.intent || "status").trim();
@@ -37,6 +45,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         employeeId: body.employeeId
           ? String(body.employeeId).trim()
           : undefined,
+        selectedProgramIds: parseProgramIds(body.programIds),
       });
       return cors(jsonResponse(payload));
     }
@@ -51,6 +60,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shopDomain: sessionToken.dest,
         employeeId,
         orderId,
+        programIds: parseProgramIds(body.programIds),
       });
       return cors(jsonResponse(payload));
     }

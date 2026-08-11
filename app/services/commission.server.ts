@@ -4,12 +4,13 @@ import { shopFromDest } from "../utils/http.server";
 import {
   calculateCommissionForPrograms,
   normalizeProductId,
+  type AvailableCommissionProgram,
   type CommissionLineBreakdown,
   type ProductCommissionRule,
 } from "./commission-calc";
 import { ensureShop } from "./workforce.server";
 
-export type { CommissionLineBreakdown } from "./commission-calc";
+export type { CommissionLineBreakdown, AvailableCommissionProgram } from "./commission-calc";
 export { calculateCommissionForPrograms } from "./commission-calc";
 
 export type CommissionOrderAttribution = {
@@ -27,6 +28,9 @@ export type CommissionOrderAttribution = {
   commissionLabel: string;
   programNames: string[];
   lines: CommissionLineBreakdown[];
+  availablePrograms: AvailableCommissionProgram[];
+  allowMultiSelect: boolean;
+  selectedProgramIds: string[];
   eligible: boolean;
   message: string | null;
 };
@@ -248,6 +252,7 @@ export async function getCommissionOrderAttribution(params: {
   shopDomain: string;
   orderId: string | number;
   employeeId?: string;
+  selectedProgramIds?: string[];
 }): Promise<CommissionOrderAttribution> {
   const shop = await ensureShop(params.shopDomain);
   const orderId = String(params.orderId).replace(
@@ -296,6 +301,9 @@ export async function getCommissionOrderAttribution(params: {
       commissionLabel: formatMoney(existing.currency, existing.commissionTotal),
       programNames,
       lines,
+      availablePrograms: [],
+      allowMultiSelect: false,
+      selectedProgramIds: parseIds(existing.programIds),
       eligible: true,
       message: null,
     };
@@ -313,6 +321,9 @@ export async function getCommissionOrderAttribution(params: {
       commissionLabel: formatMoney(order.currency, 0),
       programNames: [],
       lines: [],
+      availablePrograms: [],
+      allowMultiSelect: false,
+      selectedProgramIds: [],
       eligible: false,
       message: "Enter PIN to calculate commission for this order.",
     };
@@ -347,17 +358,23 @@ export async function getCommissionOrderAttribution(params: {
       commissionLabel: formatMoney(order.currency, 0),
       programNames: [],
       lines: [],
+      availablePrograms: [],
+      allowMultiSelect: false,
+      selectedProgramIds: [],
       eligible: false,
       message: "No active commission program is assigned to this staff member.",
     };
   }
 
+  const selectedProgramIds = (params.selectedProgramIds ?? []).filter(Boolean);
   const calculated = calculateCommissionForPrograms({
     lines: order.lines,
     programs,
+    selectedProgramIds,
+    currency: order.currency,
   });
 
-  if (calculated.commissionTotal <= 0) {
+  if (calculated.availablePrograms.length === 0) {
     return {
       orderId,
       orderName: order.orderName,
@@ -367,13 +384,23 @@ export async function getCommissionOrderAttribution(params: {
       attributedTo: null,
       commissionTotal: 0,
       commissionLabel: formatMoney(order.currency, 0),
-      programNames: calculated.programNames,
+      programNames: [],
       lines: [],
+      availablePrograms: [],
+      allowMultiSelect: false,
+      selectedProgramIds: [],
       eligible: false,
       message:
         "No commissionable products on this order match the staff member's program rules.",
     };
   }
+
+  const hasSelection = selectedProgramIds.length > 0;
+  const selectionValid =
+    !hasSelection ||
+    selectedProgramIds.every((id) =>
+      calculated.availablePrograms.some((program) => program.id === id),
+    );
 
   return {
     orderId,
@@ -386,8 +413,17 @@ export async function getCommissionOrderAttribution(params: {
     commissionLabel: formatMoney(order.currency, calculated.commissionTotal),
     programNames: calculated.programNames,
     lines: calculated.lines,
-    eligible: true,
-    message: null,
+    availablePrograms: calculated.availablePrograms,
+    allowMultiSelect: calculated.allowMultiSelect,
+    selectedProgramIds: selectionValid ? selectedProgramIds : [],
+    eligible: hasSelection && selectionValid && calculated.commissionTotal > 0,
+    message: hasSelection
+      ? calculated.commissionTotal > 0
+        ? null
+        : "Selected programs have no commissionable amount for this order."
+      : calculated.allowMultiSelect
+        ? "Select one or more programs for this order."
+        : "Select a commission program for this order.",
   };
 }
 
@@ -395,6 +431,7 @@ export async function attributeOrderToCommission(params: {
   shopDomain: string;
   employeeId: string;
   orderId: string | number;
+  programIds: string[];
 }): Promise<CommissionOrderAttribution> {
   const shop = await ensureShop(params.shopDomain);
   const orderId = String(params.orderId).replace(
@@ -409,10 +446,16 @@ export async function attributeOrderToCommission(params: {
     throw new Error("This order is already attributed for commission");
   }
 
+  const programIds = params.programIds.filter(Boolean);
+  if (programIds.length === 0) {
+    throw new Error("Select at least one commission program");
+  }
+
   const preview = await getCommissionOrderAttribution({
     shopDomain: params.shopDomain,
     orderId,
     employeeId: params.employeeId,
+    selectedProgramIds: programIds,
   });
 
   if (!preview.eligible || preview.commissionTotal <= 0) {
@@ -431,9 +474,7 @@ export async function attributeOrderToCommission(params: {
       payoutStatus: "PENDING",
       commissionTotal: preview.commissionTotal,
       currency: preview.currency,
-      programIds: JSON.stringify(
-        Array.from(new Set(preview.lines.map((line) => line.programId))),
-      ),
+      programIds: JSON.stringify(preview.programIds),
       lineItemsJson: JSON.stringify(preview.lines),
     },
   });

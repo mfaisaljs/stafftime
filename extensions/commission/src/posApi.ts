@@ -42,22 +42,26 @@ export async function verifyPin(pin: string): Promise<VerifyResponse> {
 export async function fetchCommissionAttributionStatus(params: {
   orderId: string | number;
   employeeId?: string;
+  programIds?: string[];
 }): Promise<CommissionOrderAttribution> {
   return (await apiFetch("/api/pos/commission/attribution", {
     intent: params.employeeId ? "preview" : "status",
     orderId: params.orderId,
     employeeId: params.employeeId,
+    programIds: params.programIds ?? [],
   })) as CommissionOrderAttribution;
 }
 
 export async function attributeOrderToCommission(params: {
   employeeId: string;
   orderId: string | number;
+  programIds: string[];
 }): Promise<CommissionOrderAttribution> {
   return (await apiFetch("/api/pos/commission/attribution", {
     intent: "attribute",
     employeeId: params.employeeId,
     orderId: params.orderId,
+    programIds: params.programIds,
   })) as CommissionOrderAttribution;
 }
 

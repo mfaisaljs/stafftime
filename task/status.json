@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T21:00:00.000Z",
+  "lastUpdated": "2026-08-11T21:10:00.000Z",
   "notes": [
+    "Updated: POS Commission attribution lets staff select programs (none pre-selected); specific-product rules beat all-product; multi-select when cart spans both.",
     "Fixed: Commission program form shows % (not $) when type is Percentage for all-products and specific-product inputs.",
     "Updated: Commission Orders shows both Shopify Order payment and staff Payout status columns/filters.",
     "Fixed: Commission Orders Status shows Shopify order payment (Paid); metric cards are staff payout pending/paid-out.",
