@@ -249,15 +249,21 @@ function StaffProfileModal() {
             <s-section heading="Date Range">
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
-                  <s-text-field
+                  <s-date-field
                     label="Start Date"
                     value={start}
-                    onInput={(event) => setStart(event.currentTarget.value)}
+                    onChange={(event) => {
+                      setStart(event.currentTarget.value ?? "");
+                      setDays(0);
+                    }}
                   />
-                  <s-text-field
+                  <s-date-field
                     label="End Date"
                     value={end}
-                    onInput={(event) => setEnd(event.currentTarget.value)}
+                    onChange={(event) => {
+                      setEnd(event.currentTarget.value ?? "");
+                      setDays(0);
+                    }}
                   />
                   <s-stack direction="inline" gap="small" alignItems="center">
                     {DAY_PRESETS.map((preset) => (
