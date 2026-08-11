@@ -366,7 +366,7 @@ function MainScreen(props: {
             <s-section>
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
-                  <SectionTitle icon="live" label="Time Tracking" />
+                  <SectionTitle emoji="⏰" label="Time Tracking" />
                   <TimerRow
                     label="Day total"
                     value={props.dayTimer}
@@ -589,7 +589,7 @@ function HistoryScreen(props: {
 }
 
 function SectionTitle(props: {
-  icon:
+  icon?:
     | "live"
     | "flag"
     | "bolt-filled"
@@ -597,11 +597,13 @@ function SectionTitle(props: {
     | "clock"
     | "location"
     | "note";
+  emoji?: string;
   label: string;
 }) {
   return (
     <s-stack direction="inline" gap="small" alignItems="center">
-      <s-icon type={props.icon} color="strong" />
+      {props.emoji ? <s-text>{props.emoji}</s-text> : null}
+      {props.icon ? <s-icon type={props.icon} color="strong" /> : null}
       <s-text>{props.label}</s-text>
     </s-stack>
   );
