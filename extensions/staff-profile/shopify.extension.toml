@@ -1,0 +1,19 @@
+api_version = "2026-01"
+
+[[extensions]]
+type = "ui_extension"
+name = "t:name"
+uid = "0be7d2f3-2eed-45f5-b7d9-7869c9de56fd"
+handle = "staff-profile"
+description = "Trubuild: Staff profile"
+
+[extensions.supported_features]
+runs_offline = true
+
+[[extensions.targeting]]
+module = "./src/Tile.tsx"
+target = "pos.home.tile.render"
+
+[[extensions.targeting]]
+module = "./src/Modal.tsx"
+target = "pos.home.modal.render"
