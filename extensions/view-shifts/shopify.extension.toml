@@ -5,7 +5,7 @@ type = "ui_extension"
 name = "t:name"
 uid = "ca463ae1-11f4-4ec2-4a18-283934eaed17407c5059"
 handle = "view-shifts"
-description = "View upcoming and scheduled shifts from Shopify POS"
+description = "Trubuild: View upcoming shifts"
 
 [extensions.supported_features]
 runs_offline = true

@@ -5,7 +5,7 @@ type = "ui_extension"
 name = "Workforce Clock"
 handle = "workforce-clock"
 uid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-description = "Clock in, clock out, and manage breaks from Shopify POS"
+description = "Trubuild: Clock in/out"
 
 [extensions.supported_features]
 runs_offline = true

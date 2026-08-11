@@ -1385,6 +1385,25 @@
         "app/services/workforce.server.ts"
       ],
       "lastUpdated": "2026-08-11T10:30:00.000Z"
+    },
+    {
+      "id": "ST078",
+      "taskId": "T016",
+      "title": "Enable POS embedding in app config",
+      "description": "Add [pos] embedded = true so deployed POS UI extensions appear under Add tile → Apps after POS channel enablement.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST028"],
+      "acceptanceCriteria": [
+        "shopify.app.toml and shopify.app.local.toml set [pos] embedded = true",
+        "Config deployed in an active app version",
+        "Workforce Clock and View Shifts available to add on POS smart grid after force-close/reopen"
+      ],
+      "files": [
+        "shopify.app.toml",
+        "shopify.app.local.toml"
+      ],
+      "lastUpdated": "2026-08-11T10:35:00.000Z"
     }
   ]
 }
