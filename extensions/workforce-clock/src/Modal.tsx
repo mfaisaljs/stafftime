@@ -352,10 +352,7 @@ function MainScreen(props: {
         <s-box padding="large">
           <s-stack direction="block" gap="large">
             <s-stack direction="block" gap="small">
-              <s-stack direction="inline" gap="small" alignItems="center">
-                <s-icon type="person-filled" color="strong" />
-                <s-heading>Welcome, {props.firstName}!</s-heading>
-              </s-stack>
+              <s-heading>👋 Welcome, {props.firstName}!</s-heading>
               <s-stack direction="inline" gap="small" alignItems="center">
                 <s-icon
                   color="strong"
