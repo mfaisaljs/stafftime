@@ -389,22 +389,31 @@ function MainScreen(props: {
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
                   <SectionTitle icon="flag" label="Shift Info" />
-                  <InfoRow icon="note" label="Date" value={props.dateLabel} />
-                  <InfoRow
-                    icon="location"
-                    label="Location"
-                    value={props.locationName}
-                  />
-                  <InfoRow
-                    icon="clock"
-                    label="First clock in today"
-                    value={props.firstClockInLabel}
-                  />
-                  <InfoRow
-                    icon="clock"
-                    label="Current clock in"
-                    value={props.currentClockInLabel}
-                  />
+                  <s-stack direction="block" gap="none">
+                    <InfoRow
+                      icon="note"
+                      label="Date"
+                      value={props.dateLabel}
+                      showDivider
+                    />
+                    <InfoRow
+                      icon="location"
+                      label="Location"
+                      value={props.locationName}
+                      showDivider
+                    />
+                    <InfoRow
+                      icon="clock"
+                      label="First clock in today"
+                      value={props.firstClockInLabel}
+                      showDivider
+                    />
+                    <InfoRow
+                      icon="clock"
+                      label="Current clock in"
+                      value={props.currentClockInLabel}
+                    />
+                  </s-stack>
                 </s-stack>
               </s-box>
             </s-section>
@@ -629,25 +638,29 @@ function InfoRow(props: {
   label: string;
   value: string;
   icon?: "clock" | "location" | "note" | "flag" | "store";
+  showDivider?: boolean;
 }) {
   return (
-    <s-box padding="small none">
-      <s-stack
-        direction="inline"
-        gap="base"
-        alignItems="center"
-        justifyContent="space-between"
-        inlineSize="100%"
-      >
-        <s-stack direction="inline" gap="small" alignItems="center">
-          {props.icon ? (
-            <s-icon type={props.icon} color="strong" />
-          ) : null}
-          <s-text>{props.label}</s-text>
+    <s-stack direction="block" gap="none">
+      <s-box padding="small none">
+        <s-stack
+          direction="inline"
+          gap="base"
+          alignItems="center"
+          justifyContent="space-between"
+          inlineSize="100%"
+        >
+          <s-stack direction="inline" gap="small" alignItems="center">
+            {props.icon ? (
+              <s-icon type={props.icon} color="strong" />
+            ) : null}
+            <s-text>{props.label}</s-text>
+          </s-stack>
+          <s-text>{props.value}</s-text>
         </s-stack>
-        <s-text>{props.value}</s-text>
-      </s-stack>
-    </s-box>
+      </s-box>
+      {props.showDivider ? <s-divider /> : null}
+    </s-stack>
   );
 }
 

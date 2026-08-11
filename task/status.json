@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T10:00:00.000Z",
+  "lastUpdated": "2026-08-11T10:05:00.000Z",
   "notes": [
+    "Updated: Shift Info rows use s-divider line separators between Date, Location, and clock-in fields.",
     "Updated: POS dashboard adds page padding and s-icon on welcome, sections, rows, actions, and history.",
     "ST076: Post-PIN POS UI matches Clock In/Out dashboard (timers, shift info, history) with Start/End Break actions.",
     "Updated: POS errors/success use native shopify.toast instead of s-banner.",
