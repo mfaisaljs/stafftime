@@ -314,7 +314,7 @@ function TimeOffModal() {
             <s-stack direction="block" gap="small">
               <s-stack direction="inline" gap="small" alignItems="center">
                 <s-heading>
-                  Welcome, {employee.firstName} {employee.lastName}
+                  👋 Welcome, {employee.firstName} {employee.lastName}
                 </s-heading>
                 <s-badge tone="info">
                   {employee.roleLabel ??
@@ -554,7 +554,7 @@ function StaffRequestsTab(props: {
           >
             {staff.map((member) => (
               <s-choice key={member.id} value={member.id}>
-                {member.name} ({member.roleLabel})
+                {`${member.name} — ${member.roleLabel}`}
               </s-choice>
             ))}
           </s-choice-list>

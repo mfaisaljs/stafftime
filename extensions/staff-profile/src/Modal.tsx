@@ -239,7 +239,7 @@ function StaffProfileModal() {
           <s-stack direction="block" gap="large">
             <s-stack direction="block" gap="small">
               <s-heading>
-                Welcome, {employee.firstName} {employee.lastName}!
+                👋 Welcome, {employee.firstName} {employee.lastName}!
               </s-heading>
               <s-badge tone="info">
                 {employee.roleLabel ?? profile?.employee.roleLabel ?? "Staff"}
