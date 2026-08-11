@@ -6,10 +6,7 @@ import {
   showToast,
   verifyPin,
 } from "./posApi";
-import {
-  ACTIVE_SESSION_STORAGE_KEY,
-  parseStoredTaskSession,
-} from "./session";
+import { ACTIVE_SESSION_STORAGE_KEY } from "./session";
 
 export default async function extension() {
   render(<TaskListTile />, document.body);
@@ -71,18 +68,12 @@ function TaskListTile() {
 
   const handleTileClick = useCallback(async () => {
     try {
-      const existing = parseStoredTaskSession(
-        await shopify.storage.get(ACTIVE_SESSION_STORAGE_KEY),
-      );
-      if (existing) {
-        openModal();
-        return;
-      }
+      await shopify.storage.delete(ACTIVE_SESSION_STORAGE_KEY);
     } catch {
-      // Fall through to PIN pad.
+      // Still prompt for PIN.
     }
     showPinPadThenModal();
-  }, [openModal, showPinPadThenModal]);
+  }, [showPinPadThenModal]);
 
   return (
     <s-tile

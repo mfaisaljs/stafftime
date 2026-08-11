@@ -4,7 +4,6 @@ import {
   ACTIVE_SESSION_STORAGE_KEY,
   CLOCK_STATE_STORAGE_KEY,
   parseStoredClockState,
-  parseStoredVerifySession,
   subheadingForStatus,
   type ClockStatus,
 } from "./clockStatus";
@@ -95,18 +94,12 @@ function WorkforceTile() {
 
   const handleTileClick = useCallback(async () => {
     try {
-      const existing = parseStoredVerifySession(
-        await shopify.storage.get(ACTIVE_SESSION_STORAGE_KEY),
-      );
-      if (existing) {
-        openClockModal();
-        return;
-      }
+      await shopify.storage.delete(ACTIVE_SESSION_STORAGE_KEY);
     } catch {
-      // Fall through to PIN pad.
+      // Still prompt for PIN.
     }
     showPinPadThenModal();
-  }, [openClockModal, showPinPadThenModal]);
+  }, [showPinPadThenModal]);
 
   return (
     <s-tile
