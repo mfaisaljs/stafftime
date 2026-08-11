@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T11:05:00.000Z",
+  "lastUpdated": "2026-08-11T11:15:00.000Z",
   "notes": [
+    "Updated: POS Task List shows task item breakdown with Complete/Mark incomplete; timeline badge uses schedule type (not list name).",
     "Added Cursor rule extension-uid.mdc; regenerated view-tasklists uid as valid UUID v4.",
     "ST079 complete: POS Task List tile with All/Daily/Weekly/Monthly tabs filtered by Staff or Manager assignment.",
     "Fixed: replaced malformed/placeholder extension uids with valid UUIDs in view-shifts and workforce-clock tomls.",

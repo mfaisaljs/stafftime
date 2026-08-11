@@ -1417,16 +1417,18 @@
         "POS home shows a Task List tile separate from Clock and View Shifts",
         "PIN verify loads only task lists assigned to the employee role (Staff or Manager)",
         "Modal has All, Daily, Weekly, and Monthly tabs using native s-tabs",
-        "Each row shows list name, timeline badges, role badge, and today's progress"
+        "Each list expands into individual tasks with Complete / Mark incomplete actions",
+        "Timeline badge shows schedule type (Daily/Weekly/Monthly), separate from list name"
       ],
       "files": [
         "extensions/view-tasklists/src/Tile.tsx",
         "extensions/view-tasklists/src/Modal.tsx",
         "extensions/view-tasklists/shopify.extension.toml",
         "app/routes/api.pos.tasklists.tsx",
+        "app/routes/api.pos.tasklists.complete.tsx",
         "app/services/tasklists.server.ts"
       ],
-      "lastUpdated": "2026-08-11T11:00:00.000Z"
+      "lastUpdated": "2026-08-11T11:15:00.000Z"
     }
   ]
 }

@@ -50,6 +50,19 @@ export async function fetchTaskLists(
   })) as TaskListsResponse;
 }
 
+export async function setTaskItemCompleted(params: {
+  employeeId: string;
+  taskListId: string;
+  taskItemId: string;
+  completed: boolean;
+}): Promise<{ ok: boolean; completed: boolean; performedBy: string | null }> {
+  return (await apiFetch("/api/pos/tasklists/complete", params)) as {
+    ok: boolean;
+    completed: boolean;
+    performedBy: string | null;
+  };
+}
+
 export async function persistTaskSession(data: VerifyResponse): Promise<void> {
   await shopify.storage.set(ACTIVE_SESSION_STORAGE_KEY, {
     employee: data.employee,

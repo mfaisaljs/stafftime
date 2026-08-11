@@ -4,12 +4,14 @@ import {
   fetchTaskLists,
   messageFromError,
   persistTaskSession,
+  setTaskItemCompleted,
   showToast,
   verifyPin,
 } from "./posApi";
 import {
   ACTIVE_SESSION_STORAGE_KEY,
   parseStoredTaskSession,
+  type PosTaskItemRow,
   type PosTaskListRow,
   type PosTaskListTab,
   type TaskEmployee,
@@ -32,6 +34,7 @@ function TaskListModal() {
   const [taskLists, setTaskLists] = useState<PosTaskListRow[]>([]);
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
   const pinPadOpenRef = useRef(false);
 
   const clearSession = useCallback(async () => {
@@ -160,6 +163,52 @@ function TaskListModal() {
     [onSelectTab, tab],
   );
 
+  const toggleTask = useCallback(
+    async (
+      listId: string,
+      item: PosTaskItemRow,
+      completed: boolean,
+    ) => {
+      if (!employee || busyItemId) return;
+      setBusyItemId(item.id);
+      try {
+        const result = await setTaskItemCompleted({
+          employeeId: employee.id,
+          taskListId: listId,
+          taskItemId: item.id,
+          completed,
+        });
+        setTaskLists((prev) =>
+          prev.map((list) => {
+            if (list.id !== listId) return list;
+            const items = list.items.map((row) =>
+              row.id === item.id
+                ? {
+                    ...row,
+                    completed: result.completed,
+                    performedBy: result.performedBy,
+                  }
+                : row,
+            );
+            const completedCount = items.filter((row) => row.completed).length;
+            return {
+              ...list,
+              items,
+              completedCount,
+              progressLabel: `${completedCount}/${items.length} done`,
+            };
+          }),
+        );
+        showToast(completed ? "Task completed" : "Task marked incomplete");
+      } catch (err) {
+        showToast(messageFromError(err, "Could not update task"));
+      } finally {
+        setBusyItemId(null);
+      }
+    },
+    [busyItemId, employee],
+  );
+
   if (booting) {
     return (
       <s-page heading="Task List">
@@ -195,9 +244,14 @@ function TaskListModal() {
     ) : taskLists.length === 0 ? (
       <s-text>No task lists assigned for this tab.</s-text>
     ) : (
-      <s-stack direction="block" gap="base">
+      <s-stack direction="block" gap="large">
         {taskLists.map((list) => (
-          <TaskListRow key={list.id} list={list} />
+          <TaskListCard
+            key={list.id}
+            list={list}
+            busyItemId={busyItemId}
+            onToggleTask={toggleTask}
+          />
         ))}
       </s-stack>
     );
@@ -208,9 +262,7 @@ function TaskListModal() {
         <s-box padding="large">
           <s-stack direction="block" gap="large">
             <s-stack direction="block" gap="small">
-              <s-heading>
-                📋 {employee.firstName}'s Tasks
-              </s-heading>
+              <s-heading>📋 {employee.firstName}'s Tasks</s-heading>
               <s-stack direction="inline" gap="small" alignItems="center">
                 <s-badge tone="info">
                   {employee.roleLabel ?? "Staff"}
@@ -261,43 +313,117 @@ function isPosTaskListTab(value: unknown): value is PosTaskListTab {
   );
 }
 
-function TaskListRow(props: { list: PosTaskListRow }) {
-  const { list } = props;
+function TaskListCard(props: {
+  list: PosTaskListRow;
+  busyItemId: string | null;
+  onToggleTask: (
+    listId: string,
+    item: PosTaskItemRow,
+    completed: boolean,
+  ) => Promise<void>;
+}) {
+  const { list, busyItemId, onToggleTask } = props;
   const done =
     list.taskCount > 0 && list.completedCount >= list.taskCount;
+
   return (
-    <s-box padding="small none">
-      <s-stack direction="block" gap="small">
-        <s-stack
-          direction="inline"
-          gap="small"
-          alignItems="center"
-          justifyContent="space-between"
-          inlineSize="100%"
-        >
-          <s-stack direction="inline" gap="small" alignItems="center">
-            <s-icon type="clipboard-checklist" color="strong" />
-            <s-text type="strong">{list.name}</s-text>
-          </s-stack>
-          <s-badge tone={done ? "success" : "warning"}>
-            {list.progressLabel}
-          </s-badge>
-        </s-stack>
-
-        {list.description ? <s-text>{list.description}</s-text> : null}
-
-        <s-stack direction="inline" gap="small" alignItems="center">
-          {list.timelineLabels.map((label) => (
-            <s-badge key={`${list.id}-${label}`} tone="neutral">
-              {label}
+    <s-section heading={list.name}>
+      <s-box padding="small none">
+        <s-stack direction="block" gap="base">
+          <s-stack
+            direction="inline"
+            gap="small"
+            alignItems="center"
+            justifyContent="space-between"
+            inlineSize="100%"
+          >
+            <s-stack direction="inline" gap="small" alignItems="center">
+              <s-badge tone="neutral">
+                Timeline: {list.timelineLabel}
+              </s-badge>
+              <s-badge tone="info">{list.assignedAs}</s-badge>
+            </s-stack>
+            <s-badge tone={done ? "success" : "warning"}>
+              {list.progressLabel}
             </s-badge>
-          ))}
-          <s-badge tone="info">{list.assignedAs}</s-badge>
-          <s-text>
-            {list.taskCount} task{list.taskCount === 1 ? "" : "s"}
-          </s-text>
+          </s-stack>
+
+          {list.description ? <s-text>{list.description}</s-text> : null}
+
+          {list.items.length === 0 ? (
+            <s-text>No tasks in this list.</s-text>
+          ) : (
+            <s-stack direction="block" gap="base">
+              {list.items.map((item) => (
+                <s-box key={item.id} padding="small none">
+                  <s-stack direction="block" gap="small">
+                    <s-stack
+                      direction="inline"
+                      gap="small"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      inlineSize="100%"
+                    >
+                      <s-stack
+                        direction="inline"
+                        gap="small"
+                        alignItems="center"
+                      >
+                        <s-icon
+                          type={
+                            item.completed
+                              ? "check-circle-filled"
+                              : "circle"
+                          }
+                          color="strong"
+                          tone={item.completed ? "success" : "auto"}
+                        />
+                        <s-stack direction="block" gap="none">
+                          <s-text type="strong">{item.title}</s-text>
+                          <s-text>
+                            {item.completed
+                              ? `Completed${item.performedBy ? ` by ${item.performedBy}` : ""}`
+                              : "Pending"}
+                          </s-text>
+                        </s-stack>
+                      </s-stack>
+                      <s-badge
+                        tone={item.completed ? "success" : "warning"}
+                      >
+                        {item.completed ? "Done" : "To do"}
+                      </s-badge>
+                    </s-stack>
+
+                    {item.completed ? (
+                      <s-button
+                        variant="secondary"
+                        loading={busyItemId === item.id}
+                        disabled={busyItemId !== null && busyItemId !== item.id}
+                        onClick={() => {
+                          void onToggleTask(list.id, item, false);
+                        }}
+                      >
+                        Mark incomplete
+                      </s-button>
+                    ) : (
+                      <s-button
+                        variant="primary"
+                        loading={busyItemId === item.id}
+                        disabled={busyItemId !== null && busyItemId !== item.id}
+                        onClick={() => {
+                          void onToggleTask(list.id, item, true);
+                        }}
+                      >
+                        Complete task
+                      </s-button>
+                    )}
+                  </s-stack>
+                </s-box>
+              ))}
+            </s-stack>
+          )}
         </s-stack>
-      </s-stack>
-    </s-box>
+      </s-box>
+    </s-section>
   );
 }

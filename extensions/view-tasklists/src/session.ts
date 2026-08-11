@@ -7,16 +7,25 @@ export type TaskEmployee = {
 
 export type PosTaskListTab = "all" | "daily" | "weekly" | "monthly";
 
+export type PosTaskItemRow = {
+  id: string;
+  title: string;
+  completed: boolean;
+  performedBy: string | null;
+};
+
 export type PosTaskListRow = {
   id: string;
   name: string;
   description: string | null;
   timelines: Array<"DAILY" | "WEEKLY" | "MONTHLY">;
   timelineLabels: string[];
+  timelineLabel: string;
   taskCount: number;
   completedCount: number;
   progressLabel: string;
   assignedAs: "Staff" | "Manager";
+  items: PosTaskItemRow[];
 };
 
 export type StoredTaskSession = {
@@ -32,6 +41,7 @@ export type VerifyResponse = {
 export type TaskListsResponse = {
   employee: TaskEmployee & { role?: string; roleLabel?: string };
   tab: PosTaskListTab;
+  dateKey?: string;
   taskLists: PosTaskListRow[];
   serverTime?: number;
 };

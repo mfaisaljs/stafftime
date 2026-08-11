@@ -5,16 +5,25 @@ import { isManagerRole } from "./settings.server";
 
 export type PosTaskListTab = "all" | "daily" | "weekly" | "monthly";
 
+export type PosTaskItemRow = {
+  id: string;
+  title: string;
+  completed: boolean;
+  performedBy: string | null;
+};
+
 export type PosTaskListRow = {
   id: string;
   name: string;
   description: string | null;
   timelines: Array<"DAILY" | "WEEKLY" | "MONTHLY">;
   timelineLabels: string[];
+  timelineLabel: string;
   taskCount: number;
   completedCount: number;
   progressLabel: string;
   assignedAs: "Staff" | "Manager";
+  items: PosTaskItemRow[];
 };
 
 function parseJsonArray(raw: string): string[] {
@@ -35,7 +44,7 @@ function todayDateKey(now = new Date()) {
 }
 
 function timelineLabel(value: string) {
-  switch (value) {
+  switch (value.toUpperCase()) {
     case "DAILY":
       return "Daily";
     case "WEEKLY":
@@ -45,6 +54,15 @@ function timelineLabel(value: string) {
     default:
       return value;
   }
+}
+
+function normalizeTimelines(raw: string): Array<"DAILY" | "WEEKLY" | "MONTHLY"> {
+  return parseJsonArray(raw)
+    .map((value) => value.toUpperCase())
+    .filter(
+      (value): value is "DAILY" | "WEEKLY" | "MONTHLY" =>
+        value === "DAILY" || value === "WEEKLY" || value === "MONTHLY",
+    );
 }
 
 function roleBucket(role: EmployeeRole): "staff" | "manager" | null {
@@ -97,18 +115,14 @@ function matchesLocation(
   return parseJsonArray(list.locationIds).includes(employee.locationId);
 }
 
-function matchesTab(
-  timelines: string[],
-  tab: PosTaskListTab,
-) {
+function matchesTab(timelines: string[], tab: PosTaskListTab) {
   if (tab === "all") return true;
   return timelines.includes(tab.toUpperCase());
 }
 
-export async function listEmployeeTaskListsForPos(params: {
+async function getAssignedEmployee(params: {
   shopDomain: string;
   employeeId: string;
-  tab: PosTaskListTab;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const employee = await prisma.employee.findFirst({
@@ -117,7 +131,19 @@ export async function listEmployeeTaskListsForPos(params: {
   if (!employee) {
     throw new Error("Employee not found");
   }
+  return { shop, employee };
+}
 
+function performerLabel(employee: Employee) {
+  return `${employee.firstName} ${employee.lastName}`.trim();
+}
+
+export async function listEmployeeTaskListsForPos(params: {
+  shopDomain: string;
+  employeeId: string;
+  tab: PosTaskListTab;
+}) {
+  const { shop, employee } = await getAssignedEmployee(params);
   const dateKey = todayDateKey();
   const lists = await prisma.taskList.findMany({
     where: { shopId: shop.id, active: true },
@@ -128,7 +154,7 @@ export async function listEmployeeTaskListsForPos(params: {
       },
       completions: {
         where: { dateKey },
-        select: { taskItemId: true },
+        select: { taskItemId: true, performedBy: true },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -140,28 +166,34 @@ export async function listEmployeeTaskListsForPos(params: {
     if (!assignedAs) continue;
     if (!matchesLocation(list, employee)) continue;
 
-    const timelines = parseJsonArray(list.timelines).filter(
-      (value): value is "DAILY" | "WEEKLY" | "MONTHLY" =>
-        value === "DAILY" || value === "WEEKLY" || value === "MONTHLY",
-    );
+    const timelines = normalizeTimelines(list.timelines);
     if (!matchesTab(timelines, params.tab)) continue;
 
-    const completedIds = new Set(list.completions.map((item) => item.taskItemId));
-    const taskCount = list.items.length;
-    const completedCount = list.items.filter((item) =>
-      completedIds.has(item.id),
-    ).length;
+    const completionByItem = new Map(
+      list.completions.map((item) => [item.taskItemId, item.performedBy]),
+    );
+    const items: PosTaskItemRow[] = list.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      completed: completionByItem.has(item.id),
+      performedBy: completionByItem.get(item.id) ?? null,
+    }));
+    const taskCount = items.length;
+    const completedCount = items.filter((item) => item.completed).length;
+    const labels = timelines.map(timelineLabel);
 
     rows.push({
       id: list.id,
       name: list.name,
       description: list.description,
       timelines,
-      timelineLabels: timelines.map(timelineLabel),
+      timelineLabels: labels,
+      timelineLabel: labels[0] ?? "—",
       taskCount,
       completedCount,
       progressLabel: `${completedCount}/${taskCount} done`,
       assignedAs,
+      items,
     });
   }
 
@@ -174,7 +206,87 @@ export async function listEmployeeTaskListsForPos(params: {
       roleLabel: roleBucket(employee.role) === "manager" ? "Manager" : "Staff",
     },
     tab: params.tab,
+    dateKey,
     taskLists: rows,
     serverTime: Date.now(),
+  };
+}
+
+export async function setPosTaskItemCompletion(params: {
+  shopDomain: string;
+  employeeId: string;
+  taskListId: string;
+  taskItemId: string;
+  completed: boolean;
+}) {
+  const { shop, employee } = await getAssignedEmployee(params);
+  const list = await prisma.taskList.findFirst({
+    where: {
+      id: params.taskListId,
+      shopId: shop.id,
+      active: true,
+    },
+    include: {
+      items: {
+        where: { id: params.taskItemId, active: true },
+        take: 1,
+      },
+    },
+  });
+
+  if (!list || list.items.length === 0) {
+    throw new Error("Task not found");
+  }
+
+  const assignedAs = isAssignedToEmployee(list, employee);
+  if (!assignedAs) {
+    throw new Error("This task list is not assigned to you");
+  }
+  if (!matchesLocation(list, employee)) {
+    throw new Error("This task list is not available at your location");
+  }
+
+  const dateKey = todayDateKey();
+  const performedBy = performerLabel(employee);
+
+  if (params.completed) {
+    await prisma.taskListCompletion.upsert({
+      where: {
+        taskItemId_dateKey: {
+          taskItemId: params.taskItemId,
+          dateKey,
+        },
+      },
+      create: {
+        shopId: shop.id,
+        taskListId: list.id,
+        taskItemId: params.taskItemId,
+        dateKey,
+        performedBy,
+        performedAt: new Date(),
+        notes: null,
+      },
+      update: {
+        performedBy,
+        performedAt: new Date(),
+      },
+    });
+  } else {
+    await prisma.taskListCompletion.deleteMany({
+      where: {
+        shopId: shop.id,
+        taskItemId: params.taskItemId,
+        dateKey,
+      },
+    });
+  }
+
+  return {
+    ok: true as const,
+    dateKey,
+    taskListId: list.id,
+    taskItemId: params.taskItemId,
+    completed: params.completed,
+    performedBy: params.completed ? performedBy : null,
   };
 }
