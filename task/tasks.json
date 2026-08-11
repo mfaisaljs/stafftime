@@ -62,7 +62,8 @@
       "priority": "high",
       "phase": "mvp",
       "progressPercent": 100,
-      "dependencies": ["T003", "T002"]
+      "dependencies": ["T003", "T002"],
+      "lastUpdated": "2026-08-11T10:30:00.000Z"
     },
     {
       "id": "T007",

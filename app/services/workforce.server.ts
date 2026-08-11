@@ -399,6 +399,149 @@ export async function getEmployeeShiftToday(employeeId: string) {
   });
 }
 
+export type PosShiftRange = "upcoming" | "today" | "week" | "month";
+
+export type PosShiftRow = {
+  id: string;
+  dateLabel: string;
+  dayLabel: string;
+  timeRangeLabel: string;
+  status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED";
+  statusLabel: string;
+  tone: "warning" | "info" | "neutral";
+  startsAt: string;
+  endsAt: string;
+  locationName: string;
+};
+
+function endOfLocalDay(value = new Date()) {
+  const date = startOfLocalDay(value);
+  date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+function endOfLocalWeek(value = new Date()) {
+  const start = startOfLocalWeek(value);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+function startOfLocalMonth(value = new Date()) {
+  const date = startOfLocalDay(value);
+  date.setDate(1);
+  return date;
+}
+
+function endOfLocalMonth(value = new Date()) {
+  const date = startOfLocalMonth(value);
+  date.setMonth(date.getMonth() + 1);
+  date.setMilliseconds(-1);
+  return date;
+}
+
+function formatShiftDateLabel(startsAt: Date, now: Date) {
+  if (startOfLocalDay(startsAt).getTime() === startOfLocalDay(now).getTime()) {
+    return "Today";
+  }
+  return startsAt.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatShiftDayLabel(startsAt: Date) {
+  return startsAt.toLocaleDateString(undefined, { weekday: "long" });
+}
+
+function classifyShiftStatus(
+  startsAt: Date,
+  endsAt: Date,
+  now: Date,
+): Pick<PosShiftRow, "status" | "statusLabel" | "tone"> {
+  if (now.getTime() < startsAt.getTime()) {
+    return { status: "UPCOMING", statusLabel: "Upcoming", tone: "info" };
+  }
+  if (now.getTime() > endsAt.getTime()) {
+    return { status: "COMPLETED", statusLabel: "Completed", tone: "neutral" };
+  }
+  return { status: "IN_PROGRESS", statusLabel: "In Progress", tone: "warning" };
+}
+
+function rangeBounds(range: PosShiftRange, now: Date) {
+  switch (range) {
+    case "today":
+      return { gte: startOfLocalDay(now), lte: endOfLocalDay(now) };
+    case "week":
+      return { gte: startOfLocalWeek(now), lte: endOfLocalWeek(now) };
+    case "month":
+      return { gte: startOfLocalMonth(now), lte: endOfLocalMonth(now) };
+    case "upcoming":
+      return { gte: startOfLocalDay(now), lte: undefined as Date | undefined };
+  }
+}
+
+export async function listEmployeeShiftsForPos(params: {
+  shopDomain: string;
+  employeeId: string;
+  range: PosShiftRange;
+}) {
+  const shop = await ensureShop(params.shopDomain);
+  const employee = await prisma.employee.findFirst({
+    where: { id: params.employeeId, shopId: shop.id },
+  });
+  if (!employee) {
+    throw new Error("Employee not found");
+  }
+
+  const settings = await getShopSettings(shop.id);
+  const timeFormat = settings.timeFormat as TimeFormat;
+  const now = new Date();
+  const bounds = rangeBounds(params.range, now);
+
+  const shifts = await prisma.shift.findMany({
+    where: {
+      shopId: shop.id,
+      employeeId: employee.id,
+      startsAt: {
+        gte: bounds.gte,
+        ...(bounds.lte ? { lte: bounds.lte } : {}),
+      },
+      ...(params.range === "upcoming" ? { endsAt: { gte: now } } : {}),
+    },
+    include: { location: true },
+    orderBy: { startsAt: "asc" },
+  });
+
+  const rows: PosShiftRow[] = shifts.map((shift) => {
+    const status = classifyShiftStatus(shift.startsAt, shift.endsAt, now);
+    return {
+      id: shift.id,
+      dateLabel: formatShiftDateLabel(shift.startsAt, now),
+      dayLabel: formatShiftDayLabel(shift.startsAt),
+      timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat)} - ${formatPosClockLabel(shift.endsAt, timeFormat)}`,
+      ...status,
+      startsAt: shift.startsAt.toISOString(),
+      endsAt: shift.endsAt.toISOString(),
+      locationName: shift.location.name,
+    };
+  });
+
+  return {
+    employee: {
+      id: employee.id,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+    },
+    range: params.range,
+    shifts: rows,
+    serverTime: Date.now(),
+  };
+}
+
 export async function getOpenTimeEntry(employeeId: string) {
   return prisma.timeEntry.findFirst({
     where: { employeeId, status: "OPEN" },
