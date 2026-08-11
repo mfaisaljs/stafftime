@@ -174,7 +174,13 @@ async function fetchShopifyOrderForCommission(params: {
   };
 
   if (json.errors?.length) {
-    throw new Error(json.errors[0]?.message || "Could not load order");
+    const message = json.errors[0]?.message || "Could not load order";
+    if (/access denied/i.test(message) || /read_orders/i.test(message)) {
+      throw new Error(
+        "Order access denied. Enable Protected customer data (Orders) for this app in Partner Dashboard → API access requests, then reinstall/re-auth the app on the store.",
+      );
+    }
+    throw new Error(message);
   }
 
   const order = json.data?.order;
