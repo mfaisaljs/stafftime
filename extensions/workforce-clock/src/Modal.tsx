@@ -229,7 +229,9 @@ function WorkforceModal() {
     return (
       <s-page heading="Clock In/Out">
         <s-scroll-box>
-          <s-text>Loading...</s-text>
+          <s-box padding="large">
+            <s-text>Loading...</s-text>
+          </s-box>
         </s-scroll-box>
       </s-page>
     );
@@ -239,6 +241,7 @@ function WorkforceModal() {
     return (
       <s-page heading="Clock In/Out">
         <s-scroll-box>
+          <s-box padding="large">
           <s-stack direction="block" gap="base">
             <s-text>Enter your staff PIN to clock in or out.</s-text>
             <s-stack direction="inline" gap="base">
@@ -280,6 +283,7 @@ function WorkforceModal() {
               </s-stack>
             )}
           </s-stack>
+          </s-box>
         </s-scroll-box>
       </s-page>
     );
@@ -345,105 +349,167 @@ function MainScreen(props: {
   return (
     <s-page heading="Clock In/Out">
       <s-scroll-box>
-        <s-stack direction="block" gap="large">
-          <s-stack direction="block" gap="small">
-            <s-heading>Welcome, {props.firstName}!</s-heading>
-            <s-badge tone={statusCopy.tone}>{statusCopy.label}</s-badge>
-          </s-stack>
-
-          <s-section heading="Time Tracking">
-            <s-stack direction="block" gap="base">
-              <TimerRow
-                label="Day total"
-                value={props.dayTimer}
-                running={props.isRunning}
-              />
-              <TimerRow
-                label="Current session"
-                value={props.sessionTimer}
-                running={props.isRunning}
-              />
-              <InfoRow label="Week total" value={props.weekTimer} />
-            </s-stack>
-          </s-section>
-
-          <s-section heading="Shift Info">
-            <s-stack direction="block" gap="base">
-              <InfoRow label="Date" value={props.dateLabel} />
-              <InfoRow label="Location" value={props.locationName} />
-              <InfoRow
-                label="First clock in today"
-                value={props.firstClockInLabel}
-              />
-              <InfoRow
-                label="Current clock in"
-                value={props.currentClockInLabel}
-              />
-            </s-stack>
-          </s-section>
-
-          <s-section heading="Actions">
-            <s-stack direction="block" gap="base">
-              <s-button variant="secondary" onClick={props.onViewHistory}>
-                View Today&apos;s History
-              </s-button>
-
-              {props.status === "CLOCKED_IN" && (
-                <s-button
-                  variant="secondary"
-                  loading={props.loading}
-                  onClick={props.onBreakStart}
-                >
-                  Start Break
-                </s-button>
-              )}
-
-              {props.status === "ON_BREAK" && (
-                <s-button
-                  variant="primary"
-                  loading={props.loading}
-                  onClick={props.onBreakEnd}
-                >
-                  End Break
-                </s-button>
-              )}
-
-              {(props.status === "CLOCKED_IN" || props.status === "ON_BREAK") && (
-                <s-text-area
-                  label="Note before clock out (optional)"
-                  value={props.note}
-                  placeholder="e.g. Forgot to clock out — actual end time was 6:00 PM"
-                  onInput={(event) =>
-                    props.onNoteChange(event.currentTarget.value)
-                  }
+        <s-box padding="large">
+          <s-stack direction="block" gap="large">
+            <s-stack direction="block" gap="small">
+              <s-stack direction="inline" gap="small" alignItems="center">
+                <s-icon type="person-filled" />
+                <s-heading>Welcome, {props.firstName}!</s-heading>
+              </s-stack>
+              <s-stack direction="inline" gap="small" alignItems="center">
+                <s-icon
+                  type={statusCopy.icon}
+                  tone={statusCopy.tone === "neutral" ? "auto" : statusCopy.tone}
                 />
-              )}
-
-              {props.status === "CLOCKED_OUT" ? (
-                <s-button
-                  variant="primary"
-                  loading={props.loading}
-                  onClick={props.onClockIn}
-                >
-                  Clock In
-                </s-button>
-              ) : (
-                <s-button
-                  variant="primary"
-                  tone="critical"
-                  loading={props.loading}
-                  onClick={props.onClockOut}
-                >
-                  Clock Out
-                </s-button>
-              )}
-
-              <s-button variant="secondary" onClick={props.onSwitchEmployee}>
-                Switch employee
-              </s-button>
+                <s-badge tone={statusCopy.tone}>{statusCopy.label}</s-badge>
+              </s-stack>
             </s-stack>
-          </s-section>
-        </s-stack>
+
+            <s-section>
+              <s-box padding="small none">
+                <s-stack direction="block" gap="base">
+                  <SectionTitle icon="live" label="Time Tracking" />
+                  <TimerRow
+                    label="Day total"
+                    value={props.dayTimer}
+                    running={props.isRunning}
+                  />
+                  <TimerRow
+                    label="Current session"
+                    value={props.sessionTimer}
+                    running={props.isRunning}
+                  />
+                  <InfoRow label="Week total" value={props.weekTimer} />
+                </s-stack>
+              </s-box>
+            </s-section>
+
+            <s-section>
+              <s-box padding="small none">
+                <s-stack direction="block" gap="base">
+                  <SectionTitle icon="flag" label="Shift Info" />
+                  <InfoRow icon="note" label="Date" value={props.dateLabel} />
+                  <InfoRow
+                    icon="location"
+                    label="Location"
+                    value={props.locationName}
+                  />
+                  <InfoRow
+                    icon="clock"
+                    label="First clock in today"
+                    value={props.firstClockInLabel}
+                  />
+                  <InfoRow
+                    icon="clock"
+                    label="Current clock in"
+                    value={props.currentClockInLabel}
+                  />
+                </s-stack>
+              </s-box>
+            </s-section>
+
+            <s-section>
+              <s-box padding="small none">
+                <s-stack direction="block" gap="base">
+                  <SectionTitle icon="bolt-filled" label="Actions" />
+
+                  <s-button variant="secondary" onClick={props.onViewHistory}>
+                    <s-stack direction="inline" gap="small" alignItems="center">
+                      <s-icon type="clipboard-checklist" />
+                      <s-text>View Today&apos;s History</s-text>
+                    </s-stack>
+                  </s-button>
+
+                  {props.status === "CLOCKED_IN" && (
+                    <s-button
+                      variant="secondary"
+                      loading={props.loading}
+                      onClick={props.onBreakStart}
+                    >
+                      <s-stack
+                        direction="inline"
+                        gap="small"
+                        alignItems="center"
+                      >
+                        <s-icon type="play-circle" />
+                        <s-text>Start Break</s-text>
+                      </s-stack>
+                    </s-button>
+                  )}
+
+                  {props.status === "ON_BREAK" && (
+                    <s-button
+                      variant="primary"
+                      loading={props.loading}
+                      onClick={props.onBreakEnd}
+                    >
+                      <s-stack
+                        direction="inline"
+                        gap="small"
+                        alignItems="center"
+                      >
+                        <s-icon type="check" />
+                        <s-text>End Break</s-text>
+                      </s-stack>
+                    </s-button>
+                  )}
+
+                  {(props.status === "CLOCKED_IN" ||
+                    props.status === "ON_BREAK") && (
+                    <s-text-area
+                      label="Note before clock out (optional)"
+                      value={props.note}
+                      placeholder="e.g. Forgot to clock out — actual end time was 6:00 PM"
+                      onInput={(event) =>
+                        props.onNoteChange(event.currentTarget.value)
+                      }
+                    />
+                  )}
+
+                  {props.status === "CLOCKED_OUT" ? (
+                    <s-button
+                      variant="primary"
+                      loading={props.loading}
+                      onClick={props.onClockIn}
+                    >
+                      <s-stack
+                        direction="inline"
+                        gap="small"
+                        alignItems="center"
+                      >
+                        <s-icon type="check-circle-filled" />
+                        <s-text>Clock In</s-text>
+                      </s-stack>
+                    </s-button>
+                  ) : (
+                    <s-button
+                      variant="primary"
+                      tone="critical"
+                      loading={props.loading}
+                      onClick={props.onClockOut}
+                    >
+                      <s-stack
+                        direction="inline"
+                        gap="small"
+                        alignItems="center"
+                      >
+                        <s-icon type="phone-out" tone="critical" />
+                        <s-text>Clock Out</s-text>
+                      </s-stack>
+                    </s-button>
+                  )}
+
+                  <s-button variant="secondary" onClick={props.onSwitchEmployee}>
+                    <s-stack direction="inline" gap="small" alignItems="center">
+                      <s-icon type="person" />
+                      <s-text>Switch employee</s-text>
+                    </s-stack>
+                  </s-button>
+                </s-stack>
+              </s-box>
+            </s-section>
+          </s-stack>
+        </s-box>
       </s-scroll-box>
     </s-page>
   );
@@ -456,31 +522,80 @@ function HistoryScreen(props: {
   return (
     <s-page heading="Today's History">
       <s-scroll-box>
-        <s-stack direction="block" gap="base">
-          <s-button variant="secondary" onClick={props.onBack}>
-            Back to Main
-          </s-button>
+        <s-box padding="large">
+          <s-stack direction="block" gap="large">
+            <s-button variant="secondary" onClick={props.onBack}>
+              <s-stack direction="inline" gap="small" alignItems="center">
+                <s-icon type="arrow-left" />
+                <s-text>Back to Main</s-text>
+              </s-stack>
+            </s-button>
 
-          <s-section heading="Time Records">
-            <s-stack direction="block" gap="base">
-              {props.history.length === 0 ? (
-                <s-text>No time records yet today.</s-text>
-              ) : (
-                props.history.map((event) => (
-                  <s-stack key={event.id} direction="inline" gap="base">
-                    <s-stack direction="block" gap="none">
-                      <s-text>{event.label}</s-text>
-                      <s-text>Time: {event.atLabel}</s-text>
-                    </s-stack>
-                    <s-badge tone={event.tone}>{event.badge}</s-badge>
-                  </s-stack>
-                ))
-              )}
-            </s-stack>
-          </s-section>
-        </s-stack>
+            <s-section>
+              <s-box padding="small none">
+                <s-stack direction="block" gap="base">
+                  <SectionTitle
+                    icon="clipboard-checklist"
+                    label="Time Records"
+                  />
+                  {props.history.length === 0 ? (
+                    <s-text>No time records yet today.</s-text>
+                  ) : (
+                    props.history.map((event) => (
+                      <s-stack
+                        key={event.id}
+                        direction="inline"
+                        gap="base"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        inlineSize="100%"
+                      >
+                        <s-stack
+                          direction="inline"
+                          gap="small"
+                          alignItems="center"
+                        >
+                          <s-icon
+                            type={historyIcon(event.type)}
+                            tone={
+                              event.tone === "neutral" ? "auto" : event.tone
+                            }
+                          />
+                          <s-stack direction="block" gap="none">
+                            <s-text>{event.label}</s-text>
+                            <s-text>Time: {event.atLabel}</s-text>
+                          </s-stack>
+                        </s-stack>
+                        <s-badge tone={event.tone}>{event.badge}</s-badge>
+                      </s-stack>
+                    ))
+                  )}
+                </s-stack>
+              </s-box>
+            </s-section>
+          </s-stack>
+        </s-box>
       </s-scroll-box>
     </s-page>
+  );
+}
+
+function SectionTitle(props: {
+  icon:
+    | "live"
+    | "flag"
+    | "bolt-filled"
+    | "clipboard-checklist"
+    | "clock"
+    | "location"
+    | "note";
+  label: string;
+}) {
+  return (
+    <s-stack direction="inline" gap="small" alignItems="center">
+      <s-icon type={props.icon} />
+      <s-text>{props.label}</s-text>
+    </s-stack>
   );
 }
 
@@ -490,36 +605,79 @@ function TimerRow(props: {
   running?: boolean;
 }) {
   return (
-    <s-stack direction="block" gap="none">
-      <s-stack direction="inline" gap="small">
-        <s-text>{props.label}</s-text>
-        {props.running ? <s-badge tone="success">Running</s-badge> : null}
+    <s-box padding="small none">
+      <s-stack direction="block" gap="none">
+        <s-stack
+          direction="inline"
+          gap="small"
+          alignItems="center"
+          justifyContent="space-between"
+          inlineSize="100%"
+        >
+          <s-text>{props.label}</s-text>
+          {props.running ? <s-badge tone="success">Running</s-badge> : null}
+        </s-stack>
+        <s-heading>{props.value}</s-heading>
       </s-stack>
-      <s-heading>{props.value}</s-heading>
-    </s-stack>
+    </s-box>
   );
 }
 
-function InfoRow(props: { label: string; value: string }) {
+function InfoRow(props: {
+  label: string;
+  value: string;
+  icon?: "clock" | "location" | "note" | "flag" | "store";
+}) {
   return (
-    <s-stack direction="inline" gap="base">
-      <s-text>{props.label}</s-text>
-      <s-text>{props.value}</s-text>
-    </s-stack>
+    <s-box padding="small none">
+      <s-stack
+        direction="inline"
+        gap="base"
+        alignItems="center"
+        justifyContent="space-between"
+        inlineSize="100%"
+      >
+        <s-stack direction="inline" gap="small" alignItems="center">
+          {props.icon ? <s-icon type={props.icon} /> : null}
+          <s-text>{props.label}</s-text>
+        </s-stack>
+        <s-text>{props.value}</s-text>
+      </s-stack>
+    </s-box>
   );
+}
+
+function historyIcon(
+  type: PosHistoryEvent["type"],
+): "check-circle-filled" | "phone-out" | "play-circle" | "check" {
+  switch (type) {
+    case "CLOCK_IN":
+      return "check-circle-filled";
+    case "CLOCK_OUT":
+      return "phone-out";
+    case "BREAK_START":
+      return "play-circle";
+    case "BREAK_END":
+      return "check";
+  }
 }
 
 function statusBadgeCopy(status: ClockStatus): {
   label: string;
   tone: "success" | "warning" | "critical" | "neutral";
+  icon: "check-circle-filled" | "play-circle" | "x-circle";
 } {
   if (status === "CLOCKED_IN") {
-    return { label: "Currently Working", tone: "success" };
+    return {
+      label: "Currently Working",
+      tone: "success",
+      icon: "check-circle-filled",
+    };
   }
   if (status === "ON_BREAK") {
-    return { label: "On Break", tone: "warning" };
+    return { label: "On Break", tone: "warning", icon: "play-circle" };
   }
-  return { label: "Clocked Out", tone: "critical" };
+  return { label: "Clocked Out", tone: "critical", icon: "x-circle" };
 }
 
 function successMessageForAction(action: string): string {
