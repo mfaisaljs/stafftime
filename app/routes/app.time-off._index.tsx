@@ -153,7 +153,8 @@ export default function TimeOffIndexPage() {
     const formData = new FormData();
     formData.set("requestId", requestId);
     formData.set("status", reviewStatus);
-    fetcher.submit(formData, { method: "post" });
+    // Index route action requires ?index so the post does not hit the parent layout.
+    fetcher.submit(formData, { method: "post", action: "/app/time-off?index" });
   };
 
   const reviewingRequestId =
@@ -161,10 +162,36 @@ export default function TimeOffIndexPage() {
       ? String(fetcher.formData?.get("requestId") ?? "")
       : "";
 
+  const showModal = (id: string) => {
+    const modal = document.getElementById(id) as
+      | (HTMLElement & { showOverlay?: () => void })
+      | null;
+    modal?.showOverlay?.();
+  };
+
+  const hideModal = (id: string) => {
+    const modal = document.getElementById(id) as
+      | (HTMLElement & { hideOverlay?: () => void })
+      | null;
+    modal?.hideOverlay?.();
+  };
+
+  const openApproveModal = (item: (typeof timeOffs)[number]) => {
+    setApproveTarget(item);
+    showModal("approve-time-off-modal");
+  };
+
+  const openDeclineModal = (item: (typeof timeOffs)[number]) => {
+    setDeclineTarget(item);
+    showModal("decline-time-off-modal");
+  };
+
   useEffect(() => {
     if (reviewFeedback && "success" in reviewFeedback && reviewFeedback.success) {
       setApproveTarget(null);
       setDeclineTarget(null);
+      hideModal("approve-time-off-modal");
+      hideModal("decline-time-off-modal");
     }
   }, [reviewFeedback]);
 
@@ -284,7 +311,8 @@ export default function TimeOffIndexPage() {
                           <s-button
                             type="button"
                             variant="primary"
-                            onClick={() => setApproveTarget(item)}
+                            disabled={fetcher.state !== "idle"}
+                            onClick={() => openApproveModal(item)}
                           >
                             Approve
                           </s-button>
@@ -306,7 +334,7 @@ export default function TimeOffIndexPage() {
                           tone="critical"
                           loading={reviewingRequestId === item.id}
                           disabled={fetcher.state !== "idle"}
-                          onClick={() => setDeclineTarget(item)}
+                          onClick={() => openDeclineModal(item)}
                         >
                           Decline
                         </s-button>
@@ -326,107 +354,103 @@ export default function TimeOffIndexPage() {
         For more guidance, visit our <Link to="/app">Knowledge Base</Link>
       </p>
 
-      {approveTarget ? (
-        <s-modal
-          heading="Approve time off?"
-          open
-          onClose={() => setApproveTarget(null)}
-        >
-          <s-box padding="base">
-            <s-stack direction="block" gap="base">
-              <s-text>
-                Approve {approveTarget.staffName}&apos;s {approveTarget.policyName}{" "}
-                request ({formatDate(approveTarget.startDate)} –{" "}
-                {formatDate(approveTarget.endDate)})?
-              </s-text>
-              {approveTarget.overlappingShifts.length > 0 ? (
-                <s-banner tone="warning" heading="Overlapping shifts will be cancelled">
-                  <s-text>
-                    {approveTarget.overlappingShifts.length} scheduled shift
-                    {approveTarget.overlappingShifts.length === 1 ? "" : "s"} will
-                    be cancelled for this employee.
-                  </s-text>
-                  <s-stack direction="block" gap="small">
-                    {approveTarget.overlappingShifts.map((shift) => (
-                      <s-text key={shift.id}>
-                        {formatDate(shift.dateKey)} · {shift.startTime}–
-                        {shift.endTime} · {shift.locationName}
-                      </s-text>
-                    ))}
-                  </s-stack>
-                </s-banner>
-              ) : null}
-            </s-stack>
-          </s-box>
-          <s-button
-            slot="primary-action"
-            variant="primary"
-            loading={
-              approveTarget !== null && reviewingRequestId === approveTarget.id
+      <s-modal id="approve-time-off-modal" heading="Approve time off?">
+        <s-box padding="base">
+          <s-stack direction="block" gap="base">
+            <s-text>
+              {approveTarget
+                ? `Approve ${approveTarget.staffName}'s ${approveTarget.policyName} request (${formatDate(approveTarget.startDate)} – ${formatDate(approveTarget.endDate)})?`
+                : "Approve this time off request?"}
+            </s-text>
+            {approveTarget && approveTarget.overlappingShifts.length > 0 ? (
+              <s-banner tone="warning" heading="Overlapping shifts will be cancelled">
+                <s-text>
+                  {approveTarget.overlappingShifts.length} scheduled shift
+                  {approveTarget.overlappingShifts.length === 1 ? "" : "s"} will
+                  be cancelled for this employee.
+                </s-text>
+                <s-stack direction="block" gap="small">
+                  {approveTarget.overlappingShifts.map((shift) => (
+                    <s-text key={shift.id}>
+                      {formatDate(shift.dateKey)} · {shift.startTime}–
+                      {shift.endTime} · {shift.locationName}
+                    </s-text>
+                  ))}
+                </s-stack>
+              </s-banner>
+            ) : null}
+          </s-stack>
+        </s-box>
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          loading={
+            approveTarget !== null && reviewingRequestId === approveTarget.id
+          }
+          disabled={!approveTarget || fetcher.state !== "idle"}
+          commandFor="approve-time-off-modal"
+          command="--hide"
+          onClick={() => {
+            if (approveTarget) {
+              submitReview(approveTarget.id, "APPROVED");
             }
-            disabled={fetcher.state !== "idle"}
-            onClick={() => {
-              if (approveTarget) {
-                submitReview(approveTarget.id, "APPROVED");
-              }
-            }}
-          >
-            Approve
-          </s-button>
-          <s-button
-            slot="secondary-actions"
-            variant="secondary"
-            onClick={() => setApproveTarget(null)}
-          >
-            Cancel
-          </s-button>
-        </s-modal>
-      ) : null}
+          }}
+        >
+          Approve
+        </s-button>
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor="approve-time-off-modal"
+          command="--hide"
+          onClick={() => setApproveTarget(null)}
+        >
+          Cancel
+        </s-button>
+      </s-modal>
 
-      {declineTarget ? (
-        <s-modal
-          heading="Decline approved time off?"
-          open
-          onClose={() => setDeclineTarget(null)}
-        >
-          <s-box padding="base">
-            <s-stack direction="block" gap="base">
-              <s-text>
-                Decline {declineTarget.staffName}&apos;s approved{" "}
-                {declineTarget.policyName} request ({formatDate(declineTarget.startDate)}{" "}
-                – {formatDate(declineTarget.endDate)})?
-              </s-text>
-              <s-text>
-                Any shifts cancelled for this leave will be restored to the
-                schedule.
-              </s-text>
-            </s-stack>
-          </s-box>
-          <s-button
-            slot="primary-action"
-            variant="primary"
-            tone="critical"
-            loading={
-              declineTarget !== null && reviewingRequestId === declineTarget.id
+      <s-modal id="decline-time-off-modal" heading="Decline approved time off?">
+        <s-box padding="base">
+          <s-stack direction="block" gap="base">
+            <s-text>
+              {declineTarget
+                ? `Decline ${declineTarget.staffName}'s approved ${declineTarget.policyName} request (${formatDate(declineTarget.startDate)} – ${formatDate(declineTarget.endDate)})?`
+                : "Decline this approved time off request?"}
+            </s-text>
+            <s-text>
+              Any shifts cancelled for this leave will be restored to the
+              schedule.
+            </s-text>
+          </s-stack>
+        </s-box>
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          tone="critical"
+          loading={
+            declineTarget !== null && reviewingRequestId === declineTarget.id
+          }
+          disabled={!declineTarget || fetcher.state !== "idle"}
+          commandFor="decline-time-off-modal"
+          command="--hide"
+          onClick={() => {
+            if (declineTarget) {
+              submitReview(declineTarget.id, "DECLINED");
             }
-            disabled={fetcher.state !== "idle"}
-            onClick={() => {
-              if (declineTarget) {
-                submitReview(declineTarget.id, "DECLINED");
-              }
-            }}
-          >
-            Decline
-          </s-button>
-          <s-button
-            slot="secondary-actions"
-            variant="secondary"
-            onClick={() => setDeclineTarget(null)}
-          >
-            Cancel
-          </s-button>
-        </s-modal>
-      ) : null}
+          }}
+        >
+          Decline
+        </s-button>
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor="decline-time-off-modal"
+          command="--hide"
+          onClick={() => setDeclineTarget(null)}
+        >
+          Cancel
+        </s-button>
+      </s-modal>
 
       <style>{TIME_OFF_STYLES}</style>
     </s-page>
