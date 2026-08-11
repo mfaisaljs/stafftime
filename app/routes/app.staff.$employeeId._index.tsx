@@ -144,11 +144,21 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const hourFormat = settings.hourFormat as HourFormat;
   const timeFormat = settings.timeFormat as TimeFormat;
 
-  const commissionPrograms = await prisma.commissionProgram.findMany({
-    where: { shopId: shop.id },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, employeeIds: true, active: true },
-  });
+  const [commissionPrograms, commissionAttributions] = await Promise.all([
+    prisma.commissionProgram.findMany({
+      where: { shopId: shop.id },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, name: true, employeeIds: true, active: true },
+    }),
+    prisma.commissionAttribution.findMany({
+      where: {
+        shopId: shop.id,
+        employeeId,
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   const assignedPrograms = commissionPrograms
     .filter((program) => {
       try {
@@ -163,20 +173,102 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       name: program.name,
       active: program.active,
     }));
+  const programNameById = new Map(
+    commissionPrograms.map((program) => [program.id, program.name]),
+  );
 
-  // Commission order earnings are not persisted yet — show zeroed totals/empty list.
+  type CommissionOrderRow = {
+    id: string;
+    orderId: string;
+    orderName: string;
+    programId: string;
+    programName: string;
+    status: "paid" | "unpaid";
+    amount: number;
+    createdAt: string;
+  };
+
+  const commissionOrders: CommissionOrderRow[] = [];
+  for (const attribution of commissionAttributions) {
+    let lines: Array<{
+      programId?: string;
+      programName?: string;
+      commissionAmount?: number;
+    }> = [];
+    try {
+      const parsed = JSON.parse(attribution.lineItemsJson) as unknown;
+      if (Array.isArray(parsed)) lines = parsed as typeof lines;
+    } catch {
+      lines = [];
+    }
+
+    const amountByProgram = new Map<string, { name: string; amount: number }>();
+    for (const line of lines) {
+      if (!line?.programId) continue;
+      const amount = Number(line.commissionAmount ?? 0);
+      if (!Number.isFinite(amount) || amount <= 0) continue;
+      const existing = amountByProgram.get(line.programId);
+      const name =
+        line.programName ||
+        programNameById.get(line.programId) ||
+        "Commission Program";
+      amountByProgram.set(line.programId, {
+        name,
+        amount: (existing?.amount ?? 0) + amount,
+      });
+    }
+
+    if (amountByProgram.size === 0) {
+      let programIds: string[] = [];
+      try {
+        const parsed = JSON.parse(attribution.programIds) as unknown;
+        if (Array.isArray(parsed)) {
+          programIds = parsed.filter(
+            (value): value is string => typeof value === "string",
+          );
+        }
+      } catch {
+        programIds = [];
+      }
+      const programId = programIds[0] || "unknown";
+      commissionOrders.push({
+        id: attribution.id,
+        orderId: attribution.orderId,
+        orderName: attribution.orderName || `#${attribution.orderId}`,
+        programId,
+        programName: programNameById.get(programId) || "Commission Program",
+        status: "unpaid",
+        amount: attribution.commissionTotal,
+        createdAt: attribution.createdAt.toISOString(),
+      });
+      continue;
+    }
+
+    for (const [programId, entry] of amountByProgram) {
+      commissionOrders.push({
+        id: `${attribution.id}:${programId}`,
+        orderId: attribution.orderId,
+        orderName: attribution.orderName || `#${attribution.orderId}`,
+        programId,
+        programName: entry.name,
+        status: "unpaid",
+        amount: Number(entry.amount.toFixed(2)),
+        createdAt: attribution.createdAt.toISOString(),
+      });
+    }
+  }
+
+  const commissionTotal = Number(
+    commissionOrders
+      .reduce((sum, order) => sum + order.amount, 0)
+      .toFixed(2),
+  );
+  // Paid/unpaid split lands with payroll commission payouts; attributed = unpaid for now.
   const commissionEarnings = {
-    total: 0,
+    total: commissionTotal,
     paid: 0,
-    unpaid: 0,
-    orders: [] as Array<{
-      id: string;
-      programId: string;
-      programName: string;
-      status: "paid" | "unpaid";
-      amount: number;
-      createdAt: string;
-    }>,
+    unpaid: commissionTotal,
+    orders: commissionOrders,
   };
 
   const attendanceRows = timeEntries.map((entry, index) => {
@@ -578,6 +670,8 @@ function CommissionTab({
     programs: Array<{ id: string; name: string; active: boolean }>;
     orders: Array<{
       id: string;
+      orderId: string;
+      orderName: string;
       programId: string;
       programName: string;
       status: "paid" | "unpaid";
@@ -686,13 +780,17 @@ function CommissionTab({
               <span />
             </div>
             <strong>No commission orders found</strong>
-            <p>No commission orders match your current filters.</p>
+            <p>
+              Attribute commission from POS Order details or Post-purchase to see
+              orders here.
+            </p>
           </div>
         ) : (
           <div className="detail-table-wrap">
             <table className="detail-table">
               <thead>
                 <tr>
+                  <th>Order</th>
                   <th>Date</th>
                   <th>Program</th>
                   <th>Status</th>
@@ -702,6 +800,7 @@ function CommissionTab({
               <tbody>
                 {filteredOrders.map((order) => (
                   <tr key={order.id}>
+                    <td>{order.orderName}</td>
                     <td>{formatTableDate(order.createdAt)}</td>
                     <td>{order.programName}</td>
                     <td>{order.status === "paid" ? "Paid" : "Unpaid"}</td>

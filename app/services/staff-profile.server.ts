@@ -170,34 +170,43 @@ export async function getStaffProfileForPos(params: {
 
   await syncApprovedLeaveShiftCancellations(shop.id);
 
-  const [timeEntries, shifts, timeOffRequests, payments] = await Promise.all([
-    prisma.timeEntry.findMany({
-      where: {
-        shopId: shop.id,
-        employeeId: employee.id,
-        clockInAt: { gte: startDate, lte: endDate },
-      },
-      include: { breaks: true, location: true },
-      orderBy: { clockInAt: "desc" },
-    }),
-    prisma.shift.findMany({
-      where: {
-        shopId: shop.id,
-        employeeId: employee.id,
-        status: {
-          in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE],
+  const [timeEntries, shifts, timeOffRequests, payments, commissionRows] =
+    await Promise.all([
+      prisma.timeEntry.findMany({
+        where: {
+          shopId: shop.id,
+          employeeId: employee.id,
+          clockInAt: { gte: startDate, lte: endDate },
         },
-        startsAt: { gte: startDate, lte: shiftsEnd },
-      },
-      include: { location: true },
-      orderBy: { startsAt: "asc" },
-    }),
-    getApprovedTimeOffForRange(shop.id, effectiveStartKey, shiftsEndKey),
-    prisma.payrollPayment.findMany({
-      where: { shopId: shop.id, employeeId: employee.id },
-      select: { amount: true, paymentType: true },
-    }),
-  ]);
+        include: { breaks: true, location: true },
+        orderBy: { clockInAt: "desc" },
+      }),
+      prisma.shift.findMany({
+        where: {
+          shopId: shop.id,
+          employeeId: employee.id,
+          status: {
+            in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE],
+          },
+          startsAt: { gte: startDate, lte: shiftsEnd },
+        },
+        include: { location: true },
+        orderBy: { startsAt: "asc" },
+      }),
+      getApprovedTimeOffForRange(shop.id, effectiveStartKey, shiftsEndKey),
+      prisma.payrollPayment.findMany({
+        where: { shopId: shop.id, employeeId: employee.id },
+        select: { amount: true, paymentType: true },
+      }),
+      prisma.commissionAttribution.findMany({
+        where: {
+          shopId: shop.id,
+          employeeId: employee.id,
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        select: { commissionTotal: true },
+      }),
+    ]);
 
   const now = new Date();
   const summarizeOptions = { deductBreakTime: settings.deductBreakTime };
@@ -243,13 +252,18 @@ export async function getStaffProfileForPos(params: {
     settings,
   });
 
-  const totalCommission = 0;
+  const totalCommission = Number(
+    commissionRows
+      .reduce((sum, row) => sum + row.commissionTotal, 0)
+      .toFixed(2),
+  );
   const totalBonus = 0;
   const totalEarnings = baseEarnings + salaryAdjustment + totalCommission + totalBonus;
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const remainingAmount = Math.max(0, totalEarnings - totalPaid);
   const unpaidSalary = remainingAmount;
-  const unpaidCommission = 0;
+  // Attributed commission is unpaid until payroll payout tracking exists.
+  const unpaidCommission = totalCommission;
   const currency = employee.currency || "USD";
   const salaryAdjustmentLabel = formatMoney(salaryAdjustment, currency);
 
