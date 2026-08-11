@@ -1,0 +1,19 @@
+api_version = "2026-01"
+
+[[extensions]]
+type = "ui_extension"
+name = "t:name"
+uid = "6822ce12-5c8d-4c57-b7d5-a14179f7d40d"
+handle = "time-off"
+description = "Trubuild: Request and approve time off"
+
+[extensions.supported_features]
+runs_offline = true
+
+[[extensions.targeting]]
+module = "./src/Tile.tsx"
+target = "pos.home.tile.render"
+
+[[extensions.targeting]]
+module = "./src/Modal.tsx"
+target = "pos.home.modal.render"

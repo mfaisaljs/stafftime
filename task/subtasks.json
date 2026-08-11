@@ -1452,6 +1452,29 @@
         "app/services/staff-profile.server.ts"
       ],
       "lastUpdated": "2026-08-11T13:10:00.000Z"
+    },
+    {
+      "id": "ST081",
+      "taskId": "T009",
+      "title": "POS Time Off tile with role-gated approvals",
+      "description": "Add Time Off POS tile: My Requests form, Staff Requests, and Approvals tabs gated by manager Position/Role.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST064", "ST071", "ST007"],
+      "acceptanceCriteria": [
+        "POS home shows a Time Off tile (handle time-off)",
+        "PIN opens Welcome + role badge and My Requests form (dates, policy, reason, history)",
+        "Staff Requests and Approvals tabs only for manager roles (Owner/Regional/Store Manager/Supervisor)",
+        "Managers can approve or decline pending requests from Approvals"
+      ],
+      "files": [
+        "extensions/time-off/src/Tile.tsx",
+        "extensions/time-off/src/Modal.tsx",
+        "extensions/time-off/shopify.extension.toml",
+        "app/routes/api.pos.time-off.tsx",
+        "app/services/time-off-pos.server.ts"
+      ],
+      "lastUpdated": "2026-08-11T14:20:00.000Z"
     }
   ]
 }

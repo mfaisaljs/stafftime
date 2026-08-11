@@ -93,8 +93,9 @@
       "status": "in_progress",
       "priority": "high",
       "phase": "mvp",
-      "progressPercent": 67,
-      "dependencies": ["T003", "T002"]
+      "progressPercent": 75,
+      "dependencies": ["T003", "T002"],
+      "lastUpdated": "2026-08-11T14:20:00.000Z"
     },
     {
       "id": "T010",
