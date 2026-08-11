@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import {
   CLOCK_STATE_STORAGE_KEY,
   parseStoredClockState,
@@ -14,38 +14,34 @@ export default async function extension() {
 function WorkforceTile() {
   const [status, setStatus] = useState<ClockStatus | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function refreshFromStorage() {
-      try {
-        const stored = parseStoredClockState(
-          await shopify.storage.get(CLOCK_STATE_STORAGE_KEY),
-        );
-        if (!cancelled) {
-          setStatus(stored?.status ?? null);
-        }
-      } catch {
-        // Keep the last known subheading if storage is unavailable.
-      }
+  const refreshFromStorage = useCallback(async () => {
+    try {
+      if (!shopify.storage?.get) return;
+      const stored = parseStoredClockState(
+        await shopify.storage.get(CLOCK_STATE_STORAGE_KEY),
+      );
+      setStatus(stored?.status ?? null);
+    } catch {
+      // Keep last known subheading if storage is unavailable offline.
     }
+  }, []);
 
+  useEffect(() => {
     void refreshFromStorage();
     const timer = setInterval(() => {
       void refreshFromStorage();
-    }, 1500);
-
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, []);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [refreshFromStorage]);
 
   return (
     <s-tile
       heading="Clock In / Out"
       subheading={subheadingForStatus(status)}
-      onClick={() => shopify.action.presentModal()}
+      onClick={() => {
+        void refreshFromStorage();
+        shopify.action.presentModal();
+      }}
     />
   );
 }

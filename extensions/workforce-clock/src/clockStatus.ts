@@ -10,7 +10,7 @@ export const CLOCK_STATE_STORAGE_KEY = "lastClockState";
 
 export function subheadingForStatus(status: ClockStatus | null | undefined): string {
   if (status === "CLOCKED_IN") return "Tap to clock out";
-  if (status === "ON_BREAK") return "On break — tap to manage";
+  if (status === "ON_BREAK") return "On break - tap to manage";
   return "Tap to clock in";
 }
 

@@ -1,5 +1,6 @@
 import { render } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { resolveAppUrl } from "./appUrl";
 import {
   buildClockState,
   CLOCK_STATE_STORAGE_KEY,
@@ -88,14 +89,24 @@ function WorkforceModal() {
 
   const apiFetch = useCallback(async (path: string, body?: Record<string, unknown>) => {
     const token = await shopify.session.getSessionToken();
-    const response = await fetch(path, {
-      method: body ? "POST" : "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    if (!token) {
+      throw new Error("POS session token unavailable. Check app permissions.");
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(resolveAppUrl(path), {
+        method: body ? "POST" : "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (err) {
+      throw new Error(messageFromError(err, "Could not reach StaffTime server"));
+    }
+
     const data = await response.json().catch((): null => null);
     if (!response.ok) {
       throw new Error(errorMessageFromResponse(data) ?? "Request failed");
