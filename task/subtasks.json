@@ -1297,6 +1297,27 @@
         "app/services/time-tracking.test.ts"
       ],
       "lastUpdated": "2026-08-10T19:34:53.000Z"
+    },
+    {
+      "id": "ST074",
+      "taskId": "T004",
+      "title": "Dynamic POS tile subheading from clock status",
+      "description": "Show Tap to clock in/out (or on break) on the smart grid tile based on the last verified employee status shared via extension storage.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST007"],
+      "acceptanceCriteria": [
+        "Tile subheading is Tap to clock in when clocked out or unknown",
+        "Tile subheading is Tap to clock out when clocked in",
+        "Tile subheading reflects on-break state after break start",
+        "Modal persists status to extension storage after verify and clock actions"
+      ],
+      "files": [
+        "extensions/workforce-clock/src/Tile.tsx",
+        "extensions/workforce-clock/src/Modal.tsx",
+        "extensions/workforce-clock/src/clockStatus.ts"
+      ],
+      "lastUpdated": "2026-08-11T09:05:00.000Z"
     }
   ]
 }

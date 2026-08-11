@@ -1,10 +1,15 @@
 import { render } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import {
+  buildClockState,
+  CLOCK_STATE_STORAGE_KEY,
+  type ClockStatus,
+} from "./clockStatus";
 
 type EmployeeStatus = {
   employeeId: string;
   employeeName: string;
-  status: "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
+  status: ClockStatus;
   clockInAt?: string;
   clockInAtMs?: number;
   breakStartAt?: string;
@@ -58,6 +63,20 @@ function WorkforceModal() {
     }
   }, []);
 
+  const persistClockState = useCallback(
+    async (status: ClockStatus, employeeId?: string) => {
+      try {
+        await shopify.storage.set(
+          CLOCK_STATE_STORAGE_KEY,
+          buildClockState(status, employeeId),
+        );
+      } catch {
+        // Tile falls back to "Tap to clock in" if storage write fails.
+      }
+    },
+    [],
+  );
+
   const elapsedLabel = useMemo(() => {
     const clockInAtMs = verified?.status.clockInAtMs;
     if (!clockInAtMs) return "Not clocked in";
@@ -92,6 +111,7 @@ function WorkforceModal() {
       const data = (await apiFetch("/api/pos/verify", payload)) as VerifyResponse;
       syncClockOffset(data.status, data.serverTime);
       setVerified(data);
+      await persistClockState(data.status.status, data.employee.id);
       setPin("");
       setQrCode("");
     } catch (err) {
@@ -111,6 +131,7 @@ function WorkforceModal() {
       })) as { status: EmployeeStatus; serverTime?: number };
       syncClockOffset(data.status, data.serverTime);
       setVerified({ ...verified, status: data.status, serverTime: data.serverTime });
+      await persistClockState(data.status.status, verified.employee.id);
     } catch (err) {
       setError(messageFromError(err, "Action failed"));
     } finally {
