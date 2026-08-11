@@ -59,3 +59,13 @@ export function errorMessageFromResponse(data: unknown): string | null {
 export function messageFromError(error: unknown, fallback: string): string {
   return error instanceof Error && error.message.trim() ? error.message : fallback;
 }
+
+export function showToast(content: string, durationMs = 3000): void {
+  try {
+    if (shopify.toast && typeof shopify.toast.show === "function") {
+      shopify.toast.show(content, { duration: durationMs });
+    }
+  } catch {
+    // Toast is best-effort feedback only.
+  }
+}

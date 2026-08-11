@@ -10,6 +10,7 @@ import {
   apiFetch,
   messageFromError,
   persistVerifySession,
+  showToast,
   type VerifyResponse,
   verifyPin,
 } from "./posApi";
@@ -29,7 +30,6 @@ function WorkforceModal() {
   const [mode, setMode] = useState<"pin" | "qr">("pin");
   const [loading, setLoading] = useState(false);
   const [booting, setBooting] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState<VerifyResponse | null>(null);
   const [now, setNow] = useState(Date.now());
   const clockOffsetRef = useRef(0);
@@ -62,7 +62,6 @@ function WorkforceModal() {
       syncClockOffset(next.status as EmployeeStatus, next.serverTime);
       setVerified(next);
       setQrCode("");
-      setError(null);
       setMode("pin");
       if (options?.persist !== false) {
         void persistVerifySession(next);
@@ -86,11 +85,10 @@ function WorkforceModal() {
     if (pinPadOpenRef.current) return;
 
     if (!shopify.pinPad || typeof shopify.pinPad.showPinPad !== "function") {
-      setError("PIN pad is unavailable on this POS version.");
+      showToast("PIN pad is unavailable on this POS version.");
       return;
     }
 
-    setError(null);
     setLoading(false);
     pinPadOpenRef.current = true;
 
@@ -101,6 +99,7 @@ function WorkforceModal() {
           try {
             const data = await verifyPin(pin);
             await persistVerifySession(data);
+            showToast(`Welcome, ${data.employee.firstName}`);
             return { result: "accept" as const };
           } catch (err) {
             return {
@@ -125,7 +124,7 @@ function WorkforceModal() {
       );
     } catch (err) {
       pinPadOpenRef.current = false;
-      setError(messageFromError(err, "Could not open PIN pad"));
+      showToast(messageFromError(err, "Could not open PIN pad"));
     }
   }, [loadSessionIntoUi]);
 
@@ -169,12 +168,12 @@ function WorkforceModal() {
 
   async function verifyWithQr() {
     setLoading(true);
-    setError(null);
     try {
       const data = (await apiFetch("/api/pos/verify", { qrCode })) as VerifyResponse;
       applyVerified(data);
+      showToast(`Welcome, ${data.employee.firstName}`);
     } catch (err) {
-      setError(messageFromError(err, "Verification failed"));
+      showToast(messageFromError(err, "Verification failed"));
     } finally {
       setLoading(false);
     }
@@ -183,7 +182,6 @@ function WorkforceModal() {
   async function performAction(action: string) {
     if (!verified) return;
     setLoading(true);
-    setError(null);
     try {
       const data = (await apiFetch(`/api/pos/${action}`, {
         employeeId: verified.employee.id,
@@ -193,8 +191,9 @@ function WorkforceModal() {
         status: data.status,
         serverTime: data.serverTime,
       });
+      showToast(successMessageForAction(action));
     } catch (err) {
-      setError(messageFromError(err, "Action failed"));
+      showToast(messageFromError(err, "Action failed"));
     } finally {
       setLoading(false);
     }
@@ -205,7 +204,6 @@ function WorkforceModal() {
     void clearSession();
     setVerified(null);
     setMode("pin");
-    setError(null);
     setLoading(false);
     // Open PIN pad immediately — no intermediate chooser step.
     setTimeout(() => showNativePinPad(), 0);
@@ -266,8 +264,6 @@ function WorkforceModal() {
                 </s-button>
               </s-stack>
             )}
-
-            {error && <s-banner heading={error} tone="critical" />}
           </s-stack>
         </s-scroll-box>
       </s-page>
@@ -310,7 +306,6 @@ function WorkforceModal() {
               {formatTime(status.shiftEnd, status.timeFormat)}
             </s-text>
           )}
-          {error && <s-banner heading={error} tone="critical" />}
           <s-stack direction="inline" gap="base">
             {status.status === "CLOCKED_OUT" && (
               <s-button
@@ -365,6 +360,21 @@ function WorkforceModal() {
       </s-scroll-box>
     </s-page>
   );
+}
+
+function successMessageForAction(action: string): string {
+  switch (action) {
+    case "clock-in":
+      return "Clocked in";
+    case "clock-out":
+      return "Clocked out";
+    case "break-start":
+      return "Break started";
+    case "break-end":
+      return "Break ended";
+    default:
+      return "Done";
+  }
 }
 
 function formatTime(iso: string, timeFormat: "24H" | "12H" = "12H") {

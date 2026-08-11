@@ -11,6 +11,7 @@ import {
 import {
   messageFromError,
   persistVerifySession,
+  showToast,
   verifyPin,
 } from "./posApi";
 
@@ -62,6 +63,7 @@ function WorkforceTile() {
             const data = await verifyPin(pin);
             await persistVerifySession(data);
             setStatus(data.status.status);
+            showToast(`Welcome, ${data.employee.firstName}`);
             return { result: "accept" as const };
           } catch (err) {
             return {
