@@ -353,11 +353,12 @@ function MainScreen(props: {
           <s-stack direction="block" gap="large">
             <s-stack direction="block" gap="small">
               <s-stack direction="inline" gap="small" alignItems="center">
-                <s-icon type="person-filled" />
+                <s-icon type="person-filled" color="strong" />
                 <s-heading>Welcome, {props.firstName}!</s-heading>
               </s-stack>
               <s-stack direction="inline" gap="small" alignItems="center">
                 <s-icon
+                  color="strong"
                   type={statusCopy.icon}
                   tone={statusCopy.tone === "neutral" ? "auto" : statusCopy.tone}
                 />
@@ -415,7 +416,7 @@ function MainScreen(props: {
 
                   <s-button variant="secondary" onClick={props.onViewHistory}>
                     <s-stack direction="inline" gap="small" alignItems="center">
-                      <s-icon type="clipboard-checklist" />
+                      <s-icon type="clipboard-checklist" color="strong" />
                       <s-text>View Today&apos;s History</s-text>
                     </s-stack>
                   </s-button>
@@ -431,7 +432,7 @@ function MainScreen(props: {
                         gap="small"
                         alignItems="center"
                       >
-                        <s-icon type="play-circle" />
+                        <s-icon type="play-circle" color="strong" />
                         <s-text>Start Break</s-text>
                       </s-stack>
                     </s-button>
@@ -448,7 +449,7 @@ function MainScreen(props: {
                         gap="small"
                         alignItems="center"
                       >
-                        <s-icon type="check" />
+                        <s-icon type="check" color="strong" />
                         <s-text>End Break</s-text>
                       </s-stack>
                     </s-button>
@@ -477,7 +478,7 @@ function MainScreen(props: {
                         gap="small"
                         alignItems="center"
                       >
-                        <s-icon type="check-circle-filled" />
+                        <s-icon type="check-circle-filled" color="strong" />
                         <s-text>Clock In</s-text>
                       </s-stack>
                     </s-button>
@@ -493,7 +494,7 @@ function MainScreen(props: {
                         gap="small"
                         alignItems="center"
                       >
-                        <s-icon type="phone-out" tone="critical" />
+                        <s-icon type="phone-out" color="strong" tone="critical" />
                         <s-text>Clock Out</s-text>
                       </s-stack>
                     </s-button>
@@ -501,7 +502,7 @@ function MainScreen(props: {
 
                   <s-button variant="secondary" onClick={props.onSwitchEmployee}>
                     <s-stack direction="inline" gap="small" alignItems="center">
-                      <s-icon type="person" />
+                      <s-icon type="person" color="strong" />
                       <s-text>Switch employee</s-text>
                     </s-stack>
                   </s-button>
@@ -526,7 +527,7 @@ function HistoryScreen(props: {
           <s-stack direction="block" gap="large">
             <s-button variant="secondary" onClick={props.onBack}>
               <s-stack direction="inline" gap="small" alignItems="center">
-                <s-icon type="arrow-left" />
+                <s-icon type="arrow-left" color="strong" />
                 <s-text>Back to Main</s-text>
               </s-stack>
             </s-button>
@@ -557,6 +558,7 @@ function HistoryScreen(props: {
                         >
                           <s-icon
                             type={historyIcon(event.type)}
+                            color="strong"
                             tone={
                               event.tone === "neutral" ? "auto" : event.tone
                             }
@@ -593,7 +595,7 @@ function SectionTitle(props: {
 }) {
   return (
     <s-stack direction="inline" gap="small" alignItems="center">
-      <s-icon type={props.icon} />
+      <s-icon type={props.icon} color="strong" />
       <s-text>{props.label}</s-text>
     </s-stack>
   );
@@ -638,7 +640,9 @@ function InfoRow(props: {
         inlineSize="100%"
       >
         <s-stack direction="inline" gap="small" alignItems="center">
-          {props.icon ? <s-icon type={props.icon} /> : null}
+          {props.icon ? (
+            <s-icon type={props.icon} color="strong" />
+          ) : null}
           <s-text>{props.label}</s-text>
         </s-stack>
         <s-text>{props.value}</s-text>
