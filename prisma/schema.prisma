@@ -170,6 +170,7 @@ model Shift {
   startsAt   DateTime
   endsAt     DateTime
   notes      String?
+  status     String   @default("SCHEDULED")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -179,6 +180,7 @@ model Shift {
 
   @@index([shopId, startsAt])
   @@index([employeeId, startsAt])
+  @@index([shopId, status, startsAt])
 }
 
 model CommissionProgram {

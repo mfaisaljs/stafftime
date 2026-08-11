@@ -10,7 +10,13 @@ import {
 } from "../DateRangeSelector";
 import type { AttendanceStatus } from "../../services/workforce.server";
 
-type StatusFilter = "all" | "working" | "on_break" | "absent" | "late";
+type StatusFilter =
+  | "all"
+  | "working"
+  | "on_break"
+  | "on_leave"
+  | "absent"
+  | "late";
 
 export type AttendanceBoardRow = {
   id: string;
@@ -28,6 +34,7 @@ export type AttendanceBoardRow = {
 export type AttendanceBoardMetrics = {
   working: number;
   onBreak: number;
+  onLeave: number;
   absent: number;
   late: number;
   totalStaff: number;
@@ -127,6 +134,15 @@ export function AttendanceBoard({
         </StatusTabLink>
         <StatusTabLink
           basePath={basePath}
+          status="on_leave"
+          active={statusFilter}
+          searchParams={searchParams}
+          count={metrics.onLeave}
+        >
+          On Leave
+        </StatusTabLink>
+        <StatusTabLink
+          basePath={basePath}
           status="absent"
           active={statusFilter}
           searchParams={searchParams}
@@ -159,13 +175,19 @@ export function AttendanceBoard({
           value={String(metrics.onBreak)}
         />
         <MetricCard
+          icon={<UserMinus size={18} />}
+          tone="blue"
+          label="On Leave"
+          value={String(metrics.onLeave)}
+        />
+        <MetricCard
           icon={<UserX size={18} />}
           tone="red"
           label="Absent"
           value={String(metrics.absent)}
         />
         <MetricCard
-          icon={<UserMinus size={18} />}
+          icon={<Clock size={18} />}
           tone="blue"
           label="Late"
           value={String(metrics.late)}
@@ -309,6 +331,7 @@ function statusFromParam(value: string | null): StatusFilter {
   if (
     value === "working" ||
     value === "on_break" ||
+    value === "on_leave" ||
     value === "absent" ||
     value === "late"
   ) {
@@ -323,6 +346,8 @@ function statusLabel(status: AttendanceStatus) {
       return "Working";
     case "on_break":
       return "On Break";
+    case "on_leave":
+      return "On Leave";
     case "absent":
       return "Absent";
     case "late":
@@ -555,6 +580,11 @@ const ATTENDANCE_STYLES = `
   .status-pill.on_break {
     background: #fff4d6;
     color: #8a5700;
+  }
+
+  .status-pill.on_leave {
+    background: #e8f0ff;
+    color: #1d4ed8;
   }
 
   .status-pill.absent {

@@ -10,6 +10,10 @@ import {
   getShopSettings,
 } from "./settings.server";
 import {
+  filterRequestsForEmployee,
+  SHIFT_STATUS,
+} from "./time-off-shifts.server";
+import {
   formatClockTime,
   formatDurationHms,
   summarizeTimeEntrySeconds,
@@ -163,6 +167,7 @@ export async function getStaffProfileForPos(params: {
       where: {
         shopId: shop.id,
         employeeId: employee.id,
+        status: SHIFT_STATUS.SCHEDULED,
         startsAt: { gte: startDate, lte: endDate },
       },
       include: { location: true },
@@ -202,11 +207,12 @@ export async function getStaffProfileForPos(params: {
   const clockedDates = new Set(
     timeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
   );
+  const employeeTimeOff = filterRequestsForEmployee(timeOffRequests, employee.id);
   const totalAbsents = countAbsentDays(
     dateKeys,
     shiftsByDate,
     clockedDates,
-    timeOffRequests,
+    employeeTimeOff,
     settings,
   );
   const salaryAdjustment = computeSalaryAdjustments({
@@ -214,7 +220,7 @@ export async function getStaffProfileForPos(params: {
     dateKeys,
     shiftsByDate,
     clockedDates,
-    requests: timeOffRequests,
+    requests: employeeTimeOff,
     settings,
   });
 

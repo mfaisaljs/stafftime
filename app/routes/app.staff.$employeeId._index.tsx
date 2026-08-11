@@ -51,7 +51,10 @@ import {
   rangeFromPreset,
   type DateRangeValue,
 } from "../components/DateRangeSelector";
-import prisma from "../db.server";
+import {
+  filterRequestsForEmployee,
+  SHIFT_STATUS,
+} from "../services/time-off-shifts.server";
 
 type StaffTab = "overview" | "commission" | "payroll";
 
@@ -82,6 +85,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       where: {
         shopId: shop.id,
         employeeId,
+        status: SHIFT_STATUS.SCHEDULED,
         startsAt: { gte: startDate, lte: endDate },
       },
     }),
@@ -115,21 +119,22 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const clockedDates = new Set(
     timeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
   );
+  const employeeTimeOff = filterRequestsForEmployee(timeOffRequests, employeeId);
   const totalAbsents = countAbsentDays(
     dateKeys,
     shiftsByDate,
     clockedDates,
-    timeOffRequests,
+    employeeTimeOff,
     settings,
   );
-  const paidLeaves = countLeaveDays(dateKeys, timeOffRequests, "PAID");
-  const unpaidLeaves = countLeaveDays(dateKeys, timeOffRequests, "UNPAID");
+  const paidLeaves = countLeaveDays(dateKeys, employeeTimeOff, "PAID");
+  const unpaidLeaves = countLeaveDays(dateKeys, employeeTimeOff, "UNPAID");
   const salaryAdjustment = computeSalaryAdjustments({
     employee,
     dateKeys,
     shiftsByDate,
     clockedDates,
-    requests: timeOffRequests,
+    requests: employeeTimeOff,
     settings,
   });
   const paidEarnings = baseEarnings + salaryAdjustment;

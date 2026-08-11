@@ -100,4 +100,33 @@ describe("absence / salary adjustments ignore upcoming shifts", () => {
       ),
     ).toBe(1);
   });
+
+  it("does not deduct salary for both unpaid leave and absence on the same day", () => {
+    const settings = fakeSettings({
+      includeUnpaidLeavesInAbsences: true,
+      autoDeductUnpaidLeavesFromSalary: true,
+      autoDeductAbsencesFromSalary: true,
+    });
+    const shiftsByDate = new Map([[yesterdayKey, true]]);
+    const requests = [
+      {
+        employeeId: "emp-1",
+        startDate: yesterdayKey,
+        endDate: yesterdayKey,
+        status: "APPROVED",
+        policy: { compensation: "UNPAID" },
+      },
+    ] as any;
+
+    const adjustment = computeSalaryAdjustments({
+      employee: { hourlyRate: 10 },
+      dateKeys: [yesterdayKey],
+      shiftsByDate,
+      clockedDates: new Set<string>(),
+      requests,
+      settings,
+    });
+
+    expect(adjustment).toBe(-80);
+  });
 });

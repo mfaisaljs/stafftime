@@ -86,6 +86,28 @@ export function leaveCompensationForDate(
   return match.policy.compensation === "PAID" ? "PAID" : "UNPAID";
 }
 
+export function leaveCompensationForEmployeeDate(
+  requests: TimeOffRequestWithPolicy[],
+  employeeId: string,
+  dateKey: string,
+): "PAID" | "UNPAID" | null {
+  const match = requests.find(
+    (request) =>
+      request.employeeId === employeeId &&
+      requestCoversDateKey(request, dateKey),
+  );
+  if (!match) return null;
+  return match.policy.compensation === "PAID" ? "PAID" : "UNPAID";
+}
+
+export function isEmployeeOnApprovedLeave(
+  requests: TimeOffRequestWithPolicy[],
+  employeeId: string,
+  dateKey: string,
+): boolean {
+  return leaveCompensationForEmployeeDate(requests, employeeId, dateKey) !== null;
+}
+
 export type DayAttendanceContext = {
   dateKey: string;
   hasShift: boolean;
@@ -190,7 +212,7 @@ export function computeSalaryAdjustments(input: SalaryAdjustmentInput): number {
       },
       settings,
     );
-    if (absent && settings.autoDeductAbsencesFromSalary) {
+    if (absent && settings.autoDeductAbsencesFromSalary && leave === null) {
       adjustment -= dayAmount;
     }
   }

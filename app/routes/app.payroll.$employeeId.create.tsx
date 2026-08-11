@@ -32,6 +32,7 @@ import {
   getApprovedTimeOffForRange,
   getShopSettings,
 } from "../services/settings.server";
+import { SHIFT_STATUS } from "../services/time-off-shifts.server";
 import {
   DateRangeSelector,
   defaultDateRangeValue,
@@ -106,6 +107,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       where: {
         shopId: shop.id,
         employeeId,
+        status: SHIFT_STATUS.SCHEDULED,
         startsAt: { gte: effectiveStart, lte: endDate },
       },
     }),

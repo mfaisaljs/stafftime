@@ -5,10 +5,16 @@ import type {
 } from "react-router";
 import type { ReactNode } from "react";
 import { Form, Link, useActionData, useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { useState } from "react";
 import { ArrowUpDown, Search } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAdminShop, getEmployees } from "../services/admin.server";
+import {
+  approveTimeOffRequestForShop,
+  findOverlappingScheduledShifts,
+  summarizeOverlappingShifts,
+} from "../services/time-off-shifts.server";
 import prisma from "../db.server";
 
 type StatusTab = "all" | "approved" | "pending" | "declined";
@@ -38,6 +44,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     ]),
   );
 
+  const pendingRequests = requests.filter((request) => request.status === "PENDING");
+  const overlapByRequestId = new Map<
+    string,
+    ReturnType<typeof summarizeOverlappingShifts>
+  >();
+  await Promise.all(
+    pendingRequests.map(async (request) => {
+      const overlapping = await findOverlappingScheduledShifts({
+        shopId: shop.id,
+        employeeId: request.employeeId,
+        startDate: request.startDate,
+        endDate: request.endDate,
+      });
+      overlapByRequestId.set(request.id, summarizeOverlappingShifts(overlapping));
+    }),
+  );
+
   return {
     created: url.searchParams.get("created") === "1",
     status,
@@ -49,6 +72,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       endDate: request.endDate,
       status: request.status.toLowerCase() as StatusTab,
       reason: request.reason ?? "",
+      overlappingShifts: overlapByRequestId.get(request.id) ?? [],
     })),
   };
 };
@@ -77,12 +101,27 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return { error: "This time off request has already been reviewed." };
   }
 
-  await prisma.timeOffRequest.update({
-    where: { id: existing.id },
-    data: { status },
-  });
+  try {
+    const { cancelledShiftCount } = await approveTimeOffRequestForShop({
+      shopId: shop.id,
+      requestId: existing.id,
+      status: status as "APPROVED" | "DECLINED",
+    });
 
-  return { success: status === "APPROVED" ? "Time off approved." : "Time off declined." };
+    if (status === "APPROVED") {
+      return {
+        success:
+          cancelledShiftCount > 0
+            ? `Time off approved. ${cancelledShiftCount} overlapping shift${cancelledShiftCount === 1 ? "" : "s"} cancelled.`
+            : "Time off approved.",
+      };
+    }
+    return { success: "Time off declined." };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not review request.",
+    };
+  }
 };
 
 export default function TimeOffIndexPage() {
@@ -92,6 +131,9 @@ export default function TimeOffIndexPage() {
   const navigate = useNavigate();
   const tab = statusTab(searchParams.get("status") ?? status);
   const isEmpty = timeOffs.length === 0;
+  const [approveTarget, setApproveTarget] = useState<
+    (typeof timeOffs)[number] | null
+  >(null);
 
   return (
     <s-page heading="Time Off Management" inlineSize="large">
@@ -204,13 +246,13 @@ export default function TimeOffIndexPage() {
                     <td>
                       {item.status === "pending" ? (
                         <div className="timeoff-actions-inline">
-                          <Form method="post">
-                            <input type="hidden" name="requestId" value={item.id} />
-                            <input type="hidden" name="status" value="APPROVED" />
-                            <s-button type="submit" variant="primary">
-                              Approve
-                            </s-button>
-                          </Form>
+                          <s-button
+                            type="button"
+                            variant="primary"
+                            onClick={() => setApproveTarget(item)}
+                          >
+                            Approve
+                          </s-button>
                           <Form method="post">
                             <input type="hidden" name="requestId" value={item.id} />
                             <input type="hidden" name="status" value="DECLINED" />
@@ -234,6 +276,55 @@ export default function TimeOffIndexPage() {
       <p className="knowledge-link">
         For more guidance, visit our <Link to="/app">Knowledge Base</Link>
       </p>
+
+      {approveTarget ? (
+        <s-modal
+          heading="Approve time off?"
+          open
+          onClose={() => setApproveTarget(null)}
+        >
+          <s-box padding="base">
+            <s-stack direction="block" gap="base">
+              <s-text>
+                Approve {approveTarget.staffName}&apos;s {approveTarget.policyName}{" "}
+                request ({formatDate(approveTarget.startDate)} –{" "}
+                {formatDate(approveTarget.endDate)})?
+              </s-text>
+              {approveTarget.overlappingShifts.length > 0 ? (
+                <s-banner tone="warning" heading="Overlapping shifts will be cancelled">
+                  <s-text>
+                    {approveTarget.overlappingShifts.length} scheduled shift
+                    {approveTarget.overlappingShifts.length === 1 ? "" : "s"} will
+                    be cancelled for this employee.
+                  </s-text>
+                  <s-stack direction="block" gap="small">
+                    {approveTarget.overlappingShifts.map((shift) => (
+                      <s-text key={shift.id}>
+                        {formatDate(shift.dateKey)} · {shift.startTime}–
+                        {shift.endTime} · {shift.locationName}
+                      </s-text>
+                    ))}
+                  </s-stack>
+                </s-banner>
+              ) : null}
+            </s-stack>
+          </s-box>
+          <Form method="post" slot="primary-action">
+            <input type="hidden" name="requestId" value={approveTarget.id} />
+            <input type="hidden" name="status" value="APPROVED" />
+            <s-button type="submit" variant="primary">
+              Approve
+            </s-button>
+          </Form>
+          <s-button
+            slot="secondary-actions"
+            variant="secondary"
+            onClick={() => setApproveTarget(null)}
+          >
+            Cancel
+          </s-button>
+        </s-modal>
+      ) : null}
 
       <style>{TIME_OFF_STYLES}</style>
     </s-page>

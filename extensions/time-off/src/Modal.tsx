@@ -40,6 +40,9 @@ function TimeOffModal() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [approveTarget, setApproveTarget] = useState<TimeOffRequestRow | null>(
+    null,
+  );
   const pinPadOpenRef = useRef(false);
 
   const clearSession = useCallback(async () => {
@@ -244,6 +247,7 @@ function TimeOffModal() {
     async (requestId: string, status: "APPROVED" | "DECLINED") => {
       if (!employee) return;
       setReviewingId(requestId);
+      setApproveTarget(null);
       try {
         const result = await reviewTimeOffRequest({
           employeeId: employee.id,
@@ -380,6 +384,7 @@ function TimeOffModal() {
                     <ApprovalsTab
                       requests={pendingApprovals}
                       reviewingId={reviewingId}
+                      onApprove={(request) => setApproveTarget(request)}
                       onReview={handleReview}
                     />
                   </s-box>
@@ -401,6 +406,46 @@ function TimeOffModal() {
           </s-stack>
         </s-box>
       </s-scroll-box>
+
+      {approveTarget ? (
+        <s-modal heading="Approve time off?" open onClose={() => setApproveTarget(null)}>
+          <s-box padding="base">
+            <s-stack direction="block" gap="base">
+              <s-text>
+                Approve {approveTarget.employeeName}&apos;s {approveTarget.policyName}{" "}
+                request?
+              </s-text>
+              {(approveTarget.overlappingShiftCount ?? 0) > 0 ? (
+                <s-banner tone="warning" heading="Overlapping shifts will be cancelled">
+                  <s-text>
+                    {approveTarget.overlappingShiftCount} scheduled shift
+                    {(approveTarget.overlappingShiftCount ?? 0) === 1 ? "" : "s"}{" "}
+                    will be cancelled.
+                  </s-text>
+                </s-banner>
+              ) : null}
+              <s-stack direction="inline" gap="small">
+                <s-button
+                  variant="primary"
+                  loading={reviewingId === approveTarget.id}
+                  disabled={reviewingId !== null}
+                  onClick={() => {
+                    void handleReview(approveTarget.id, "APPROVED");
+                  }}
+                >
+                  Approve
+                </s-button>
+                <s-button
+                  variant="secondary"
+                  onClick={() => setApproveTarget(null)}
+                >
+                  Cancel
+                </s-button>
+              </s-stack>
+            </s-stack>
+          </s-box>
+        </s-modal>
+      ) : null}
     </s-page>
   );
 }
@@ -581,12 +626,13 @@ function StaffRequestsTab(props: {
 function ApprovalsTab(props: {
   requests: TimeOffRequestRow[];
   reviewingId: string | null;
+  onApprove: (request: TimeOffRequestRow) => void;
   onReview: (
     requestId: string,
     status: "APPROVED" | "DECLINED",
   ) => Promise<void>;
 }) {
-  const { requests, reviewingId, onReview } = props;
+  const { requests, reviewingId, onApprove, onReview } = props;
 
   return (
     <s-stack direction="block" gap="large">
@@ -623,7 +669,7 @@ function ApprovalsTab(props: {
                       loading={reviewingId === request.id}
                       disabled={reviewingId !== null}
                       onClick={() => {
-                        void onReview(request.id, "APPROVED");
+                        onApprove(request);
                       }}
                     >
                       Approve

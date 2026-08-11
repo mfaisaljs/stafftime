@@ -1475,6 +1475,35 @@
         "app/services/time-off-pos.server.ts"
       ],
       "lastUpdated": "2026-08-11T14:20:00.000Z"
+    },
+    {
+      "id": "ST082",
+      "taskId": "T009",
+      "title": "Approved leave cancels overlapping shifts",
+      "description": "When time off is approved, soft-cancel overlapping scheduled shifts; show On leave on schedules and attendance; hide cancelled shifts on POS.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST064", "ST081"],
+      "acceptanceCriteria": [
+        "Shift.status supports SCHEDULED and CANCELLED_LEAVE",
+        "Approving leave cancels overlapping shifts (admin + POS) with conflict confirm",
+        "Schedules show On leave chips and block new shifts on leave days",
+        "Attendance shows On leave status; payroll avoids leave+absence double deduction",
+        "POS View Shifts omits cancelled shifts and notes on-leave today"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "prisma/migrations/20260811143000_shift_status_for_leave/migration.sql",
+        "app/services/time-off-shifts.server.ts",
+        "app/services/settings.server.ts",
+        "app/services/workforce.server.ts",
+        "app/routes/app.time-off._index.tsx",
+        "app/routes/app.schedules.tsx",
+        "app/components/attendance/AttendanceBoard.tsx",
+        "extensions/time-off/src/Modal.tsx",
+        "extensions/view-shifts/src/Modal.tsx"
+      ],
+      "lastUpdated": "2026-08-11T14:35:00.000Z"
     }
   ]
 }

@@ -29,6 +29,14 @@ export type TimeOffRequestRow = {
   statusLabel: string;
   tone: "warning" | "success" | "critical" | "neutral";
   createdAt: string;
+  overlappingShiftCount?: number;
+  overlappingShifts?: Array<{
+    id: string;
+    dateKey: string;
+    startTime: string;
+    endTime: string;
+    locationName: string;
+  }>;
 };
 
 export type StaffOption = {

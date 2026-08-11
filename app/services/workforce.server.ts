@@ -15,8 +15,10 @@ import {
   getManagerPayrollStatsForToday,
   getShopSettings,
   isHolidayDateKey,
-  leaveCompensationForDate,
+  isEmployeeOnApprovedLeave,
+  leaveCompensationForEmployeeDate,
 } from "./settings.server";
+import { SHIFT_STATUS } from "./time-off-shifts.server";
 import {
   formatClockTime,
   formatDuration,
@@ -393,6 +395,7 @@ export async function getEmployeeShiftToday(employeeId: string) {
   return prisma.shift.findFirst({
     where: {
       employeeId,
+      status: SHIFT_STATUS.SCHEDULED,
       startsAt: { gte: start, lte: end },
     },
     orderBy: { startsAt: "asc" },
@@ -506,6 +509,7 @@ export async function listEmployeeShiftsForPos(params: {
     where: {
       shopId: shop.id,
       employeeId: employee.id,
+      status: SHIFT_STATUS.SCHEDULED,
       startsAt: {
         gte: bounds.gte,
         ...(bounds.lte ? { lte: bounds.lte } : {}),
@@ -515,6 +519,13 @@ export async function listEmployeeShiftsForPos(params: {
     include: { location: true },
     orderBy: { startsAt: "asc" },
   });
+
+  const todayKey = toDateKeyLocal(now);
+  const onLeaveToday = isEmployeeOnApprovedLeave(
+    await getApprovedTimeOffForRange(shop.id, todayKey, todayKey),
+    employee.id,
+    todayKey,
+  );
 
   const rows: PosShiftRow[] = shifts.map((shift) => {
     const status = classifyShiftStatus(shift.startsAt, shift.endsAt, now);
@@ -538,6 +549,7 @@ export async function listEmployeeShiftsForPos(params: {
     },
     range: params.range,
     shifts: rows,
+    onLeaveToday,
     serverTime: Date.now(),
   };
 }
@@ -1098,6 +1110,7 @@ export async function getAttendanceSummary(shopDomain: string) {
     prisma.shift.findMany({
       where: {
         shopId: shop.id,
+        status: SHIFT_STATUS.SCHEDULED,
         startsAt: { gte: start },
       },
       include: { employee: true, location: true },
@@ -1113,7 +1126,15 @@ export async function getAttendanceSummary(shopDomain: string) {
   const onBreak = openEntries.filter((entry) => entry.breaks.length > 0);
   const working = openEntries.filter((entry) => entry.breaks.length === 0);
 
+  const onLeave = employees.filter(
+    (employee) =>
+      !clockedInIds.has(employee.id) &&
+      isEmployeeOnApprovedLeave(timeOffRequests, employee.id, todayKey),
+  );
+  const onLeaveIds = new Set(onLeave.map((employee) => employee.id));
+
   const absent = employees.filter((employee) => {
+    if (onLeaveIds.has(employee.id)) return false;
     const hasShift = shifts.some((shift) => shift.employeeId === employee.id);
     const isClockedIn = clockedInIds.has(employee.id);
     return classifyAbsentDay(
@@ -1122,13 +1143,18 @@ export async function getAttendanceSummary(shopDomain: string) {
         hasShift,
         hasClockIn: isClockedIn,
         isHoliday: isHolidayDateKey(todayKey, settings),
-        leaveCompensation: leaveCompensationForDate(timeOffRequests, todayKey),
+        leaveCompensation: leaveCompensationForEmployeeDate(
+          timeOffRequests,
+          employee.id,
+          todayKey,
+        ),
       },
       settings,
     );
   });
 
   const late = openEntries.filter((entry) => {
+    if (onLeaveIds.has(entry.employeeId)) return false;
     const shift = shifts.find((item) => item.employeeId === entry.employeeId);
     if (!shift) return false;
     return entry.clockInAt.getTime() > shift.startsAt.getTime() + 5 * 60 * 1000;
@@ -1152,6 +1178,7 @@ export async function getAttendanceSummary(shopDomain: string) {
 export type AttendanceStatus =
   | "working"
   | "on_break"
+  | "on_leave"
   | "absent"
   | "late"
   | "off";
@@ -1200,6 +1227,7 @@ export async function getAttendanceBoard(
     prisma.shift.findMany({
       where: {
         shopId: shop.id,
+        status: SHIFT_STATUS.SCHEDULED,
         startsAt: { gte: rangeStart, lte: rangeEnd },
       },
       include: { location: true },
@@ -1237,6 +1265,12 @@ export async function getAttendanceBoard(
         ? employeeEntries.find((entry) => entry.status === "OPEN")
         : undefined);
     const primaryEntry = openEntry ?? refEntries[0];
+    const onLeave = isEmployeeOnApprovedLeave(
+      timeOffRequests,
+      employee.id,
+      refKey,
+    );
+
     const shiftForLate =
       refShifts[0] ??
       employeeShifts.find(
@@ -1245,17 +1279,21 @@ export async function getAttendanceBoard(
           Math.abs(shift.startsAt.getTime() - primaryEntry.clockInAt.getTime()) <
             24 * 60 * 60 * 1000,
       );
-    const isLate = Boolean(
-      primaryEntry &&
-        shiftForLate &&
-        primaryEntry.clockInAt.getTime() >
-          shiftForLate.startsAt.getTime() + LATE_GRACE_MS,
-    );
+    const isLate =
+      !onLeave &&
+      Boolean(
+        primaryEntry &&
+          shiftForLate &&
+          primaryEntry.clockInAt.getTime() >
+            shiftForLate.startsAt.getTime() + LATE_GRACE_MS,
+      );
 
     let status: AttendanceStatus = "off";
     if (openEntry) {
       const onBreak = openEntry.breaks.some((item) => item.endedAt == null);
       status = onBreak ? "on_break" : "working";
+    } else if (onLeave) {
+      status = "on_leave";
     } else if (
       refShifts.length > 0 &&
       refEntries.length === 0 &&
@@ -1265,7 +1303,11 @@ export async function getAttendanceBoard(
           hasShift: true,
           hasClockIn: false,
           isHoliday: isHolidayDateKey(refKey, settings),
-          leaveCompensation: leaveCompensationForDate(timeOffRequests, refKey),
+          leaveCompensation: leaveCompensationForEmployeeDate(
+            timeOffRequests,
+            employee.id,
+            refKey,
+          ),
         },
         settings,
       )
@@ -1298,6 +1340,7 @@ export async function getAttendanceBoard(
     };
   });
 
+  const onLeaveCount = rows.filter((row) => row.status === "on_leave").length;
   const workingCount = rows.filter((row) => row.status === "working").length;
   const onBreakCount = rows.filter((row) => row.status === "on_break").length;
   const absentCount = rows.filter((row) => row.status === "absent").length;
@@ -1312,6 +1355,7 @@ export async function getAttendanceBoard(
     metrics: {
       working: workingCount,
       onBreak: onBreakCount,
+      onLeave: onLeaveCount,
       absent: absentCount,
       late: lateCount,
       totalStaff: employees.length,

@@ -2,6 +2,11 @@ import type { Employee, EmployeeRole } from "@prisma/client";
 import prisma from "../db.server";
 import { ensureShop } from "./workforce.server";
 import { isManagerRole } from "./settings.server";
+import {
+  approveTimeOffRequestForShop,
+  findOverlappingScheduledShifts,
+  summarizeOverlappingShifts,
+} from "./time-off-shifts.server";
 
 function parseIds(raw: string): string[] {
   try {
@@ -71,6 +76,14 @@ function mapRequest(
     policy: { id: string; name: string; compensation: string };
   },
   employeeNameById: Map<string, string>,
+  overlappingShiftCount = 0,
+  overlappingShifts: Array<{
+    id: string;
+    dateKey: string;
+    startTime: string;
+    endTime: string;
+    locationName: string;
+  }> = [],
 ) {
   return {
     id: request.id,
@@ -87,6 +100,8 @@ function mapRequest(
       request.status.charAt(0) + request.status.slice(1).toLowerCase(),
     tone: statusTone(request.status),
     createdAt: request.createdAt.toISOString(),
+    overlappingShiftCount,
+    overlappingShifts,
   };
 }
 
@@ -151,6 +166,24 @@ export async function getTimeOffBootstrapForPos(params: {
       : Promise.resolve([]),
   ]);
 
+  const pendingWithConflicts = canApprove
+    ? await Promise.all(
+        pendingRequests.map(async (request) => {
+          const overlapping = await findOverlappingScheduledShifts({
+            shopId: shop.id,
+            employeeId: request.employeeId,
+            startDate: request.startDate,
+            endDate: request.endDate,
+          });
+          return {
+            request,
+            overlappingShiftCount: overlapping.length,
+            overlappingShifts: summarizeOverlappingShifts(overlapping),
+          };
+        }),
+      )
+    : [];
+
   const employeeNameById = new Map<string, string>([
     [employee.id, `${employee.firstName} ${employee.lastName}`.trim()],
     ...staff.map(
@@ -210,8 +243,8 @@ export async function getTimeOffBootstrapForPos(params: {
       name: `${item.firstName} ${item.lastName}`.trim(),
       roleLabel: roleBadgeLabel(item.role, item.position),
     })),
-    pendingApprovals: pendingRequests.map((request) =>
-      mapRequest(request, employeeNameById),
+    pendingApprovals: pendingWithConflicts.map(({ request, overlappingShiftCount, overlappingShifts }) =>
+      mapRequest(request, employeeNameById, overlappingShiftCount, overlappingShifts),
     ),
     serverTime: Date.now(),
   };
@@ -338,24 +371,13 @@ export async function reviewTimeOffRequestForPos(params: {
   if (!isManagerRole(employee.role)) {
     throw new Error("Only managers can approve or decline requests");
   }
-  if (params.status !== "APPROVED" && params.status !== "DECLINED") {
-    throw new Error("Select a valid review action");
-  }
 
-  const existing = await prisma.timeOffRequest.findFirst({
-    where: { id: params.requestId, shopId: shop.id },
-    include: { policy: true },
-  });
-  if (!existing) throw new Error("Time off request not found");
-  if (existing.status !== "PENDING") {
-    throw new Error("This time off request has already been reviewed");
-  }
-
-  const updated = await prisma.timeOffRequest.update({
-    where: { id: existing.id },
-    data: { status: params.status },
-    include: { policy: true },
-  });
+  const { request: updated, cancelledShiftCount } =
+    await approveTimeOffRequestForShop({
+      shopId: shop.id,
+      requestId: params.requestId,
+      status: params.status,
+    });
 
   const requester = await prisma.employee.findFirst({
     where: { id: updated.employeeId, shopId: shop.id },
@@ -370,9 +392,16 @@ export async function reviewTimeOffRequestForPos(params: {
     ],
   ]);
 
+  const message =
+    params.status === "APPROVED"
+      ? cancelledShiftCount > 0
+        ? `Time off approved. ${cancelledShiftCount} overlapping shift${cancelledShiftCount === 1 ? "" : "s"} cancelled.`
+        : "Time off approved"
+      : "Time off declined";
+
   return {
     request: mapRequest(updated, employeeNameById),
-    message:
-      params.status === "APPROVED" ? "Time off approved" : "Time off declined",
+    cancelledShiftCount,
+    message,
   };
 }

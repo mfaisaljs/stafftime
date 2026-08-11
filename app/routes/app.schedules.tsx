@@ -20,6 +20,12 @@ import {
 } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import { getAdminShop } from "../services/admin.server";
+import { getApprovedTimeOffForRange } from "../services/settings.server";
+import {
+  assertEmployeeNotOnApprovedLeave,
+  employeeOnApprovedLeave,
+  SHIFT_STATUS,
+} from "../services/time-off-shifts.server";
 import prisma from "../db.server";
 
 type ScheduleActionResult = { success?: string; error?: string };
@@ -105,7 +111,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       : rawSelectedDate;
   const range = rangeForPeriod(selectedDate, period);
 
-  const [employees, shifts, locations, setting] = await Promise.all([
+  const [employees, shifts, locations, setting, approvedLeave] = await Promise.all([
     prisma.employee.findMany({
       where: { shopId: shop.id, status: { not: "ARCHIVED" } },
       include: { location: true },
@@ -114,6 +120,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     prisma.shift.findMany({
       where: {
         shopId: shop.id,
+        status: SHIFT_STATUS.SCHEDULED,
         startsAt: { gte: range.start, lte: range.end },
       },
       include: { employee: true, location: true },
@@ -127,6 +134,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       where: { shopId: shop.id },
       select: { scheduleLocationColors: true, scheduleStaffColors: true },
     }),
+    getApprovedTimeOffForRange(shop.id, toDateKey(range.start), toDateKey(range.end)),
   ]);
 
   const days = buildRangeDays(range.start, range.end);
@@ -169,6 +177,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       location: parseColorMap(setting?.scheduleLocationColors),
       staff: parseColorMap(setting?.scheduleStaffColors),
     },
+    leaveDays: days.flatMap((day) =>
+      employees.flatMap((employee) => {
+        const leave = employeeOnApprovedLeave(approvedLeave, employee.id, day.key);
+        if (!leave) return [];
+        return [
+          {
+            employeeId: employee.id,
+            dateKey: day.key,
+            policyName: leave.policy.name,
+          },
+        ];
+      }),
+    ),
   };
 };
 
@@ -266,12 +287,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const sourceShifts = await prisma.shift.findMany({
         where: {
           shopId: shop.id,
+          status: SHIFT_STATUS.SCHEDULED,
           startsAt: { gte: sourceWeekStart, lte: sourceWeekEnd },
         },
       });
       if (sourceShifts.length === 0) {
         return { error: "There are no shifts to copy from this week." };
       }
+
+      const approvedLeaveForCopy = await getApprovedTimeOffForRange(
+        shop.id,
+        toDateKey(targetWeekStart),
+        toDateKey(targetWeekEnd),
+      );
 
       await prisma.$transaction(async (tx) => {
         if (clearTarget) {
@@ -283,25 +311,38 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           });
         }
 
-        await tx.shift.createMany({
-          data: sourceShifts.map((shift) => {
-            const dayOffset = daysBetween(sourceWeekStart, shift.startsAt);
-            const targetDay = addDays(targetWeekStart, dayOffset);
-            const targetStartsAt = dateTimeFromInputs(
-              toDateKey(targetDay),
-              timeValue(shift.startsAt),
-            );
-            const durationMs = shift.endsAt.getTime() - shift.startsAt.getTime();
-            return {
+        const copied = sourceShifts.flatMap((shift) => {
+          const dayOffset = daysBetween(sourceWeekStart, shift.startsAt);
+          const targetDay = addDays(targetWeekStart, dayOffset);
+          const targetDateKey = toDateKey(targetDay);
+          const leave = employeeOnApprovedLeave(
+            approvedLeaveForCopy,
+            shift.employeeId,
+            targetDateKey,
+          );
+          if (leave) return [];
+
+          const targetStartsAt = dateTimeFromInputs(
+            targetDateKey,
+            timeValue(shift.startsAt),
+          );
+          const durationMs = shift.endsAt.getTime() - shift.startsAt.getTime();
+          return [
+            {
               shopId: shop.id,
               locationId: shift.locationId,
               employeeId: shift.employeeId,
               startsAt: targetStartsAt,
               endsAt: new Date(targetStartsAt.getTime() + durationMs),
               notes: shift.notes,
-            };
-          }),
+              status: SHIFT_STATUS.SCHEDULED,
+            },
+          ];
         });
+
+        if (copied.length > 0) {
+          await tx.shift.createMany({ data: copied });
+        }
       });
 
       return { success: "Weekly schedule copied." };
@@ -345,6 +386,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     if (intent === "updateShift") {
       const shiftId = String(formData.get("shiftId") ?? "");
+      await assertEmployeeNotOnApprovedLeave({
+        shopId: shop.id,
+        employeeId,
+        dateKeys: [date],
+      });
       await prisma.shift.updateMany({
         where: { id: shiftId, shopId: shop.id },
         data: { employeeId, locationId, startsAt, endsAt, notes: notes || null },
@@ -358,6 +404,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           (value) => value >= date,
         )
       : [date];
+
+    await assertEmployeeNotOnApprovedLeave({
+      shopId: shop.id,
+      employeeId,
+      dateKeys: createDates,
+    });
 
     await prisma.$transaction(async (tx) => {
       for (const dateKey of createDates) {
@@ -409,6 +461,7 @@ export default function SchedulesPage() {
     employees,
     locations,
     scheduleColors,
+    leaveDays,
     days,
     period,
     selectedDate,
@@ -454,6 +507,16 @@ export default function SchedulesPage() {
     }
     return map;
   }, [shifts]);
+
+  const leaveByEmployeeDay = useMemo(() => {
+    const map = new Map<string, { policyName: string }>();
+    for (const leave of leaveDays) {
+      map.set(`${leave.employeeId}:${leave.dateKey}`, {
+        policyName: leave.policyName,
+      });
+    }
+    return map;
+  }, [leaveDays]);
   const shiftsByDay = useMemo(() => {
     const map = new Map<string, typeof shifts>();
     for (const shift of shifts) {
@@ -717,6 +780,9 @@ export default function SchedulesPage() {
                       {days.map((day) => {
                         const cellShifts =
                           shiftsByEmployeeDay.get(`${employee.id}:${day.key}`) ?? [];
+                        const leave = leaveByEmployeeDay.get(
+                          `${employee.id}:${day.key}`,
+                        );
                         const available = isAvailable(employee.weeklyAvailability, day.value);
                         return (
                           <td key={`${employee.id}-${day.key}`}>
@@ -724,6 +790,7 @@ export default function SchedulesPage() {
                               employee={employee}
                               day={day}
                               shifts={cellShifts}
+                              leave={leave ?? null}
                               shiftColor={shiftColor}
                               available={available}
                               isPast={day.isPast}
@@ -939,6 +1006,7 @@ function ScheduleCell({
   employee,
   day,
   shifts,
+  leave,
   shiftColor,
   available,
   isPast,
@@ -957,6 +1025,7 @@ function ScheduleCell({
     endTime: string;
     locationName: string;
   }>;
+  leave: { policyName: string } | null;
   shiftColor: (shift: { employeeId: string; locationId: string }) => string;
   available: boolean;
   isPast: boolean;
@@ -985,6 +1054,11 @@ function ScheduleCell({
 
   return (
     <div className="schedule-cell">
+      {leave ? (
+        <div className="leave-chip" title={leave.policyName}>
+          On leave
+        </div>
+      ) : null}
       {shifts.map((shift) => (
         <div
           className="shift-card"
@@ -1015,7 +1089,7 @@ function ScheduleCell({
           </div>
         </div>
       ))}
-      {isPast ? (
+      {isPast || leave ? (
         <button className="empty-slot muted" type="button" disabled>
           ⊘
         </button>
@@ -2096,6 +2170,19 @@ const SCHEDULE_STYLES = `
   .add-slot:hover {
     background: #f1f1f1;
     border-color: #c9c9c9;
+  }
+
+  .leave-chip {
+    background: #fff4d6;
+    border: 1px solid #f0d48a;
+    border-radius: 5px;
+    color: #8a5700;
+    font-size: 12px;
+    font-weight: 650;
+    margin-bottom: 6px;
+    padding: 8px 10px;
+    text-align: center;
+    width: 100%;
   }
 
   .shift-card {

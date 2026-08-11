@@ -20,6 +20,7 @@ import {
   getApprovedTimeOffForRange,
   getShopSettings,
 } from "../services/settings.server";
+import { SHIFT_STATUS } from "../services/time-off-shifts.server";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -43,6 +44,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     prisma.shift.findMany({
       where: {
         shopId: shop.id,
+        status: SHIFT_STATUS.SCHEDULED,
         startsAt: { gte: periodStart, lte: periodEnd },
       },
     }),

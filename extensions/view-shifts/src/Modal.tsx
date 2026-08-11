@@ -30,6 +30,7 @@ function ViewShiftsModal() {
   const [employee, setEmployee] = useState<ShiftEmployee | null>(null);
   const [range, setRange] = useState<PosShiftRange>("upcoming");
   const [shifts, setShifts] = useState<PosShiftRow[]>([]);
+  const [onLeaveToday, setOnLeaveToday] = useState(false);
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
   const pinPadOpenRef = useRef(false);
@@ -50,6 +51,7 @@ function ViewShiftsModal() {
       try {
         const data = await fetchShifts(nextEmployee.id, nextRange);
         setShifts(data.shifts);
+        setOnLeaveToday(Boolean(data.onLeaveToday));
       } catch (err) {
         showToast(messageFromError(err, "Could not load shifts"));
         setShifts([]);
@@ -203,6 +205,11 @@ function ViewShiftsModal() {
       <s-scroll-box>
         <s-box padding="large">
           <s-stack direction="block" gap="large">
+            {onLeaveToday && range === "today" ? (
+              <s-banner tone="info" heading="On approved leave today">
+                <s-text>You are not expected to work scheduled shifts today.</s-text>
+              </s-banner>
+            ) : null}
             <s-tabs value={range} onChange={handleTabsChange}>
               <s-tab-list>
                 {TABS.map((tab) => (

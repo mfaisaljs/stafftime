@@ -33,6 +33,7 @@ export type ShiftsResponse = {
   employee: ShiftEmployee;
   range: PosShiftRange;
   shifts: PosShiftRow[];
+  onLeaveToday?: boolean;
   serverTime?: number;
 };
 
