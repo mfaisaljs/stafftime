@@ -110,10 +110,18 @@ function resolveRange(start?: string, end?: string, days?: number) {
   const today = toDateKeyLocal(new Date());
   const normalizedStart = normalizeDateKey(start);
   const normalizedEnd = normalizeDateKey(end);
+  const presetDays = [7, 30, 90].includes(Number(days)) ? Number(days) : null;
+
   if (normalizedStart && normalizedEnd && normalizedStart <= normalizedEnd) {
-    return { start: normalizedStart, end: normalizedEnd, days: 0 as number };
+    return {
+      start: normalizedStart,
+      end: normalizedEnd,
+      // Keep the preset highlight when the client asked for 7/30/90.
+      days: presetDays ?? 0,
+    };
   }
-  const preset = [7, 30, 90].includes(Number(days)) ? Number(days) : 7;
+
+  const preset = presetDays ?? 7;
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - (preset - 1));
@@ -303,7 +311,9 @@ export async function getStaffProfileForPos(params: {
       locationName: employee.location?.name ?? null,
     },
     range: {
-      start: effectiveStartKey,
+      // Return the requested UI range (not salary-clamped start) so date fields
+      // and 7/30/90 presets do not jump after Update Data.
+      start: range.start,
       end: range.end,
       days: range.days,
     },

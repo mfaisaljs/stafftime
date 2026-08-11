@@ -8,6 +8,7 @@
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
   "lastUpdated": "2026-08-11T15:25:00.000Z",
   "notes": [
+    "Fixed: POS Staff Profile 7/30/90 presets no longer reset date fields on Update Data (preserve preset + requested range).",
     "Fixed: POS Staff Profile Shifts tab marks leave-cancelled shifts as On leave (red/strikethrough) instead of Upcoming/Today.",
     "Fixed: unpaid/paid leave salary adjustments only apply on scheduled work days (incl. CANCELLED_LEAVE); no full-day deduct for leave calendar days with no shift.",
     "Updated: every POS tile always prompts for PIN (no session skip) before opening modal.",

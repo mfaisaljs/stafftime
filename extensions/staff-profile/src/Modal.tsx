@@ -67,9 +67,17 @@ function StaffProfileModal() {
           days: nextDays,
         });
         setProfile(data);
-        setStart(data.range.start);
-        setEnd(data.range.end);
-        setDays(data.range.days || nextDays || 0);
+        // Prefer the range we requested so presets/fields don't flash/reset
+        // if the API normalizes values.
+        setStart(data.range.start || nextStart);
+        setEnd(data.range.end || nextEnd);
+        const resolvedDays =
+          typeof data.range.days === "number" && data.range.days > 0
+            ? data.range.days
+            : nextDays && nextDays > 0
+              ? nextDays
+              : 0;
+        setDays(resolvedDays);
         setEmployee({
           ...nextEmployee,
           roleLabel: data.employee.roleLabel ?? nextEmployee.roleLabel,
@@ -189,8 +197,19 @@ function StaffProfileModal() {
       showToast("Start date must be before end date");
       return;
     }
-    setDays(0);
-    void loadProfile(employee, start, end);
+    // Keep 7/30/90 selected when the current dates still match that preset.
+    const matchedPreset =
+      DAY_PRESETS.find((preset) => {
+        const range = rangeForDays(preset);
+        return range.start === start && range.end === end;
+      }) ?? 0;
+    setDays(matchedPreset);
+    void loadProfile(
+      employee,
+      start,
+      end,
+      matchedPreset > 0 ? matchedPreset : undefined,
+    );
   }, [employee, end, loadProfile, start]);
 
   const handleTabsChange = useCallback(
