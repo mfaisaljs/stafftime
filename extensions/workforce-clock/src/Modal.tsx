@@ -45,22 +45,22 @@ function WorkforceModal() {
   const [verified, setVerified] = useState<VerifyResponse | null>(null);
   const [now, setNow] = useState(Date.now());
   const clockOffsetRef = useRef(0);
-  const pendingVerifyRef = useRef<VerifyResponse | null>(null);
-  const pinPadOpenedRef = useRef(false);
+  const acceptedVerifyRef = useRef<VerifyResponse | null>(null);
+  const pinPadOpenRef = useRef(false);
+  const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
+    };
   }, []);
 
   const syncClockOffset = useCallback((status: EmployeeStatus, serverTime?: number) => {
     if (typeof serverTime !== "number") return;
     clockOffsetRef.current = serverTime - Date.now();
-    if (typeof status.clockInAtMs === "number") {
-      // Anchor timer to server time to avoid device clock drift.
-      return;
-    }
-    if (status.clockInAt) {
+    if (typeof status.clockInAtMs !== "number" && status.clockInAt) {
       status.clockInAtMs = new Date(status.clockInAt).getTime();
     }
   }, []);
@@ -116,75 +116,93 @@ function WorkforceModal() {
   }, []);
 
   const applyVerified = useCallback(
-    async (data: VerifyResponse) => {
+    (data: VerifyResponse) => {
       syncClockOffset(data.status, data.serverTime);
       setVerified(data);
-      await persistClockState(data.status.status, data.employee.id);
       setQrCode("");
       setError(null);
+      setMode("pin");
+      void persistClockState(data.status.status, data.employee.id);
     },
     [persistClockState, syncClockOffset],
   );
 
+  const commitAcceptedVerify = useCallback(() => {
+    const data = acceptedVerifyRef.current;
+    if (!data) return;
+    acceptedVerifyRef.current = null;
+    applyVerified(data);
+  }, [applyVerified]);
+
   const showNativePinPad = useCallback(() => {
-    if (!shopify.pinPad?.showPinPad) {
+    if (pinPadOpenRef.current) return;
+
+    if (!shopify.pinPad || typeof shopify.pinPad.showPinPad !== "function") {
       setError("PIN pad is unavailable on this POS version.");
       return;
     }
 
     setError(null);
-    pendingVerifyRef.current = null;
+    setLoading(false);
+    acceptedVerifyRef.current = null;
+    pinPadOpenRef.current = true;
 
-    shopify.pinPad.showPinPad(
-      async (pinDigits) => {
-        const pin = pinDigits.join("");
-        try {
-          const data = (await apiFetch("/api/pos/verify", { pin })) as VerifyResponse;
-          pendingVerifyRef.current = data;
-          return { result: "accept" as const };
-        } catch (err) {
-          pendingVerifyRef.current = null;
-          return {
-            result: "reject" as const,
-            errorMessage: messageFromError(err, "Invalid PIN"),
-          };
-        }
-      },
-      {
-        // Native POS login pad: masked dots, 4-digit staff PIN, auto-submit.
-        title: "Enter PIN",
-        label: "Enter your PIN",
-        masked: true,
-        minPinLength: 4,
-        maxPinLength: 4,
-        autoSubmit: true,
-        onDismissed: (result) => {
-          if (!result.completed) {
-            pendingVerifyRef.current = null;
-            return;
-          }
-          const data = pendingVerifyRef.current;
-          pendingVerifyRef.current = null;
-          if (data) {
-            void applyVerified(data);
+    try {
+      shopify.pinPad.showPinPad(
+        async (pinDigits) => {
+          const pin = pinDigits.join("");
+          try {
+            const data = (await apiFetch("/api/pos/verify", {
+              pin,
+            })) as VerifyResponse;
+            acceptedVerifyRef.current = data;
+
+            // Apply after the native pad finishes dismissing. Relying only on
+            // onDismissed is flaky on some POS builds.
+            if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
+            applyTimerRef.current = setTimeout(() => {
+              pinPadOpenRef.current = false;
+              commitAcceptedVerify();
+            }, 100);
+
+            return { result: "accept" as const };
+          } catch (err) {
+            acceptedVerifyRef.current = null;
+            return {
+              result: "reject" as const,
+              errorMessage: messageFromError(err, "Invalid PIN"),
+            };
           }
         },
-      },
-    );
-  }, [apiFetch, applyVerified]);
-
-  useEffect(() => {
-    if (verified || mode !== "pin" || pinPadOpenedRef.current) return;
-    pinPadOpenedRef.current = true;
-    showNativePinPad();
-  }, [verified, mode, showNativePinPad]);
+        {
+          title: "Enter PIN",
+          label: "Enter your PIN",
+          masked: true,
+          minPinLength: 4,
+          maxPinLength: 4,
+          autoSubmit: true,
+          onDismissed: () => {
+            pinPadOpenRef.current = false;
+            // Backup path if the delayed commit did not run yet.
+            if (acceptedVerifyRef.current) {
+              if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
+              commitAcceptedVerify();
+            }
+          },
+        },
+      );
+    } catch (err) {
+      pinPadOpenRef.current = false;
+      setError(messageFromError(err, "Could not open PIN pad"));
+    }
+  }, [apiFetch, commitAcceptedVerify]);
 
   async function verifyWithQr() {
     setLoading(true);
     setError(null);
     try {
       const data = (await apiFetch("/api/pos/verify", { qrCode })) as VerifyResponse;
-      await applyVerified(data);
+      applyVerified(data);
     } catch (err) {
       setError(messageFromError(err, "Verification failed"));
     } finally {
@@ -211,27 +229,27 @@ function WorkforceModal() {
   }
 
   function switchEmployee() {
+    acceptedVerifyRef.current = null;
+    pinPadOpenRef.current = false;
+    if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
     setVerified(null);
     setMode("pin");
     setError(null);
-    pinPadOpenedRef.current = false;
+    setLoading(false);
   }
 
   if (!verified) {
     return (
-      <s-page heading="Enter PIN">
+      <s-page heading="StaffTime">
         <s-scroll-box>
           <s-stack direction="block" gap="base">
-            <s-text>Use the PIN pad to clock in or out.</s-text>
+            <s-text>Enter your staff PIN to clock in or out.</s-text>
             <s-stack direction="inline" gap="base">
               <s-button
                 variant={mode === "pin" ? "primary" : "secondary"}
-                onClick={() => {
-                  setMode("pin");
-                  showNativePinPad();
-                }}
+                onClick={() => setMode("pin")}
               >
-                Enter PIN
+                PIN
               </s-button>
               <s-button
                 variant={mode === "qr" ? "primary" : "secondary"}
@@ -240,28 +258,30 @@ function WorkforceModal() {
                 QR Code
               </s-button>
             </s-stack>
-            {mode === "qr" && (
-              <s-text-field
-                label="QR Code"
-                value={qrCode}
-                onInput={(event) => setQrCode(event.currentTarget.value)}
-              />
-            )}
-            {error && <s-banner heading={error} tone="critical" />}
-            {mode === "qr" ? (
-              <s-button
-                variant="primary"
-                loading={loading}
-                disabled={loading || !qrCode}
-                onClick={() => void verifyWithQr()}
-              >
-                Continue
+
+            {mode === "pin" ? (
+              <s-button variant="primary" onClick={showNativePinPad}>
+                Enter PIN
               </s-button>
             ) : (
-              <s-button variant="primary" onClick={showNativePinPad}>
-                Show PIN pad
-              </s-button>
+              <s-stack direction="block" gap="base">
+                <s-text-field
+                  label="QR Code"
+                  value={qrCode}
+                  onInput={(event) => setQrCode(event.currentTarget.value)}
+                />
+                <s-button
+                  variant="primary"
+                  loading={loading}
+                  disabled={loading || !qrCode}
+                  onClick={() => void verifyWithQr()}
+                >
+                  Continue
+                </s-button>
+              </s-stack>
             )}
+
+            {error && <s-banner heading={error} tone="critical" />}
           </s-stack>
         </s-scroll-box>
       </s-page>
@@ -316,7 +336,7 @@ function WorkforceModal() {
               </s-button>
             )}
             {status.status === "CLOCKED_IN" && (
-              <>
+              <s-stack direction="inline" gap="base">
                 <s-button
                   variant="secondary"
                   loading={loading}
@@ -331,10 +351,10 @@ function WorkforceModal() {
                 >
                   Clock Out
                 </s-button>
-              </>
+              </s-stack>
             )}
             {status.status === "ON_BREAK" && (
-              <>
+              <s-stack direction="inline" gap="base">
                 <s-button
                   variant="primary"
                   loading={loading}
@@ -349,7 +369,7 @@ function WorkforceModal() {
                 >
                   Clock Out
                 </s-button>
-              </>
+              </s-stack>
             )}
           </s-stack>
           <s-button variant="secondary" onClick={switchEmployee}>

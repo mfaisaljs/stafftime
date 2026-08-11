@@ -22,16 +22,12 @@ function WorkforceTile() {
       );
       setStatus(stored?.status ?? null);
     } catch {
-      // Keep last known subheading if storage is unavailable offline.
+      // Keep last known subheading if storage is unavailable.
     }
   }, []);
 
   useEffect(() => {
     void refreshFromStorage();
-    const timer = setInterval(() => {
-      void refreshFromStorage();
-    }, 3000);
-    return () => clearInterval(timer);
   }, [refreshFromStorage]);
 
   return (
