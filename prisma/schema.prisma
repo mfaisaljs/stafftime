@@ -216,6 +216,8 @@ model CommissionAttribution {
   orderName            String?
   /// Shopify order displayFinancialStatus (e.g. PAID), not staff payout status.
   orderFinancialStatus String   @default("PAID")
+  /// Staff commission payout: PENDING | PAID.
+  payoutStatus         String   @default("PENDING")
   commissionTotal      Float
   currency             String   @default("USD")
   programIds           String   @default("[]")

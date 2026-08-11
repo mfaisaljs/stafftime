@@ -204,7 +204,7 @@ export async function getStaffProfileForPos(params: {
           employeeId: employee.id,
           createdAt: { gte: startDate, lte: endDate },
         },
-        select: { commissionTotal: true },
+        select: { commissionTotal: true, payoutStatus: true },
       }),
     ]);
 
@@ -257,13 +257,17 @@ export async function getStaffProfileForPos(params: {
       .reduce((sum, row) => sum + row.commissionTotal, 0)
       .toFixed(2),
   );
+  const unpaidCommission = Number(
+    commissionRows
+      .filter((row) => String(row.payoutStatus || "PENDING").toUpperCase() !== "PAID")
+      .reduce((sum, row) => sum + row.commissionTotal, 0)
+      .toFixed(2),
+  );
   const totalBonus = 0;
   const totalEarnings = baseEarnings + salaryAdjustment + totalCommission + totalBonus;
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const remainingAmount = Math.max(0, totalEarnings - totalPaid);
   const unpaidSalary = remainingAmount;
-  // Attributed commission is unpaid until payroll payout tracking exists.
-  const unpaidCommission = totalCommission;
   const currency = employee.currency || "USD";
   const salaryAdjustmentLabel = formatMoney(salaryAdjustment, currency);
 

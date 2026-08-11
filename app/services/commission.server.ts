@@ -428,6 +428,7 @@ export async function attributeOrderToCommission(params: {
       orderId,
       orderName: preview.orderName,
       orderFinancialStatus: preview.orderFinancialStatus || "PAID",
+      payoutStatus: "PENDING",
       commissionTotal: preview.commissionTotal,
       currency: preview.currency,
       programIds: JSON.stringify(
