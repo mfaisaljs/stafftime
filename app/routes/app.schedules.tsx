@@ -25,6 +25,7 @@ import {
   assertEmployeeNotOnApprovedLeave,
   employeeOnApprovedLeave,
   SHIFT_STATUS,
+  syncApprovedLeaveShiftCancellations,
 } from "../services/time-off-shifts.server";
 import prisma from "../db.server";
 
@@ -111,6 +112,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       : rawSelectedDate;
   const range = rangeForPeriod(selectedDate, period);
 
+  await syncApprovedLeaveShiftCancellations(shop.id);
+
   const [employees, shifts, locations, setting, approvedLeave] = await Promise.all([
     prisma.employee.findMany({
       where: { shopId: shop.id, status: { not: "ARCHIVED" } },
@@ -120,7 +123,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     prisma.shift.findMany({
       where: {
         shopId: shop.id,
-        status: SHIFT_STATUS.SCHEDULED,
+        status: { in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE] },
         startsAt: { gte: range.start, lte: range.end },
       },
       include: { employee: true, location: true },
@@ -168,6 +171,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       startTime: timeValue(shift.startsAt),
       endTime: timeValue(shift.endsAt),
       notes: shift.notes ?? "",
+      status: (shift as { status?: string }).status ?? SHIFT_STATUS.SCHEDULED,
+      cancelledForLeave:
+        ((shift as { status?: string }).status ?? SHIFT_STATUS.SCHEDULED) ===
+        SHIFT_STATUS.CANCELLED_LEAVE,
     })),
     locations: locations.map((location) => ({
       id: location.id,
@@ -920,6 +927,7 @@ function MonthlySchedule({
       startTime: string;
       endTime: string;
       locationName: string;
+      cancelledForLeave?: boolean;
     }>
   >;
   shiftColor: (shift: { employeeId: string; locationId: string }) => string;
@@ -950,21 +958,30 @@ function MonthlySchedule({
               <div className="month-shifts">
                 {dayShifts.map((shift) => (
                   <div
-                    className="shift-card month-shift"
+                    className={`shift-card month-shift${shift.cancelledForLeave ? " shift-card--cancelled" : ""}`}
                     key={shift.id}
-                    style={{ backgroundColor: shiftColor(shift) }}
+                    style={{
+                      backgroundColor: shift.cancelledForLeave
+                        ? undefined
+                        : shiftColor(shift),
+                    }}
                   >
                     <button
                       className="shift-content"
                       type="button"
                       onClick={() => onEditShift(shift.id)}
+                      disabled={shift.cancelledForLeave}
                     >
                       <strong>
                         {shift.startTime} - {shift.endTime}
                       </strong>
                       <span>{shift.employeeName}</span>
                       <span>{shift.locationName}</span>
+                      {shift.cancelledForLeave ? (
+                        <span>Cancelled — on leave</span>
+                      ) : null}
                     </button>
+                    {!shift.cancelledForLeave ? (
                     <div className="shift-actions">
                       <button
                         type="button"
@@ -981,6 +998,7 @@ function MonthlySchedule({
                         </button>
                       </fetcher.Form>
                     </div>
+                    ) : null}
                   </div>
                 ))}
                 {canAdd && (
@@ -1024,6 +1042,7 @@ function ScheduleCell({
     startTime: string;
     endTime: string;
     locationName: string;
+    cancelledForLeave?: boolean;
   }>;
   leave: { policyName: string } | null;
   shiftColor: (shift: { employeeId: string; locationId: string }) => string;
@@ -1061,20 +1080,27 @@ function ScheduleCell({
       ) : null}
       {shifts.map((shift) => (
         <div
-          className="shift-card"
+          className={`shift-card${shift.cancelledForLeave ? " shift-card--cancelled" : ""}`}
           key={shift.id}
-          style={{ backgroundColor: shiftColor(shift) }}
+          style={{
+            backgroundColor: shift.cancelledForLeave
+              ? undefined
+              : shiftColor(shift),
+          }}
         >
           <button
             className="shift-content"
             type="button"
             onClick={() => onEditShift(shift.id)}
+            disabled={shift.cancelledForLeave}
           >
             <strong>
               {shift.startTime} - {shift.endTime}
             </strong>
             <span>{shift.locationName}</span>
+            {shift.cancelledForLeave ? <span>Cancelled — on leave</span> : null}
           </button>
+          {!shift.cancelledForLeave ? (
           <div className="shift-actions">
             <button type="button" aria-label="Edit shift" onClick={() => onEditShift(shift.id)}>
               <Edit3 aria-hidden="true" size={18} />
@@ -1087,6 +1113,7 @@ function ScheduleCell({
               </button>
             </fetcher.Form>
           </div>
+          ) : null}
         </div>
       ))}
       {isPast || leave ? (
@@ -2206,6 +2233,24 @@ const SCHEDULE_STYLES = `
     min-height: 58px;
     overflow: hidden;
     position: relative;
+  }
+
+  .shift-card--cancelled {
+    background: #ececec !important;
+    border: 1px dashed #c9c9c9;
+    color: #616161;
+  }
+
+  .shift-card--cancelled .shift-content strong,
+  .shift-card--cancelled .shift-content span {
+    text-decoration: line-through;
+  }
+
+  .shift-card--cancelled .shift-content span:last-child {
+    text-decoration: none;
+    color: #8a5700;
+    font-size: 10px;
+    font-weight: 650;
   }
 
   .shift-content {

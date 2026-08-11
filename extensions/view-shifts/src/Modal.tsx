@@ -12,6 +12,7 @@ import {
   parseStoredShiftSession,
   type PosShiftRange,
   type PosShiftRow,
+  type PosLeaveDayRow,
   type ShiftEmployee,
 } from "./session";
 
@@ -30,6 +31,8 @@ function ViewShiftsModal() {
   const [employee, setEmployee] = useState<ShiftEmployee | null>(null);
   const [range, setRange] = useState<PosShiftRange>("upcoming");
   const [shifts, setShifts] = useState<PosShiftRow[]>([]);
+  const [leaveDays, setLeaveDays] = useState<PosLeaveDayRow[]>([]);
+  const [onLeaveInRange, setOnLeaveInRange] = useState(false);
   const [onLeaveToday, setOnLeaveToday] = useState(false);
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -51,7 +54,9 @@ function ViewShiftsModal() {
       try {
         const data = await fetchShifts(nextEmployee.id, nextRange);
         setShifts(data.shifts);
+        setLeaveDays(data.leaveDays ?? []);
         setOnLeaveToday(Boolean(data.onLeaveToday));
+        setOnLeaveInRange(Boolean(data.onLeaveInRange));
       } catch (err) {
         showToast(messageFromError(err, "Could not load shifts"));
         setShifts([]);
@@ -187,14 +192,29 @@ function ViewShiftsModal() {
     );
   }
 
+  const activeShifts = shifts.filter((shift) => !shift.cancelledForLeave);
+  const cancelledShifts = shifts.filter((shift) => shift.cancelledForLeave);
+  const leaveOnlyDays = leaveDays.filter(
+    (leave) =>
+      !cancelledShifts.some((shift) => shift.startsAt.startsWith(leave.dateKey)),
+  );
+
   const shiftList =
     loading ? (
       <s-text>Loading shifts…</s-text>
-    ) : shifts.length === 0 ? (
+    ) : activeShifts.length === 0 &&
+      cancelledShifts.length === 0 &&
+      leaveOnlyDays.length === 0 ? (
       <s-text>No shifts in this range.</s-text>
     ) : (
       <s-stack direction="block" gap="base">
-        {shifts.map((shift) => (
+        {leaveOnlyDays.map((leave) => (
+          <LeaveDayRow key={leave.dateKey} leave={leave} />
+        ))}
+        {cancelledShifts.map((shift) => (
+          <ShiftRow key={shift.id} shift={shift} />
+        ))}
+        {activeShifts.map((shift) => (
           <ShiftRow key={shift.id} shift={shift} />
         ))}
       </s-stack>
@@ -205,9 +225,13 @@ function ViewShiftsModal() {
       <s-scroll-box>
         <s-box padding="large">
           <s-stack direction="block" gap="large">
-            {onLeaveToday && range === "today" ? (
-              <s-banner tone="info" heading="On approved leave today">
-                <s-text>You are not expected to work scheduled shifts today.</s-text>
+            {onLeaveInRange ? (
+              <s-banner tone="info" heading="Approved leave in this range">
+                <s-text>
+                  {onLeaveToday
+                    ? "You are on approved leave today. Cancelled shifts are shown below."
+                    : "Days on approved leave are listed below. Matching shifts are cancelled."}
+                </s-text>
               </s-banner>
             ) : null}
             <s-tabs value={range} onChange={handleTabsChange}>
@@ -252,8 +276,25 @@ function isPosShiftRange(value: unknown): value is PosShiftRange {
   );
 }
 
+function LeaveDayRow(props: { leave: PosLeaveDayRow }) {
+  const { leave } = props;
+  return (
+    <s-box padding="small none">
+      <s-stack direction="block" gap="small">
+        <s-stack direction="inline" gap="small" alignItems="center">
+          <s-text type="strong">{leave.dateLabel}</s-text>
+          <s-badge tone="neutral">{leave.dayLabel}</s-badge>
+          <s-badge tone="info">On leave</s-badge>
+        </s-stack>
+        <s-text>{leave.policyName}</s-text>
+      </s-stack>
+    </s-box>
+  );
+}
+
 function ShiftRow(props: { shift: PosShiftRow }) {
   const { shift } = props;
+  const cancelled = Boolean(shift.cancelledForLeave);
   return (
     <s-box padding="small none">
       <s-stack direction="block" gap="small">
@@ -266,7 +307,7 @@ function ShiftRow(props: { shift: PosShiftRow }) {
         >
           <s-stack direction="inline" gap="small" alignItems="center">
             <s-icon type="clock" color="strong" />
-            <s-text type="strong">{shift.dateLabel}</s-text>
+            <s-text type={cancelled ? "generic" : "strong"}>{shift.dateLabel}</s-text>
             <s-badge tone="neutral">{shift.dayLabel}</s-badge>
           </s-stack>
         </s-stack>
@@ -277,9 +318,12 @@ function ShiftRow(props: { shift: PosShiftRow }) {
           justifyContent="space-between"
           inlineSize="100%"
         >
-          <s-heading>{shift.timeRangeLabel}</s-heading>
+          <s-text type={cancelled ? "generic" : "strong"}>
+            {shift.timeRangeLabel}
+          </s-text>
           <s-badge tone={shift.tone}>{shift.statusLabel}</s-badge>
         </s-stack>
+        {cancelled ? <s-text>{shift.locationName}</s-text> : null}
       </s-stack>
     </s-box>
   );

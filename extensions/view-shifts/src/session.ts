@@ -9,12 +9,20 @@ export type PosShiftRow = {
   dateLabel: string;
   dayLabel: string;
   timeRangeLabel: string;
-  status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED";
+  status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED" | "ON_LEAVE";
   statusLabel: string;
   tone: "warning" | "info" | "neutral";
   startsAt: string;
   endsAt: string;
   locationName: string;
+  cancelledForLeave?: boolean;
+};
+
+export type PosLeaveDayRow = {
+  dateKey: string;
+  dateLabel: string;
+  dayLabel: string;
+  policyName: string;
 };
 
 export type PosShiftRange = "upcoming" | "today" | "week" | "month";
@@ -33,7 +41,9 @@ export type ShiftsResponse = {
   employee: ShiftEmployee;
   range: PosShiftRange;
   shifts: PosShiftRow[];
+  leaveDays?: PosLeaveDayRow[];
   onLeaveToday?: boolean;
+  onLeaveInRange?: boolean;
   serverTime?: number;
 };
 

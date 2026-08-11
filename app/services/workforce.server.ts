@@ -18,7 +18,12 @@ import {
   isEmployeeOnApprovedLeave,
   leaveCompensationForEmployeeDate,
 } from "./settings.server";
-import { SHIFT_STATUS } from "./time-off-shifts.server";
+import {
+  SHIFT_STATUS,
+  listApprovedLeaveDaysForEmployee,
+  shiftIsCancelledForLeave,
+  syncApprovedLeaveShiftCancellations,
+} from "./time-off-shifts.server";
 import {
   formatClockTime,
   formatDuration,
@@ -409,13 +414,29 @@ export type PosShiftRow = {
   dateLabel: string;
   dayLabel: string;
   timeRangeLabel: string;
-  status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED";
+  status: "IN_PROGRESS" | "UPCOMING" | "COMPLETED" | "ON_LEAVE";
   statusLabel: string;
   tone: "warning" | "info" | "neutral";
   startsAt: string;
   endsAt: string;
   locationName: string;
+  cancelledForLeave?: boolean;
 };
+
+export type PosLeaveDayRow = {
+  dateKey: string;
+  dateLabel: string;
+  dayLabel: string;
+  policyName: string;
+};
+
+function rangeEndKeyForLeave(range: PosShiftRange, now: Date) {
+  const bounds = rangeBounds(range, now);
+  if (bounds.lte) return toDateKeyLocal(bounds.lte);
+  const end = new Date(now);
+  end.setDate(end.getDate() + 90);
+  return toDateKeyLocal(end);
+}
 
 function endOfLocalDay(value = new Date()) {
   const date = startOfLocalDay(value);
@@ -505,11 +526,34 @@ export async function listEmployeeShiftsForPos(params: {
   const now = new Date();
   const bounds = rangeBounds(params.range, now);
 
+  await syncApprovedLeaveShiftCancellations(shop.id);
+
+  const rangeStartKey = toDateKeyLocal(bounds.gte);
+  const rangeEndKey = rangeEndKeyForLeave(params.range, now);
+  const leaveRequests = await getApprovedTimeOffForRange(
+    shop.id,
+    rangeStartKey,
+    rangeEndKey,
+  );
+  const leaveDays = listApprovedLeaveDaysForEmployee(
+    leaveRequests,
+    employee.id,
+    rangeStartKey,
+    rangeEndKey,
+  ).map((leave) => ({
+    ...leave,
+    dateLabel: formatShiftDateLabel(
+      startOfDayFromKey(leave.dateKey),
+      now,
+    ),
+    dayLabel: formatShiftDayLabel(startOfDayFromKey(leave.dateKey)),
+  }));
+
   const shifts = await prisma.shift.findMany({
     where: {
       shopId: shop.id,
       employeeId: employee.id,
-      status: SHIFT_STATUS.SCHEDULED,
+      status: { in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE] },
       startsAt: {
         gte: bounds.gte,
         ...(bounds.lte ? { lte: bounds.lte } : {}),
@@ -522,12 +566,33 @@ export async function listEmployeeShiftsForPos(params: {
 
   const todayKey = toDateKeyLocal(now);
   const onLeaveToday = isEmployeeOnApprovedLeave(
-    await getApprovedTimeOffForRange(shop.id, todayKey, todayKey),
+    leaveRequests,
     employee.id,
     todayKey,
   );
+  const onLeaveInRange = leaveDays.length > 0;
 
   const rows: PosShiftRow[] = shifts.map((shift) => {
+    const cancelled = shiftIsCancelledForLeave(
+      shift,
+      leaveRequests,
+      employee.id,
+    );
+    if (cancelled) {
+      return {
+        id: shift.id,
+        dateLabel: formatShiftDateLabel(shift.startsAt, now),
+        dayLabel: formatShiftDayLabel(shift.startsAt),
+        timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat)} - ${formatPosClockLabel(shift.endsAt, timeFormat)}`,
+        status: "ON_LEAVE",
+        statusLabel: "On leave",
+        tone: "neutral",
+        startsAt: shift.startsAt.toISOString(),
+        endsAt: shift.endsAt.toISOString(),
+        locationName: shift.location.name,
+        cancelledForLeave: true,
+      };
+    }
     const status = classifyShiftStatus(shift.startsAt, shift.endsAt, now);
     return {
       id: shift.id,
@@ -538,6 +603,7 @@ export async function listEmployeeShiftsForPos(params: {
       startsAt: shift.startsAt.toISOString(),
       endsAt: shift.endsAt.toISOString(),
       locationName: shift.location.name,
+      cancelledForLeave: false,
     };
   });
 
@@ -549,7 +615,9 @@ export async function listEmployeeShiftsForPos(params: {
     },
     range: params.range,
     shifts: rows,
+    leaveDays,
     onLeaveToday,
+    onLeaveInRange,
     serverTime: Date.now(),
   };
 }

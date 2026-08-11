@@ -1,6 +1,7 @@
 import type { Prisma, Shift } from "@prisma/client";
 import prisma from "../db.server";
 import {
+  enumerateDateKeys,
   getApprovedTimeOffForRange,
   requestCoversDateKey,
   type TimeOffRequestWithPolicy,
@@ -207,12 +208,46 @@ function formatLeaveDate(dateKey: string) {
   });
 }
 
-export async function countOverlappingScheduledShifts(params: {
-  shopId: string;
-  employeeId: string;
-  startDate: string;
-  endDate: string;
-}) {
-  const shifts = await findOverlappingScheduledShifts(params);
-  return shifts.length;
+export async function syncApprovedLeaveShiftCancellations(shopId: string) {
+  const approved = await prisma.timeOffRequest.findMany({
+    where: { shopId, status: "APPROVED" },
+    select: { employeeId: true, startDate: true, endDate: true },
+  });
+  if (approved.length === 0) return 0;
+
+  let count = 0;
+  await prisma.$transaction(async (tx) => {
+    for (const request of approved) {
+      count += await cancelShiftsForApprovedLeave(tx, {
+        shopId,
+        employeeId: request.employeeId,
+        startDate: request.startDate,
+        endDate: request.endDate,
+      });
+    }
+  });
+  return count;
+}
+
+export function listApprovedLeaveDaysForEmployee(
+  requests: TimeOffRequestWithPolicy[],
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+) {
+  return enumerateDateKeys(startDate, endDate).flatMap((dateKey) => {
+    const leave = employeeOnApprovedLeave(requests, employeeId, dateKey);
+    if (!leave) return [];
+    return [{ dateKey, policyName: leave.policy.name }];
+  });
+}
+
+export function shiftIsCancelledForLeave(
+  shift: { status?: string | null; startsAt: Date },
+  requests: TimeOffRequestWithPolicy[],
+  employeeId: string,
+) {
+  if (shift.status === SHIFT_STATUS.CANCELLED_LEAVE) return true;
+  const dateKey = toDateKeyLocal(shift.startsAt);
+  return employeeOnApprovedLeave(requests, employeeId, dateKey) !== null;
 }
