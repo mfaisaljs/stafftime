@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T09:10:00.000Z",
+  "lastUpdated": "2026-08-11T09:15:00.000Z",
   "notes": [
+    "ST075 complete: POS verify uses native PinPad API (masked 4-digit auto-submit) matching POS login UI.",
     "Fixed: POS modal fetch now uses absolute application_url to avoid Invalid URL when relative base is missing.",
     "ST074 complete: POS tile subheading updates from last clock status (in/out/break) via extension storage.",
     "ST073 complete: deductBreakTime was false in DB (hours not deducted); re-enabled and hardened settings checkbox saves.",

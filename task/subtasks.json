@@ -1318,6 +1318,25 @@
         "extensions/workforce-clock/src/clockStatus.ts"
       ],
       "lastUpdated": "2026-08-11T09:05:00.000Z"
+    },
+    {
+      "id": "ST075",
+      "taskId": "T004",
+      "title": "Native POS PIN pad for staff verify",
+      "description": "Replace custom PIN text field with Shopify PinPad API so clock-in verify matches the native POS login keypad.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST007", "ST074"],
+      "acceptanceCriteria": [
+        "Modal opens native PIN pad on launch",
+        "4-digit masked PIN auto-submits and verifies against /api/pos/verify",
+        "Invalid PIN shows reject error on the pad",
+        "QR verify remains available as a fallback path"
+      ],
+      "files": [
+        "extensions/workforce-clock/src/Modal.tsx"
+      ],
+      "lastUpdated": "2026-08-11T09:15:00.000Z"
     }
   ]
 }
