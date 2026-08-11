@@ -385,16 +385,16 @@ function MainScreen(props: {
             <s-section>
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
-                  <SectionTitle icon="flag" label="Shift Info" />
+                  <SectionTitle emoji="📌" label="Shift Info" />
                   <s-stack direction="block" gap="none">
                     <InfoRow
-                      icon="note"
+                      emoji="📅"
                       label="Date"
                       value={props.dateLabel}
                       showDivider
                     />
                     <InfoRow
-                      icon="location"
+                      emoji="📍"
                       label="Location"
                       value={props.locationName}
                       showDivider
@@ -637,6 +637,7 @@ function InfoRow(props: {
   label: string;
   value: string;
   icon?: "clock" | "location" | "note" | "flag" | "store";
+  emoji?: string;
   showDivider?: boolean;
 }) {
   return (
@@ -650,6 +651,7 @@ function InfoRow(props: {
           inlineSize="100%"
         >
           <s-stack direction="inline" gap="small" alignItems="center">
+            {props.emoji ? <s-text>{props.emoji}</s-text> : null}
             {props.icon ? (
               <s-icon type={props.icon} color="strong" />
             ) : null}
