@@ -5,7 +5,7 @@ type = "ui_extension"
 name = "t:name"
 uid = "7376a1bc-b5b2-43fc-a918-5dbed049fd88"
 handle = "sales-target"
-description = "Trubuild: Monthly sales target progress"
+description = "Trubuild: Monthly sales target progress and order attribution"
 
 [extensions.supported_features]
 runs_offline = true
@@ -17,3 +17,27 @@ target = "pos.home.tile.render"
 [[extensions.targeting]]
 module = "./src/Modal.tsx"
 target = "pos.home.modal.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionBlock.tsx"
+target = "pos.order-details.block.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionMenuItem.tsx"
+target = "pos.order-details.action.menu-item.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionModal.tsx"
+target = "pos.order-details.action.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionBlock.tsx"
+target = "pos.purchase.post.block.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionMenuItem.tsx"
+target = "pos.purchase.post.action.menu-item.render"
+
+[[extensions.targeting]]
+module = "./src/AttributionModal.tsx"
+target = "pos.purchase.post.action.render"

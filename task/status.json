@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-11T16:35:00.000Z",
+  "lastUpdated": "2026-08-11T16:45:00.000Z",
   "notes": [
+    "ST089 complete: POS Sales Targets attribution on Order details + Post-purchase (PIN, one credit per order, soldAmount update).",
     "ST088 complete: editing a sales target updates that row only and no longer createMany's new staff entries.",
     "ST087 complete: POS Sales Targets tile (PIN-first) with Monthly Sales Target status/sold/progress/remaining matching reference UI.",
     "Fixed: POS Staff Profile 7/30/90 presets no longer reset date fields on Update Data (preserve preset + requested range).",

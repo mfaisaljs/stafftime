@@ -1,4 +1,6 @@
 import prisma from "../db.server";
+import { unauthenticated } from "../shopify.server";
+import { shopFromDest } from "../utils/http.server";
 import { ensureShop } from "./workforce.server";
 
 export type SalesTargetStatus = "Met" | "On track" | "Behind";
@@ -167,5 +169,239 @@ export async function getEmployeeSalesTargetForPos(params: {
     goalLabel: formatSalesMoney(currency, goalAmount),
     remainingLabel: formatSalesMoney(currency, remainingAmount),
     progressLabel: `${progressPercent}%`,
+  };
+}
+
+export type SalesTargetOrderAttribution = {
+  orderId: string;
+  orderName: string;
+  amount: number;
+  currency: string;
+  amountLabel: string;
+  attributed: boolean;
+  attributedTo: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+};
+
+function toOrderGid(orderId: string | number) {
+  const raw = String(orderId).trim();
+  if (raw.startsWith("gid://")) return raw;
+  return `gid://shopify/Order/${raw}`;
+}
+
+async function fetchShopifyOrderTotals(params: {
+  shopDomain: string;
+  orderId: string | number;
+}) {
+  const shop = shopFromDest(params.shopDomain);
+  const { admin } = await unauthenticated.admin(shop);
+  const orderGid = toOrderGid(params.orderId);
+
+  const response = await admin.graphql(
+    `#graphql
+      query SalesTargetOrder($id: ID!) {
+        order(id: $id) {
+          id
+          name
+          currentTotalPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+        }
+      }`,
+    { variables: { id: orderGid } },
+  );
+
+  const json = (await response.json()) as {
+    data?: {
+      order?: {
+        id: string;
+        name: string;
+        currentTotalPriceSet?: {
+          shopMoney?: { amount?: string; currencyCode?: string };
+        } | null;
+      } | null;
+    };
+    errors?: Array<{ message?: string }>;
+  };
+
+  if (json.errors?.length) {
+    throw new Error(json.errors[0]?.message || "Could not load order");
+  }
+
+  const order = json.data?.order;
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  const amount = Number(order.currentTotalPriceSet?.shopMoney?.amount ?? NaN);
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error("Order total is unavailable");
+  }
+
+  return {
+    orderId: String(params.orderId).replace(/^gid:\/\/shopify\/Order\//i, ""),
+    orderGid: order.id,
+    orderName: order.name,
+    amount,
+    currency: order.currentTotalPriceSet?.shopMoney?.currencyCode || "USD",
+  };
+}
+
+export async function getSalesTargetOrderAttribution(params: {
+  shopDomain: string;
+  orderId: string | number;
+}): Promise<SalesTargetOrderAttribution> {
+  const shop = await ensureShop(params.shopDomain);
+  const orderId = String(params.orderId).replace(
+    /^gid:\/\/shopify\/Order\//i,
+    "",
+  );
+
+  const [order, existing] = await Promise.all([
+    fetchShopifyOrderTotals({
+      shopDomain: params.shopDomain,
+      orderId,
+    }),
+    prisma.salesTargetAttribution.findUnique({
+      where: {
+        shopId_orderId: { shopId: shop.id, orderId },
+      },
+    }),
+  ]);
+
+  let attributedTo: SalesTargetOrderAttribution["attributedTo"] = null;
+  if (existing) {
+    const employee = await prisma.employee.findFirst({
+      where: { id: existing.employeeId, shopId: shop.id },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (employee) {
+      attributedTo = employee;
+    }
+  }
+
+  return {
+    orderId: order.orderId,
+    orderName: order.orderName,
+    amount: existing?.amount ?? order.amount,
+    currency: existing?.currency ?? order.currency,
+    amountLabel: formatSalesMoney(
+      existing?.currency ?? order.currency,
+      existing?.amount ?? order.amount,
+    ),
+    attributed: Boolean(existing),
+    attributedTo,
+  };
+}
+
+export async function attributeOrderToSalesTarget(params: {
+  shopDomain: string;
+  employeeId: string;
+  orderId: string | number;
+}): Promise<SalesTargetOrderAttribution & { progress: EmployeeSalesTargetProgress }> {
+  const shop = await ensureShop(params.shopDomain);
+  const employee = await prisma.employee.findFirst({
+    where: {
+      id: params.employeeId,
+      shopId: shop.id,
+      status: { not: "ARCHIVED" },
+    },
+  });
+  if (!employee) {
+    throw new Error("Employee not found");
+  }
+
+  const yearMonth = currentYearMonth();
+  const targets = await prisma.salesTarget.findMany({
+    where: { shopId: shop.id },
+    orderBy: { createdAt: "desc" },
+  });
+  const assigned = targets.find((target) =>
+    parseIds(target.employeeIds).includes(employee.id),
+  );
+  if (!assigned) {
+    throw new Error("No sales target is assigned to this staff member");
+  }
+
+  const orderId = String(params.orderId).replace(
+    /^gid:\/\/shopify\/Order\//i,
+    "",
+  );
+
+  const existing = await prisma.salesTargetAttribution.findUnique({
+    where: {
+      shopId_orderId: { shopId: shop.id, orderId },
+    },
+  });
+  if (existing) {
+    throw new Error("This order is already attributed");
+  }
+
+  const order = await fetchShopifyOrderTotals({
+    shopDomain: params.shopDomain,
+    orderId,
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.salesTargetAttribution.create({
+      data: {
+        shopId: shop.id,
+        employeeId: employee.id,
+        orderId,
+        orderName: order.orderName,
+        amount: order.amount,
+        currency: order.currency,
+        yearMonth,
+      },
+    });
+
+    await tx.salesTargetSnapshot.upsert({
+      where: {
+        shopId_employeeId_yearMonth: {
+          shopId: shop.id,
+          employeeId: employee.id,
+          yearMonth,
+        },
+      },
+      create: {
+        shopId: shop.id,
+        employeeId: employee.id,
+        yearMonth,
+        amount: assigned.amount,
+        currency: assigned.currency,
+        soldAmount: order.amount,
+      },
+      update: {
+        amount: assigned.amount,
+        currency: assigned.currency,
+        soldAmount: { increment: order.amount },
+      },
+    });
+  });
+
+  const progress = await getEmployeeSalesTargetForPos({
+    shopDomain: params.shopDomain,
+    employeeId: employee.id,
+  });
+
+  return {
+    orderId,
+    orderName: order.orderName,
+    amount: order.amount,
+    currency: order.currency,
+    amountLabel: formatSalesMoney(order.currency, order.amount),
+    attributed: true,
+    attributedTo: {
+      id: employee.id,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+    },
+    progress,
   };
 }

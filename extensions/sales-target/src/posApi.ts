@@ -1,6 +1,7 @@
 import { resolveAppUrl } from "./appUrl";
 import {
   ACTIVE_SESSION_STORAGE_KEY,
+  type SalesTargetOrderAttribution,
   type SalesTargetProgress,
   type VerifyResponse,
 } from "./session";
@@ -45,6 +46,26 @@ export async function fetchSalesTarget(
   return (await apiFetch("/api/pos/sales-target", {
     employeeId,
   })) as SalesTargetProgress;
+}
+
+export async function fetchOrderAttributionStatus(
+  orderId: string | number,
+): Promise<SalesTargetOrderAttribution> {
+  return (await apiFetch("/api/pos/sales-target/attribution", {
+    intent: "status",
+    orderId,
+  })) as SalesTargetOrderAttribution;
+}
+
+export async function attributeOrderToSalesTarget(params: {
+  employeeId: string;
+  orderId: string | number;
+}): Promise<SalesTargetOrderAttribution> {
+  return (await apiFetch("/api/pos/sales-target/attribution", {
+    intent: "attribute",
+    employeeId: params.employeeId,
+    orderId: params.orderId,
+  })) as SalesTargetOrderAttribution;
 }
 
 export async function persistSalesTargetSession(

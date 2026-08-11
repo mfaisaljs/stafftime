@@ -1,4 +1,10 @@
 {
   "pos.home.tile.render": {},
-  "pos.home.modal.render": {}
+  "pos.home.modal.render": {},
+  "pos.order-details.block.render": {},
+  "pos.order-details.action.menu-item.render": {},
+  "pos.order-details.action.render": {},
+  "pos.purchase.post.block.render": {},
+  "pos.purchase.post.action.menu-item.render": {},
+  "pos.purchase.post.action.render": {}
 }

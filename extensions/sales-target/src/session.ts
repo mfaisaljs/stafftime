@@ -34,6 +34,16 @@ export type VerifyResponse = {
   serverTime?: number;
 };
 
+export type SalesTargetOrderAttribution = {
+  orderId: string;
+  orderName: string;
+  amount: number;
+  currency: string;
+  amountLabel: string;
+  attributed: boolean;
+  attributedTo: SalesTargetEmployee | null;
+};
+
 export const ACTIVE_SESSION_STORAGE_KEY = "salesTargetSession";
 
 export function parseStoredSalesTargetSession(
