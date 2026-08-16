@@ -1962,6 +1962,29 @@
         "app/routes/app.pricing.tsx"
       ],
       "lastUpdated": "2026-08-16T12:20:00.000Z"
+    },
+    {
+      "id": "ST104",
+      "taskId": "T009",
+      "title": "Mandatory Shopify webhooks",
+      "description": "Unified /webhooks route handles app/uninstalled, app/scopes_update, and GDPR compliance topics with shop data cleanup.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "shopify.app.toml registers app/uninstalled, app/scopes_update, and compliance_topics",
+        "app/uninstalled deletes sessions and shop data",
+        "customers/redact scrubs matching employee PII",
+        "shop/redact deletes all shop data"
+      ],
+      "files": [
+        "shopify.app.toml",
+        "shopify.web.toml",
+        "app/routes/webhooks.tsx",
+        "app/services/shop-lifecycle.server.ts",
+        "app/services/shop-lifecycle.server.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T12:38:00.000Z"
     }
   ]
 }

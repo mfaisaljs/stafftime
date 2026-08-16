@@ -1,6 +1,6 @@
 name = "Trubuild: POS Staff Clock In"
 roles = ["frontend", "backend"]
-webhooks_path = "/webhooks/app/uninstalled"
+webhooks_path = "/webhooks"
 port = 3458
 
 [commands]
