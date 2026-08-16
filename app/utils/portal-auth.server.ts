@@ -1,6 +1,7 @@
 import { redirect } from "react-router";
+import type { ActionFunctionArgs } from "react-router";
 import type { PortalFeatureKey } from "./portal-path";
-import { portalHref } from "./portal-path";
+import { isPortalFeatureKey, PORTAL_FEATURE_PATHS, portalHref } from "./portal-path";
 import {
   portalRedirectHeaders,
   readPortalSession,
@@ -10,6 +11,8 @@ import {
   assertPortalFeature,
   loadPortalEmployee,
   loadPortalShop,
+  toPortalSessionEmployee,
+  verifyPortalPin,
 } from "../services/portal.server";
 
 export async function loadPortalHome(request: Request) {
@@ -76,5 +79,50 @@ export async function requirePortalFeature(
       portalHref("/portal", shopDomain, { unlock: feature }),
       { headers: await portalRedirectHeaders({ shopDomain, clearSession: true }) },
     );
+  }
+}
+
+export async function handlePortalAction({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+  const shopDomain = await readPortalShopDomain(request);
+
+  if (intent === "home") {
+    throw redirect(portalHref("/portal", shopDomain), {
+      headers: await portalRedirectHeaders({
+        shopDomain,
+        clearSession: true,
+      }),
+    });
+  }
+
+  if (intent !== "pin") {
+    return { error: "Unknown action." };
+  }
+
+  const pin = String(formData.get("pin") ?? "");
+  const next = String(formData.get("next") ?? "");
+  const feature = isPortalFeatureKey(next) ? next : undefined;
+  if (!feature) {
+    return { error: "Select an action first." };
+  }
+
+  try {
+    const result = await verifyPortalPin({
+      shopDomain,
+      pin,
+      feature,
+    });
+    throw redirect(portalHref(PORTAL_FEATURE_PATHS[feature], result.shop.domain), {
+      headers: await portalRedirectHeaders({
+        shopDomain: result.shop.domain,
+        session: toPortalSessionEmployee(result.shop.domain, result.employee),
+      }),
+    });
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    return {
+      error: error instanceof Error ? error.message : "Invalid PIN",
+    };
   }
 }

@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { redirect, useFetcher, useLoaderData, useSearchParams } from "react-router";
+import type { LoaderFunctionArgs } from "react-router";
+import { useFetcher, useLoaderData, useSearchParams } from "react-router";
 import {
   CalendarDays,
   ClipboardList,
@@ -12,19 +12,9 @@ import { useEffect, useState } from "react";
 import { PinPad } from "../components/portal/PinPad";
 import {
   isPortalFeatureKey,
-  PORTAL_FEATURE_PATHS,
-  portalHref,
   type PortalFeatureKey,
 } from "../utils/portal-path";
-import { loadPortalHome } from "../utils/portal-auth.server";
-import {
-  portalRedirectHeaders,
-  readPortalShopDomain,
-} from "../utils/portal-session.server";
-import {
-  toPortalSessionEmployee,
-  verifyPortalPin,
-} from "../services/portal.server";
+import { handlePortalAction, loadPortalHome } from "../utils/portal-auth.server";
 
 const ACTION_CARDS: Array<{
   key: PortalFeatureKey;
@@ -88,50 +78,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return loadPortalHome(request);
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const formData = await request.formData();
-  const intent = String(formData.get("intent") ?? "");
-  const shopDomain = await readPortalShopDomain(request);
-
-  if (intent === "home") {
-    throw redirect(portalHref("/portal", shopDomain), {
-      headers: await portalRedirectHeaders({
-        shopDomain,
-        clearSession: true,
-      }),
-    });
-  }
-
-  if (intent !== "pin") {
-    return { error: "Unknown action." };
-  }
-
-  const pin = String(formData.get("pin") ?? "");
-  const next = String(formData.get("next") ?? "");
-  const feature = isPortalFeatureKey(next) ? next : undefined;
-  if (!feature) {
-    return { error: "Select an action first." };
-  }
-
-  try {
-    const result = await verifyPortalPin({
-      shopDomain,
-      pin,
-      feature,
-    });
-    throw redirect(portalHref(PORTAL_FEATURE_PATHS[feature], result.shop.domain), {
-      headers: await portalRedirectHeaders({
-        shopDomain: result.shop.domain,
-        session: toPortalSessionEmployee(result.shop.domain, result.employee),
-      }),
-    });
-  } catch (error) {
-    if (error instanceof Response) throw error;
-    return {
-      error: error instanceof Error ? error.message : "Invalid PIN",
-    };
-  }
-};
+export const action = handlePortalAction;
 
 export default function PortalHomePage() {
   const data = useLoaderData<typeof loader>();

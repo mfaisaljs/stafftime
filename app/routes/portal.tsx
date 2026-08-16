@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { Outlet, useLoaderData } from "react-router";
 import { PortalShell } from "../components/portal/PortalShell";
-import { loadPortalHome } from "../utils/portal-auth.server";
+import { handlePortalAction, loadPortalHome } from "../utils/portal-auth.server";
 import { readPortalSession } from "../utils/portal-session.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -13,6 +13,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       : "";
   return { ...home, employeeName };
 };
+
+export const action = handlePortalAction;
 
 export default function PortalLayout() {
   const data = useLoaderData<typeof loader>();
