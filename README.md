@@ -8,7 +8,7 @@ Positioning: **Workforce OS for Shopify POS**, not just a time clock.
 
 - Shopify React Router app (embedded admin)
 - POS UI Extension (`pos.home.tile.render`, `pos.home.modal.render`)
-- Prisma + SQLite for local development (PostgreSQL recommended for production)
+- Prisma + PostgreSQL (`docker compose up -d db` for local dev; Render Postgres in production)
 - Session-token authenticated POS APIs via `authenticate.pos`
 
 ## Features (MVP)
@@ -34,6 +34,17 @@ Positioning: **Workforce OS for Shopify POS**, not just a time clock.
 
 ```bash
 npm install
+```
+
+Start a local Postgres database (optional — skip if `DATABASE_URL` already points at Render or another host):
+
+```bash
+npm run db:up
+```
+
+Apply migrations and generate the Prisma client:
+
+```bash
 npm run setup
 ```
 
