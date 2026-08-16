@@ -60,6 +60,7 @@ export type ManagerBootstrap = {
   manager: ManagerEmployee & { role?: string; canAccess: boolean };
   metrics: ManagerMetrics;
   staff: ManagerStaffRow[];
+  settings?: { requirePhoto?: boolean };
   serverTime?: number;
 };
 

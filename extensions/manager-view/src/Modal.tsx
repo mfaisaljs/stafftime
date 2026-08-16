@@ -9,6 +9,7 @@ import {
   showToast,
   verifyPin,
 } from "./posApi";
+import { captureClockSelfie } from "./camera";
 import {
   ACTIVE_SESSION_STORAGE_KEY,
   parseStoredManagerSession,
@@ -270,10 +271,22 @@ function ManagerViewModal() {
       if (!manager || !selectedStaffId) return;
       setClockBusy(true);
       try {
+        let photo: string | undefined;
+        let photoType: string | undefined;
+        if (
+          (action === "clock-in" || action === "clock-out") &&
+          bootstrap?.settings?.requirePhoto
+        ) {
+          const selfie = await captureClockSelfie();
+          photo = selfie.photo;
+          photoType = selfie.photoType;
+        }
         const result = await managerClockAction({
           managerId: manager.id,
           staffId: selectedStaffId,
           action,
+          photo,
+          photoType,
         });
         setDetail((prev) =>
           prev ? { ...prev, clockStatus: result.clockStatus } : prev,
@@ -293,7 +306,7 @@ function ManagerViewModal() {
         setClockBusy(false);
       }
     },
-    [manager, selectedStaffId],
+    [bootstrap?.settings?.requirePhoto, manager, selectedStaffId],
   );
 
   const handleDetailTabsChange = useCallback(

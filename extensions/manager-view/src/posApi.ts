@@ -70,12 +70,17 @@ export async function managerClockAction(params: {
   managerId: string;
   staffId: string;
   action: "clock-in" | "clock-out" | "break-start" | "break-end";
+  photo?: string;
+  photoType?: string;
 }): Promise<{ clockStatus: ManagerStaffDetail["clockStatus"] }> {
   return (await apiFetch("/api/pos/manager-view", {
     intent: "clock",
     managerId: params.managerId,
     staffId: params.staffId,
     action: params.action,
+    ...(params.photo
+      ? { photo: params.photo, photoType: params.photoType }
+      : {}),
   })) as { clockStatus: ManagerStaffDetail["clockStatus"] };
 }
 

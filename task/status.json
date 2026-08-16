@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-16T02:50:00.000Z",
+  "lastUpdated": "2026-08-16T03:00:00.000Z",
   "notes": [
+    "ST068 complete: selfie mandatory on POS clock in/out when Settings requirePhoto is on (Workforce Clock + Manager View); server rejects missing photos; GPS still deferred (ST019).",
     "Fixed: salary vs commission remaining are separate — paid commission no longer looks like unpaid remaining (Create Payroll, payroll list, POS staff profile).",
     "Updated: Create Payroll Payment History breaks out Salary / Commission / Bonus paid; remaining uses earnings − salary paid.",
     "Fixed: payroll/staff payment details only show email/username for the staff member's saved payment method (shared columns no longer leak across methods).",

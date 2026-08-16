@@ -53,6 +53,7 @@ export type StoredClockState = {
 export type StoredVerifySession = {
   employee: { id: string; firstName: string; lastName: string };
   status: EmployeeStatus;
+  settings?: { requirePhoto?: boolean };
   serverTime?: number;
 };
 
@@ -120,6 +121,13 @@ export function parseStoredVerifySession(value: unknown): StoredVerifySession | 
       employeeId: status.employeeId ?? employee.id,
       employeeName:
         status.employeeName ?? `${employee.firstName} ${employee.lastName}`.trim(),
+    },
+    settings: {
+      requirePhoto: Boolean(
+        record.settings &&
+          typeof record.settings === "object" &&
+          (record.settings as { requirePhoto?: unknown }).requirePhoto,
+      ),
     },
     serverTime:
       typeof record.serverTime === "number" ? record.serverTime : undefined,

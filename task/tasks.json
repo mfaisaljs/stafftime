@@ -121,11 +121,12 @@
       "id": "T012",
       "title": "Verification and anti-buddy-punching",
       "description": "GPS geofence, photo verification, and device registration.",
-      "status": "planned",
+      "status": "in_progress",
       "priority": "medium",
       "phase": "enterprise",
-      "progressPercent": 10,
-      "dependencies": ["T004"]
+      "progressPercent": 50,
+      "dependencies": ["T004"],
+      "lastUpdated": "2026-08-16T03:00:00.000Z"
     },
     {
       "id": "T013",

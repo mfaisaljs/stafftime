@@ -300,6 +300,7 @@ model TimeEntry {
   latitude   Float?
   longitude  Float?
   photoUrl   String?
+  clockOutPhotoUrl String?
   notes      String?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt

@@ -1172,21 +1172,28 @@
     {
       "id": "ST068",
       "taskId": "T012",
-      "title": "Enforce selfie and GPS verification on POS clock",
-      "description": "Capture selfie/GPS on POS clock in/out and reject when requirePhoto or requireGps settings are enabled.",
-      "status": "pending",
+      "title": "Enforce selfie verification on POS clock",
+      "description": "Capture selfie on POS clock in/out when requirePhoto is enabled; server rejects missing photos. GPS geofence remains deferred.",
+      "status": "completed",
       "priority": "medium",
       "dependencies": ["ST066"],
       "acceptanceCriteria": [
-        "POS extension captures photo and GPS when settings require them",
-        "Server rejects clock actions missing required verification data"
+        "POS Workforce Clock and Manager View capture a selfie before clock-in/out when requirePhoto is enabled",
+        "Server rejects clock-in/out without a photo when requirePhoto is enabled",
+        "Clock-in photo stored on TimeEntry.photoUrl; clock-out on TimeEntry.clockOutPhotoUrl"
       ],
       "files": [
         "extensions/workforce-clock/src/Modal.tsx",
+        "extensions/workforce-clock/src/camera.ts",
+        "extensions/manager-view/src/Modal.tsx",
+        "extensions/manager-view/src/camera.ts",
         "app/utils/pos-api.server.ts",
-        "app/services/workforce.server.ts"
+        "app/services/workforce.server.ts",
+        "app/services/clock-photo.server.ts",
+        "app/routes/api.pos.verify.tsx",
+        "prisma/schema.prisma"
       ],
-      "lastUpdated": "2026-08-10T16:10:00.000Z"
+      "lastUpdated": "2026-08-16T03:00:00.000Z"
     },
     {
       "id": "ST069",

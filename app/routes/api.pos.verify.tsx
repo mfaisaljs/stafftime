@@ -7,6 +7,7 @@ import {
   findEmployeeByPin,
   findEmployeeByQr,
 } from "../services/workforce.server";
+import { getShopSettings } from "../services/settings.server";
 import {
   errorResponse,
   jsonResponse,
@@ -36,7 +37,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     const activatedEmployee = await activateEmployeeOnFirstLogin(employee.id);
-    const status = await buildEmployeeStatus(activatedEmployee.id);
+    const [status, settings] = await Promise.all([
+      buildEmployeeStatus(activatedEmployee.id),
+      getShopSettings(shop.id),
+    ]);
     status.employeeName = `${activatedEmployee.firstName} ${activatedEmployee.lastName}`;
 
     return cors(
@@ -47,6 +51,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           lastName: activatedEmployee.lastName,
         },
         status,
+        settings: {
+          requirePhoto: settings.requirePhoto,
+        },
         serverTime: Date.now(),
       }),
     );

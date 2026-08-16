@@ -67,6 +67,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           (body as { action?: string }).action ?? "",
         ).trim() as "clock-in" | "clock-out" | "break-start" | "break-end";
         const notes = (body as { notes?: string }).notes;
+        const photo = (body as { photo?: string }).photo;
+        const photoType = (body as { photoType?: string }).photoType;
         if (!staffId) {
           return cors(errorResponse("staffId is required"));
         }
@@ -84,6 +86,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           staffId,
           action,
           notes,
+          photo,
+          photoType,
         });
         return cors(jsonResponse(payload));
       }

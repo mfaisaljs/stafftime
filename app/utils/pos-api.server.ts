@@ -18,9 +18,11 @@ export async function handlePosPreflight({ request }: LoaderFunctionArgs) {
 export async function handlePosClockAction(request: Request, action: PosAction) {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { employeeId, notes } = body as {
+  const { employeeId, notes, photo, photoType } = body as {
     employeeId?: string;
     notes?: string;
+    photo?: string;
+    photoType?: string;
   };
 
   if (!employeeId) {
@@ -31,13 +33,20 @@ export async function handlePosClockAction(request: Request, action: PosAction) 
     let status;
     switch (action) {
       case "clock-in":
-        status = await clockIn({ shopDomain: sessionToken.dest, employeeId });
+        status = await clockIn({
+          shopDomain: sessionToken.dest,
+          employeeId,
+          photo,
+          photoType,
+        });
         break;
       case "clock-out":
         status = await clockOut({
           shopDomain: sessionToken.dest,
           employeeId,
           notes,
+          photo,
+          photoType,
         });
         break;
       case "break-start":

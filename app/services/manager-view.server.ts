@@ -127,7 +127,7 @@ export async function bootstrapManagerViewForPos(params: {
   shopDomain: string;
   managerId: string;
 }) {
-  const { manager } = await requireManager(params);
+  const { manager, settings } = await requireManager(params);
   const today = toDateKeyLocal();
   const board = await getAttendanceBoard(params.shopDomain, {
     start: today,
@@ -185,6 +185,9 @@ export async function bootstrapManagerViewForPos(params: {
       totalCount: staff.length,
     },
     staff,
+    settings: {
+      requirePhoto: settings.requirePhoto,
+    },
     serverTime: Date.now(),
   };
 }
@@ -253,6 +256,8 @@ export async function managerClockActionForPos(params: {
   staffId: string;
   action: "clock-in" | "clock-out" | "break-start" | "break-end";
   notes?: string;
+  photo?: string | null;
+  photoType?: string | null;
 }) {
   await requireManager(params);
 
@@ -270,6 +275,8 @@ export async function managerClockActionForPos(params: {
       clockStatus = await clockIn({
         shopDomain: params.shopDomain,
         employeeId: params.staffId,
+        photo: params.photo,
+        photoType: params.photoType,
       });
       break;
     case "clock-out":
@@ -277,6 +284,8 @@ export async function managerClockActionForPos(params: {
         shopDomain: params.shopDomain,
         employeeId: params.staffId,
         notes: params.notes,
+        photo: params.photo,
+        photoType: params.photoType,
       });
       break;
     case "break-start":

@@ -17,6 +17,7 @@ import {
   type VerifyResponse,
   verifyPin,
 } from "./posApi";
+import { captureClockSelfie } from "./camera";
 
 type Screen = "main" | "history";
 
@@ -58,6 +59,9 @@ function WorkforceModal() {
       const next: VerifyResponse = {
         employee: data.employee,
         status: { ...data.status },
+        settings: {
+          requirePhoto: Boolean(data.settings?.requirePhoto),
+        },
         serverTime: data.serverTime ?? data.status.serverTime,
       };
       syncClockOffset(next.status, next.serverTime);
@@ -196,9 +200,22 @@ function WorkforceModal() {
     if (!verified) return;
     setLoading(true);
     try {
+      let photoPayload: { photo?: string; photoType?: string } = {};
+      if (
+        (action === "clock-in" || action === "clock-out") &&
+        verified.settings?.requirePhoto
+      ) {
+        const selfie = await captureClockSelfie();
+        photoPayload = {
+          photo: selfie.photo,
+          photoType: selfie.photoType,
+        };
+      }
+
       const data = (await apiFetch(`/api/pos/${action}`, {
         employeeId: verified.employee.id,
         ...(action === "clock-out" && note.trim() ? { notes: note.trim() } : {}),
+        ...photoPayload,
       })) as { status: EmployeeStatus; serverTime?: number };
       applyVerified({
         ...verified,

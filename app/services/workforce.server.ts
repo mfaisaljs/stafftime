@@ -18,6 +18,7 @@ import {
   isEmployeeOnApprovedLeave,
   leaveCompensationForEmployeeDate,
 } from "./settings.server";
+import { normalizeClockPhoto, requireClockPhoto } from "./clock-photo.server";
 import {
   SHIFT_STATUS,
   listApprovedLeaveDaysForEmployee,
@@ -903,6 +904,8 @@ export async function clockIn(params: {
   latitude?: number;
   longitude?: number;
   deviceId?: string;
+  photo?: string | null;
+  photoType?: string | null;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const location =
@@ -924,6 +927,9 @@ export async function clockIn(params: {
   }
 
   const settings = await getShopSettings(shop.id);
+  const photoUrl = normalizeClockPhoto(params.photo, params.photoType);
+  requireClockPhoto(settings.requirePhoto, photoUrl, "clock in");
+
   const shift = await getEmployeeShiftToday(params.employeeId);
   if (shift) {
     const now = Date.now();
@@ -955,12 +961,14 @@ export async function clockIn(params: {
       latitude: params.latitude,
       longitude: params.longitude,
       deviceId: params.deviceId,
+      photoUrl: photoUrl ?? null,
     },
   });
 
   await writeAudit(shop.id, "clock_in", "TimeEntry", entry.id, undefined, {
     employeeId: params.employeeId,
     clockInAt: entry.clockInAt,
+    hasPhoto: Boolean(photoUrl),
   });
 
   return buildEmployeeStatus(params.employeeId);
@@ -970,12 +978,18 @@ export async function clockOut(params: {
   shopDomain: string;
   employeeId: string;
   notes?: string;
+  photo?: string | null;
+  photoType?: string | null;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const entry = await getOpenTimeEntry(params.employeeId);
   if (!entry) {
     throw new Error("Employee is not clocked in");
   }
+
+  const settings = await getShopSettings(shop.id);
+  const clockOutPhotoUrl = normalizeClockPhoto(params.photo, params.photoType);
+  requireClockPhoto(settings.requirePhoto, clockOutPhotoUrl, "clock out");
 
   const openBreak = entry.breaks[0];
   if (openBreak) {
@@ -992,6 +1006,7 @@ export async function clockOut(params: {
       clockOutAt: new Date(),
       status: "CLOSED",
       ...(notes ? { notes } : {}),
+      ...(clockOutPhotoUrl ? { clockOutPhotoUrl } : {}),
     },
   });
 
@@ -1000,6 +1015,7 @@ export async function clockOut(params: {
   }, {
     status: "CLOSED",
     clockOutAt: updated.clockOutAt,
+    hasPhoto: Boolean(clockOutPhotoUrl),
   });
 
   return buildEmployeeStatus(params.employeeId);

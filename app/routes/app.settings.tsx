@@ -248,8 +248,8 @@ export default function SettingsPage() {
             />
             <SettingCheckbox
               name="requirePhoto"
-              label="Take Selfie before clock in/out"
-              help="Requires a selfie photo verification on clock-in and clock-out."
+              label="Photo is mandatory before clock in/out"
+              help="Staff must take a selfie on clock-in and clock-out. Clock actions are blocked if the photo is missing or cancelled."
               defaultChecked={settings.requirePhoto}
               onChange={markDirty}
             />
