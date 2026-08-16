@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import { isPortalHost } from "../../utils/portal-url.server";
+import { isPortalHost, shopDomainFromSearchParams } from "../../utils/portal-url.server";
 
 /**
  * Embedded admin should never land on the template marketing/login page.
@@ -12,7 +12,7 @@ import { isPortalHost } from "../../utils/portal-url.server";
  */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
-  if (isPortalHost(request) || url.searchParams.has("ShopDomain")) {
+  if (isPortalHost(request) || shopDomainFromSearchParams(url.searchParams)) {
     throw redirect(`/portal${url.search}`);
   }
   throw redirect(`/app${url.search}`);

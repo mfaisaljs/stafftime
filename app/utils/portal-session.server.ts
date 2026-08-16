@@ -1,6 +1,6 @@
 import { createCookie } from "react-router";
 import type { EmployeeRole } from "@prisma/client";
-import { normalizeShopDomain } from "./portal-url.server";
+import { normalizeShopDomain, shopDomainFromSearchParams } from "./portal-url.server";
 
 const SESSION_MAX_AGE = 60 * 60 * 8;
 const SHOP_MAX_AGE = 60 * 60 * 24 * 30;
@@ -41,9 +41,7 @@ export type PortalSession = {
 
 export async function readPortalShopDomain(request: Request) {
   const url = new URL(request.url);
-  const fromQuery = normalizeShopDomain(
-    url.searchParams.get("ShopDomain") || url.searchParams.get("shop"),
-  );
+  const fromQuery = shopDomainFromSearchParams(url.searchParams);
   if (fromQuery) return fromQuery;
 
   const parsed = await shopCookie.parse(request.headers.get("Cookie"));

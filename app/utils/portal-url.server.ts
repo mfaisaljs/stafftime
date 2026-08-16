@@ -5,6 +5,17 @@ export function normalizeShopDomain(raw: string | null | undefined) {
   return shopFromDest(raw).toLowerCase().replace(/\/$/, "");
 }
 
+const SHOP_QUERY_KEYS = new Set(["shopdomain", "shop", "shop_domain"]);
+
+export function shopDomainFromSearchParams(searchParams: URLSearchParams) {
+  for (const [key, value] of searchParams.entries()) {
+    if (!SHOP_QUERY_KEYS.has(key.toLowerCase())) continue;
+    const domain = normalizeShopDomain(value);
+    if (domain) return domain;
+  }
+  return "";
+}
+
 export function portalHostFromEnv() {
   const explicit = process.env.PORTAL_HOST?.trim().toLowerCase();
   if (explicit) return explicit.replace(/:\d+$/, "");
