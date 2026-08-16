@@ -79,6 +79,14 @@ model Shop {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  planHandle         String    @default("free")
+  billingInterval    String    @default("monthly")
+  staffLimit         Int       @default(2)
+  subscriptionStatus String    @default("none")
+  trialEndsAt        DateTime?
+  shopifyShopGid     String?
+  reportedStaffUsage Int       @default(0)
+
   locations           StoreLocation[]
   employees           Employee[]
   shifts              Shift[]

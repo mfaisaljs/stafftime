@@ -1763,6 +1763,106 @@
         "app/routes/app.staff.new.tsx"
       ],
       "lastUpdated": "2026-08-16T02:10:00.000Z"
+    },
+    {
+      "id": "ST095",
+      "taskId": "T018",
+      "title": "Plan catalog + pricing modal UI",
+      "description": "Shared monthly plan catalog and Staff pricing modal (no yearly interval).",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "plans.ts defines Free/Small Business/Workforce/Enterprise monthly prices and extra-seat rates",
+        "Pricing modal shows three paid cards plus Free bottom bar with extra-seat slider",
+        "No monthly/yearly toggle"
+      ],
+      "files": [
+        "app/services/billing/plans.ts",
+        "app/components/billing/PricingModal.tsx"
+      ],
+      "lastUpdated": "2026-08-16T10:40:00.000Z"
+    },
+    {
+      "id": "ST096",
+      "taskId": "T018",
+      "title": "Subscribe redirect + /app/billing welcome sync",
+      "description": "Exit to Shopify pricing_plans and persist plan_handle on welcome.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST095"],
+      "acceptanceCriteria": [
+        "Subscribe/Trial buttons leave the iframe to Shopify pricing_plans",
+        "/app/billing reads plan_handle, syncs staffLimit, and redirects to /app/staff"
+      ],
+      "files": [
+        "app/routes/app.billing.tsx",
+        "app/routes/app.billing.subscribe.tsx",
+        "shopify.app.toml",
+        "shopify.app.local.toml"
+      ],
+      "lastUpdated": "2026-08-16T10:40:00.000Z"
+    },
+    {
+      "id": "ST097",
+      "taskId": "T018",
+      "title": "Persist plan on Shop + enforce staff cap + usage events",
+      "description": "Shop billing fields, createEmployee cap, and additional_staff usage deltas.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST095"],
+      "acceptanceCriteria": [
+        "Shop stores planHandle, staffLimit (default 2), and usage fields",
+        "createEmployee throws when at cap",
+        "Usage events skip the first included seats and report +1/-1 after that"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "prisma/migrations/20260816040000_shop_billing/migration.sql",
+        "app/services/billing.server.ts",
+        "app/services/workforce.server.ts",
+        "app/services/billing.server.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T10:40:00.000Z"
+    },
+    {
+      "id": "ST098",
+      "taskId": "T018",
+      "title": "Wire Staff page limit and Upgrade modal",
+      "description": "Staff loader uses billing staffLimit; Upgrade Plan and cap Add Staff open the pricing modal.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST095", "ST096", "ST097"],
+      "acceptanceCriteria": [
+        "Staff page staffLimit comes from billing (default 2), not hardcoded 1",
+        "Upgrade Plan opens the pricing modal",
+        "Add Staff at cap opens the modal; /app/staff/new returns a cap error"
+      ],
+      "files": [
+        "app/routes/app.staff._index.tsx",
+        "app/routes/app.staff.new.tsx",
+        "app/routes/app.staff.tsx"
+      ],
+      "lastUpdated": "2026-08-16T10:40:00.000Z"
+    },
+    {
+      "id": "ST099",
+      "taskId": "T018",
+      "title": "Pricing page route",
+      "description": "Standalone /app/pricing page with the monthly plan cards and nav link.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST095"],
+      "acceptanceCriteria": [
+        "/app/pricing renders the monthly pricing cards",
+        "Pricing appears in app navigation"
+      ],
+      "files": [
+        "app/routes/app.pricing.tsx",
+        "app/routes/app.tsx",
+        "app/components/billing/PricingModal.tsx"
+      ],
+      "lastUpdated": "2026-08-16T10:45:00.000Z"
     }
   ]
 }

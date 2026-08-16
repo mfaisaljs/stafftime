@@ -12,12 +12,24 @@ import {
   getAdminShop,
   getEmployeeLocations,
 } from "../services/admin.server";
+import {
+  StaffSeatLimitError,
+  getShopBilling,
+  reconcileStaffUsage,
+} from "../services/billing.server";
 import { createEmployee } from "../services/workforce.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const locations = await getEmployeeLocations(session);
-  return { locations };
+  const [locations, billing] = await Promise.all([
+    getEmployeeLocations(session),
+    getShopBilling(session.shop),
+  ]);
+  return {
+    locations,
+    atCap: billing.atCap,
+    staffLimit: billing.staffLimit,
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -29,6 +41,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const position = String(formData.get("position") ?? "Staff");
     const locationAccess = String(formData.get("locationAccess") ?? "ALL");
     const weeklyAvailability = formData.getAll("weeklyAvailability").join(",");
+
+    const billing = await getShopBilling(session.shop);
+    if (billing.atCap) {
+      return {
+        error: `Staff seat limit reached (${billing.staffLimit}). Upgrade your plan to add more staff.`,
+        atCap: true,
+      };
+    }
 
     await createEmployee({
       shopId: shop.id,
@@ -72,10 +92,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           ? String(formData.get("iban") ?? "") || undefined
           : undefined,
     });
+    await reconcileStaffUsage(session.shop);
   } catch (error) {
     return {
       error:
         error instanceof Error ? error.message : "Could not add employee",
+      atCap: error instanceof StaffSeatLimitError,
     };
   }
 
@@ -83,8 +105,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function StaffPage() {
-  const { locations } = useLoaderData<typeof loader>();
+  const { locations, atCap, staffLimit } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const showCapError = atCap || actionData?.atCap;
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState("HOURLY");
   const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
@@ -126,7 +149,18 @@ export default function StaffPage() {
 
   return (
     <s-page heading="Add Shopify Staff" inlineSize="large">
-      {actionData?.error && (
+      {showCapError && (
+        <s-banner heading="Staff seat limit reached" tone="warning">
+          <s-text>
+            This shop can have {staffLimit} active staff on the current plan.
+            Upgrade to add more seats.
+          </s-text>
+          <s-button variant="primary" href="/app/pricing">
+            View plans
+          </s-button>
+        </s-banner>
+      )}
+      {actionData?.error && !actionData.atCap && (
         <s-banner heading={actionData.error} tone="critical" />
       )}
       {actionData?.success && (

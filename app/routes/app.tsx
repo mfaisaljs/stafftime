@@ -27,6 +27,7 @@ export default function App() {
         <s-link href="/app/payroll">Payroll</s-link>
         <s-link href="/app/tasklists">Tasklist</s-link>
         <s-link href="/app/time-off">Time Off</s-link>
+        <s-link href="/app/pricing">Pricing</s-link>
         <s-link href="/app/settings">Settings</s-link>
       </s-app-nav>
       <Outlet />

@@ -33,6 +33,7 @@ import {
   type HourFormat,
   type TimeFormat,
 } from "./time-tracking.server";
+import { assertStaffSeatAvailable } from "./billing.server";
 
 export type WorkforceStatus = "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
 type EmployeeWithFirstLogin = Employee & { firstLoginAt: Date | null };
@@ -103,6 +104,7 @@ export async function createEmployee(input: {
   iban?: string;
 }) {
   await assertPinAvailable(input.shopId, input.pin);
+  await assertStaffSeatAvailable(input.shopId);
 
   return prisma.employee.create({
     data: {

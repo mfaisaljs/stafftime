@@ -45,7 +45,10 @@ declare namespace JSX {
       HTMLElement
     >;
     "s-paragraph": React.DetailedHTMLProps<
-      React.HTMLAttributes<HTMLElement>,
+      React.HTMLAttributes<HTMLElement> & {
+        tone?: string;
+        color?: string;
+      },
       HTMLElement
     >;
     "s-badge": React.DetailedHTMLProps<
@@ -60,8 +63,24 @@ declare namespace JSX {
         slot?: string;
         commandFor?: string;
         command?: string;
+        href?: string;
+        target?: string;
       },
       HTMLButtonElement
+    >;
+    "s-number-field": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        label?: string;
+        labelAccessibilityVisibility?: "visible" | "exclusive";
+        name?: string;
+        value?: string;
+        min?: number;
+        max?: number;
+        step?: number;
+        onInput?: (event: { currentTarget: unknown }) => void;
+        onChange?: (event: { currentTarget: unknown }) => void;
+      },
+      HTMLElement
     >;
     "s-modal": React.DetailedHTMLProps<
       React.HTMLAttributes<HTMLElement> & {

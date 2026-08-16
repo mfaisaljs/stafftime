@@ -1,18 +1,31 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Link, useFetcher, useLoaderData } from "react-router";
+import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
+import { getShopBilling } from "../services/billing.server";
+import {
+  openPricingModal,
+  PricingModal,
+  PRICING_MODAL_ID,
+} from "../components/billing/PricingModal";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const employees = await getEmployees(session);
+  const [employees, billing] = await Promise.all([
+    getEmployees(session),
+    getShopBilling(session.shop),
+  ]);
 
   return {
     employees,
-    staffLimit: 1,
+    staffLimit: billing.staffLimit,
+    planName: billing.plan.name,
+    planHandle: billing.planHandle,
+    pricingPlansUrl: billing.pricingPlansUrl,
+    atCap: billing.atCap,
   };
 };
 
@@ -21,7 +34,15 @@ type BulkActionResult = { success?: string; error?: string };
 type StatusFilter = "all" | "active" | "inactive" | "missing_payment" | "archived";
 
 export default function StaffManagementPage() {
-  const { employees, staffLimit } = useLoaderData<typeof loader>();
+  const {
+    employees,
+    staffLimit,
+    planName,
+    planHandle,
+    pricingPlansUrl,
+    atCap,
+  } = useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
   const fetcher = useFetcher<BulkActionResult>();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,6 +122,14 @@ export default function StaffManagementPage() {
       modal?.hideOverlay?.();
     }
   }, [fetcher.data?.success]);
+
+  useEffect(() => {
+    if (searchParams.get("pricing") === "1" || searchParams.get("billing")) {
+      if (searchParams.get("pricing") === "1") {
+        openPricingModal();
+      }
+    }
+  }, [searchParams]);
 
   const submitBulkAction = (intent: "archive" | "delete") => {
     const formData = new FormData();
@@ -183,8 +212,8 @@ export default function StaffManagementPage() {
           </div>
           <div className="plan-copy">
             <div className="plan-title">
-              <strong>Current Plan: Free</strong>
-              <span className="plan-chip">Starter</span>
+              <strong>Current Plan: {planName}</strong>
+              <span className="plan-chip">{planHandle === "free" ? "Starter" : planName}</span>
             </div>
             <div className="staff-usage">
               <span>
@@ -201,28 +230,21 @@ export default function StaffManagementPage() {
           </div>
           <div className="plan-action">
             <span>Upgrade to add more staff</span>
-            <Link className="dark-button" to="/app">
+            <s-button
+              variant="primary"
+              commandFor={PRICING_MODAL_ID}
+              command="--show"
+            >
               Upgrade Plan
-            </Link>
+            </s-button>
           </div>
         </section>
 
-        <section className="bonus-banner">
-          <button className="banner-close" type="button" aria-label="Dismiss">
-            x
-          </button>
-          <div className="bonus-icon">+</div>
-          <div>
-            <div className="bonus-heading">
-              <span>Bonus Staff</span>
-              <strong>Unlock +1 Free Staff Seat</strong>
-            </div>
-            <p>Looking to grow your team? Chat with us to unlock a free bonus staff slot</p>
-          </div>
-          <Link className="claim-button" to="/app">
-            Claim Now
-          </Link>
-        </section>
+        {searchParams.get("billing") && (
+          <s-banner heading="Plan updated" tone="success" dismissible>
+            Your staff seat limit is now {staffLimit}.
+          </s-banner>
+        )}
 
         <div className="staff-type-tabs">
           <button className="tab active" type="button">
@@ -234,9 +256,19 @@ export default function StaffManagementPage() {
         </div>
 
         <div className="staff-actions">
-          <s-button variant="primary" href="/app/staff/new">
-            Add Shopify Staff
-          </s-button>
+          {atCap ? (
+            <s-button
+              variant="primary"
+              commandFor={PRICING_MODAL_ID}
+              command="--show"
+            >
+              Add Shopify Staff
+            </s-button>
+          ) : (
+            <s-button variant="primary" href="/app/staff/new">
+              Add Shopify Staff
+            </s-button>
+          )}
           <s-button variant="secondary" disabled>
             Bulk Import
           </s-button>
@@ -563,6 +595,11 @@ export default function StaffManagementPage() {
           </div>
         </section>
       </s-stack>
+      <PricingModal
+        pricingPlansUrl={pricingPlansUrl}
+        currentPlanHandle={planHandle}
+        initialStaffCount={Math.max(totalStaff, 2)}
+      />
       <style>{STAFF_MANAGEMENT_STYLES}</style>
     </s-page>
   );

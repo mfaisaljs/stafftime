@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAdminShop } from "../services/admin.server";
+import { reconcileStaffUsage } from "../services/billing.server";
 import {
   bulkArchiveEmployees,
   bulkDeleteEmployees,
@@ -25,11 +26,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     if (intent === "archive") {
       const { count } = await bulkArchiveEmployees(shop.id, employeeIds);
+      await reconcileStaffUsage(session.shop);
       return { success: `Archived ${count} staff member(s)` };
     }
 
     if (intent === "delete") {
       const { count } = await bulkDeleteEmployees(shop.id, employeeIds);
+      await reconcileStaffUsage(session.shop);
       return { success: `Deleted ${count} staff member(s)` };
     }
 

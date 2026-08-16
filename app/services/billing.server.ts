@@ -1,0 +1,353 @@
+import { randomUUID } from "crypto";
+import prisma from "../db.server";
+import { shopFromDest } from "../utils/http.server";
+import {
+  ADDITIONAL_STAFF_METER,
+  FREE_PLAN,
+  FREE_PLAN_HANDLE,
+  getAppHandle,
+  getPlan,
+  shopifyPricingPlansUrl,
+  staffLimitFromHandle,
+  usageDeltaForStaffChange,
+  usageOverage,
+  type Plan,
+  type PlanHandle,
+} from "./billing/plans";
+
+export class StaffSeatLimitError extends Error {
+  readonly staffLimit: number;
+
+  constructor(staffLimit: number) {
+    super(
+      `Staff seat limit reached (${staffLimit}). Upgrade your plan to add more staff.`,
+    );
+    this.name = "StaffSeatLimitError";
+    this.staffLimit = staffLimit;
+  }
+}
+
+export type ShopBilling = {
+  shopId: string;
+  domain: string;
+  planHandle: PlanHandle;
+  plan: Plan;
+  billingInterval: "monthly";
+  staffLimit: number;
+  subscriptionStatus: string;
+  trialEndsAt: string | null;
+  shopifyShopGid: string | null;
+  reportedStaffUsage: number;
+  activeStaffCount: number;
+  availableSeats: number;
+  atCap: boolean;
+  pricingPlansUrl: string;
+};
+
+const DEFAULT_BILLING = {
+  planHandle: FREE_PLAN_HANDLE,
+  billingInterval: "monthly" as const,
+  staffLimit: FREE_PLAN.includedStaff,
+  subscriptionStatus: "none",
+  trialEndsAt: null as Date | null,
+  reportedStaffUsage: 0,
+};
+
+export async function countActiveStaff(shopId: string) {
+  return prisma.employee.count({
+    where: { shopId, status: { not: "ARCHIVED" } },
+  });
+}
+
+export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
+  const shop = await prisma.shop.findUnique({
+    where: { domain: shopFromDest(shopDomain).toLowerCase() },
+  });
+
+  if (!shop) {
+    const plan = FREE_PLAN;
+    return {
+      shopId: "",
+      domain: shopFromDest(shopDomain).toLowerCase(),
+      planHandle: plan.handle,
+      plan,
+      billingInterval: "monthly",
+      staffLimit: plan.includedStaff,
+      subscriptionStatus: "none",
+      trialEndsAt: null,
+      shopifyShopGid: null,
+      reportedStaffUsage: 0,
+      activeStaffCount: 0,
+      availableSeats: plan.includedStaff,
+      atCap: false,
+      pricingPlansUrl: shopifyPricingPlansUrl({
+        shopDomain,
+        appHandle: getAppHandle(),
+      }),
+    };
+  }
+
+  const plan = getPlan(shop.planHandle);
+  const activeStaffCount = await countActiveStaff(shop.id);
+  const staffLimit = shop.staffLimit || plan.includedStaff;
+
+  return {
+    shopId: shop.id,
+    domain: shop.domain,
+    planHandle: plan.handle,
+    plan,
+    billingInterval: "monthly",
+    staffLimit,
+    subscriptionStatus: shop.subscriptionStatus,
+    trialEndsAt: shop.trialEndsAt?.toISOString() ?? null,
+    shopifyShopGid: shop.shopifyShopGid,
+    reportedStaffUsage: shop.reportedStaffUsage,
+    activeStaffCount,
+    availableSeats: Math.max(staffLimit - activeStaffCount, 0),
+    atCap: activeStaffCount >= staffLimit,
+    pricingPlansUrl: shopifyPricingPlansUrl({
+      shopDomain: shop.domain,
+      appHandle: getAppHandle(),
+    }),
+  };
+}
+
+export async function syncSubscriptionFromPlanHandle(
+  shopDomain: string,
+  planHandle: string,
+) {
+  const domain = shopFromDest(shopDomain).toLowerCase();
+  const plan = getPlan(planHandle);
+  const trialEndsAt =
+    plan.trialDays > 0
+      ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000)
+      : null;
+
+  return prisma.shop.update({
+    where: { domain },
+    data: {
+      planHandle: plan.handle,
+      billingInterval: "monthly",
+      staffLimit: plan.includedStaff,
+      subscriptionStatus:
+        plan.handle === FREE_PLAN_HANDLE
+          ? "none"
+          : trialEndsAt
+            ? "trial"
+            : "active",
+      trialEndsAt,
+    },
+  });
+}
+
+type PartnerSubscription = {
+  planHandle: string | null;
+  billingPeriod: string | null;
+  trialEndsAt: string | null;
+  status: string | null;
+};
+
+export async function refreshSubscription(shopDomain: string) {
+  const domain = shopFromDest(shopDomain).toLowerCase();
+  const shop = await prisma.shop.findUnique({ where: { domain } });
+  if (!shop) return null;
+
+  const remote = await fetchActiveSubscription(shop.shopifyShopGid);
+  if (remote === undefined) {
+    return shop;
+  }
+
+  if (remote === null) {
+    return prisma.shop.update({
+      where: { id: shop.id },
+      data: DEFAULT_BILLING,
+    });
+  }
+
+  const plan = getPlan(remote.planHandle);
+  return prisma.shop.update({
+    where: { id: shop.id },
+    data: {
+      planHandle: plan.handle,
+      billingInterval: "monthly",
+      staffLimit: staffLimitFromHandle(plan.handle),
+      subscriptionStatus: remote.status ?? (plan.handle === "free" ? "none" : "active"),
+      trialEndsAt: remote.trialEndsAt ? new Date(remote.trialEndsAt) : null,
+    },
+  });
+}
+
+export async function assertStaffSeatAvailable(shopId: string) {
+  const shop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+  const activeStaffCount = await countActiveStaff(shopId);
+  const staffLimit = shop.staffLimit || getPlan(shop.planHandle).includedStaff;
+  if (activeStaffCount >= staffLimit) {
+    throw new StaffSeatLimitError(staffLimit);
+  }
+}
+
+export async function saveShopifyShopGid(shopDomain: string, shopGid: string) {
+  const domain = shopFromDest(shopDomain).toLowerCase();
+  return prisma.shop.update({
+    where: { domain },
+    data: { shopifyShopGid: shopGid },
+  });
+}
+
+export function usageDeltaFromCounts(params: {
+  previousCount: number;
+  nextCount: number;
+  includedStaff: number;
+}) {
+  return usageDeltaForStaffChange(params);
+}
+
+type ReportResult =
+  | { skipped: true; reason: "zero_delta" | "no_credentials" | "no_shop_gid" }
+  | { skipped: false; delta: number; idempotencyKey: string };
+
+export async function reportStaffUsageDelta(
+  shopDomain: string,
+  delta: number,
+  deps: { fetchImpl?: typeof fetch } = {},
+): Promise<ReportResult> {
+  if (delta === 0) {
+    return { skipped: true, reason: "zero_delta" };
+  }
+
+  const domain = shopFromDest(shopDomain).toLowerCase();
+  const shop = await prisma.shop.findUnique({ where: { domain } });
+  if (!shop) {
+    return { skipped: true, reason: "no_shop_gid" };
+  }
+
+  const token = process.env.SHOPIFY_APP_EVENTS_TOKEN?.trim();
+  if (!token) {
+    return { skipped: true, reason: "no_credentials" };
+  }
+
+  const shopGid =
+    shop.shopifyShopGid ??
+    process.env.SHOPIFY_SHOP_GID?.trim() ??
+    null;
+  if (!shopGid) {
+    return { skipped: true, reason: "no_shop_gid" };
+  }
+
+  const idempotencyKey = `staff_${shop.id}_${delta > 0 ? "inc" : "dec"}_${randomUUID()}`.slice(
+    0,
+    64,
+  );
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const response = await fetchImpl("https://api.shopify.com/app/unstable/events", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      shop_id: shopGid,
+      event_handle: ADDITIONAL_STAFF_METER,
+      timestamp: new Date().toISOString(),
+      idempotency_key: idempotencyKey,
+      attributes: { value: delta },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to report staff usage (${response.status})`);
+  }
+
+  await prisma.shop.update({
+    where: { id: shop.id },
+    data: { reportedStaffUsage: shop.reportedStaffUsage + delta },
+  });
+
+  return { skipped: false, delta, idempotencyKey };
+}
+
+export async function reconcileStaffUsage(
+  shopDomain: string,
+  deps: { fetchImpl?: typeof fetch } = {},
+) {
+  const billing = await getShopBilling(shopDomain);
+  if (!billing.shopId) {
+    return { skipped: true as const, reason: "no_shop" as const };
+  }
+
+  const includedStaff = billing.plan.includedStaff;
+  const targetOverage = usageOverage(billing.activeStaffCount, includedStaff);
+  const delta = targetOverage - billing.reportedStaffUsage;
+  return reportStaffUsageDelta(shopDomain, delta, deps);
+}
+
+async function fetchActiveSubscription(
+  shopGid: string | null,
+): Promise<PartnerSubscription | null | undefined> {
+  const token = process.env.SHOPIFY_PARTNER_API_TOKEN?.trim();
+  const appId = process.env.SHOPIFY_APP_ID?.trim();
+  const orgId = process.env.SHOPIFY_PARTNER_ORG_ID?.trim();
+  const endpoint =
+    process.env.SHOPIFY_PARTNER_API_URL?.trim() ||
+    (orgId
+      ? `https://partners.shopify.com/${orgId}/api/2026-01/graphql.json`
+      : null);
+
+  if (!token || !appId || !shopGid || !endpoint) {
+    return undefined;
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": token,
+    },
+    body: JSON.stringify({
+      query: `#graphql
+        query ActiveSubscription($appId: ID!, $shopId: ID!) {
+          activeSubscription(appId: $appId, shopId: $shopId) {
+            billingPeriod
+            trialEndsAt
+            items {
+              handle
+            }
+          }
+        }
+      `,
+      variables: { appId, shopId: shopGid },
+    }),
+  });
+
+  if (!response.ok) {
+    return undefined;
+  }
+
+  const payload = (await response.json()) as {
+    data?: {
+      activeSubscription?: {
+        billingPeriod?: string | null;
+        trialEndsAt?: string | null;
+        items?: Array<{ handle?: string | null }>;
+      } | null;
+    };
+  };
+
+  const subscription = payload.data?.activeSubscription;
+  if (!subscription) {
+    return null;
+  }
+
+  const planHandle =
+    subscription.items?.find((item) => item.handle && item.handle !== ADDITIONAL_STAFF_METER)
+      ?.handle ??
+    subscription.items?.[0]?.handle ??
+    null;
+
+  return {
+    planHandle,
+    billingPeriod: subscription.billingPeriod ?? "monthly",
+    trialEndsAt: subscription.trialEndsAt ?? null,
+    status: subscription.trialEndsAt ? "trial" : "active",
+  };
+}
