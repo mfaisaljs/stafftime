@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-16T01:30:00.000Z",
+  "lastUpdated": "2026-08-16T01:35:00.000Z",
   "notes": [
+    "Updated: app nav hides Attendance and Approvals; order Staff → Reports → Schedule → Commission Program → Sales Target → Payroll → Tasklist → Time Off → Settings.",
     "Updated: attendance/Manager View use punch-first status — Working = clocked in now; clocked out shows Clocked out + Worked today.",
     "ST093 complete: POS Manager View tile — manager PIN, staff list with live attendance filters, staff detail (profile/payroll/shifts), and clock in/out on behalf of staff.",
     "ST092 complete: Commission and Sales Target attribution blocks/menu items prompt for PIN before opening the modal (same as POS tiles).",

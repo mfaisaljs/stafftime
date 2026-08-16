@@ -482,7 +482,7 @@ const ATTENDANCE_STYLES = `
   .attendance-metrics {
     display: grid;
     gap: 14px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .metric-card,
@@ -655,6 +655,12 @@ const ATTENDANCE_STYLES = `
   .empty-cell {
     color: #616161;
     text-align: center !important;
+  }
+
+  @media (max-width: 1100px) {
+    .attendance-metrics {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 900px) {

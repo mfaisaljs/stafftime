@@ -20,15 +20,13 @@ export default function App() {
       <s-app-nav>
         <s-link href="/app">Dashboard</s-link>
         <s-link href="/app/staff">Staff</s-link>
-        <s-link href="/app/attendance">Attendance</s-link>
-        <s-link href="/app/time-off">Time Off</s-link>
         <s-link href="/app/reports">Reports</s-link>
         <s-link href="/app/schedules">Schedule</s-link>
-        <s-link href="/app/commission-programs">Commission Programs</s-link>
-        <s-link href="/app/sales-targets">Sales Targets</s-link>
+        <s-link href="/app/commission-programs">Commission Program</s-link>
+        <s-link href="/app/sales-targets">Sales Target</s-link>
         <s-link href="/app/payroll">Payroll</s-link>
-        <s-link href="/app/tasklists">TaskLists</s-link>
-        <s-link href="/app/missed-punches">Approvals</s-link>
+        <s-link href="/app/tasklists">Tasklist</s-link>
+        <s-link href="/app/time-off">Time Off</s-link>
         <s-link href="/app/settings">Settings</s-link>
       </s-app-nav>
       <Outlet />
