@@ -37,7 +37,7 @@ declare module './src/appUrl.ts' {
 }
 
 //@ts-ignore
-declare module './src/camera.ts' {
+declare module './src/clockPhoto.ts' {
   const shopify: import('@shopify/ui-extensions/pos.home.modal.render').Api;
   const globalThis: { shopify: typeof shopify };
 }

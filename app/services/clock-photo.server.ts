@@ -12,8 +12,11 @@ export function normalizeClockPhoto(
   mimeType?: string | null,
 ): string | undefined {
   if (photo == null) return undefined;
-  const trimmed = String(photo).trim();
+  let trimmed = String(photo).trim();
   if (!trimmed) return undefined;
+  while (trimmed.startsWith("data:image/") && trimmed.includes(";base64,data:image/")) {
+    trimmed = trimmed.slice(trimmed.indexOf(";base64,") + 8);
+  }
   if (trimmed.length > MAX_PHOTO_CHARS) {
     throw new Error("Photo is too large. Please retake the selfie.");
   }
@@ -26,7 +29,9 @@ export function normalizeClockPhoto(
     typeof mimeType === "string" && mimeType.startsWith("image/")
       ? mimeType
       : "image/jpeg";
-  return `data:${mime};base64,${trimmed}`;
+  const payload = clockPhotoPayload(trimmed);
+  if (!payload) return undefined;
+  return `data:${mime};base64,${payload}`;
 }
 
 export function requireClockPhoto(
@@ -62,14 +67,28 @@ export function clockPhotoFingerprint(photoUrl: string) {
   return createHash("sha256").update(photoUrl).digest("hex").slice(0, 12);
 }
 
+export function clockPhotoPayload(value: string | null | undefined) {
+  if (!value) return "";
+  let trimmed = value.trim();
+  while (trimmed.startsWith("data:image/") && trimmed.includes(";base64,data:image/")) {
+    trimmed = trimmed.slice(trimmed.indexOf(";base64,") + 8);
+  }
+  const marker = ";base64,";
+  const index = trimmed.indexOf(marker);
+  return (index >= 0 ? trimmed.slice(index + marker.length) : trimmed).replace(
+    /\s/g,
+    "",
+  );
+}
+
 export function clockPhotosMatch(
   left?: string | null,
   right?: string | null,
 ) {
-  const a = decodeClockPhoto(left);
-  const b = decodeClockPhoto(right);
+  const a = clockPhotoPayload(left);
+  const b = clockPhotoPayload(right);
   if (!a || !b) return false;
-  return a.body.equals(b.body);
+  return a === b;
 }
 
 export function verifyClockPhotoAccess(input: {

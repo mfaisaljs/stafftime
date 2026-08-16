@@ -2655,6 +2655,32 @@
         "app/routes/app.staff.$employeeId._index.tsx"
       ],
       "lastUpdated": "2026-08-16T23:15:00.000Z"
+    },
+    {
+      "id": "ST141",
+      "taskId": "T012",
+      "title": "POS clock-out captures a distinct selfie",
+      "description": "Root cause: Shopify POS camera often returns the previous capture on rapid clock-out, so identical bytes were stored in photoUrl and clockOutPhotoUrl. Server now returns clock-in fingerprint in status; POS saves it before clock-in, loops camera until a different capture, previews clock-out selfie, and server rejects duplicates.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST068", "ST140"],
+      "acceptanceCriteria": [
+        "Clock-out on POS cannot submit the same selfie bytes as clock-in",
+        "Workforce Clock and Manager View show clock-out preview with retake before submit",
+        "Server status includes clockInPhotoFingerprint while employee is clocked in"
+      ],
+      "files": [
+        "app/services/workforce.server.ts",
+        "extensions/workforce-clock/src/clockPhoto.ts",
+        "extensions/workforce-clock/src/Modal.tsx",
+        "extensions/workforce-clock/src/clockStatus.ts",
+        "extensions/manager-view/src/clockPhoto.ts",
+        "extensions/manager-view/src/Modal.tsx",
+        "extensions/manager-view/src/session.ts",
+        "extensions/workforce-clock/shopify.d.ts",
+        "extensions/manager-view/shopify.d.ts"
+      ],
+      "lastUpdated": "2026-08-17T00:35:00.000Z"
     }
   ]
 }

@@ -42,6 +42,8 @@ export type EmployeeStatus = {
     hoursLabel: string;
     earningsLabel: string;
   } | null;
+  /** Raw clock-in selfie payload for comparing clock-out captures. */
+  clockInPhotoFingerprint?: string;
 };
 
 export type StoredClockState = {

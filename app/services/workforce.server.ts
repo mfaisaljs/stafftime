@@ -19,6 +19,7 @@ import {
   leaveCompensationForEmployeeDate,
 } from "./settings.server";
 import {
+  clockPhotoPayload,
   clockPhotosMatch,
   normalizeClockPhoto,
   requireClockPhoto,
@@ -877,6 +878,9 @@ export async function buildEmployeeStatus(employeeId: string) {
           earningsLabel: payrollStats.earnings.toFixed(2),
         }
       : null,
+    clockInPhotoFingerprint: openEntryFull?.photoUrl
+      ? clockPhotoPayload(openEntryFull.photoUrl)
+      : undefined,
   };
 }
 
