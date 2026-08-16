@@ -115,11 +115,23 @@ describe("staff web portal", { timeout: 30000 }, () => {
       },
     });
 
+    await prisma.shift.create({
+      data: {
+        shopId: shop.id,
+        locationId: location.id,
+        employeeId: employee.id,
+        startsAt: new Date(now.getFullYear(), now.getMonth(), 4, 10, 0, 0),
+        endsAt: new Date(now.getFullYear(), now.getMonth(), 4, 18, 0, 0),
+        status: "SCHEDULED",
+      },
+    });
+
     const timesheet = await getPortalTimesheet({
       shopDomain: TEST_DOMAIN,
       employeeId: employee.id,
     });
     expect(timesheet.days.some((day) => day.status === "worked")).toBe(true);
+    expect(timesheet.days.some((day) => day.shifts.length > 0)).toBe(true);
     expect(timesheet.weeks.length).toBeGreaterThan(0);
     expect(timesheet.totalHoursLabel).not.toBe("0m");
   });

@@ -427,8 +427,8 @@ export const PORTAL_STYLES = `
 }
 .ts-cal-row + .ts-cal-row { border-top: 1px solid #eceff3; }
 .ts-cell {
-  min-height: 88px;
-  padding: 8px 10px 10px;
+  min-height: 104px;
+  padding: 8px 8px 8px;
   display: flex;
   flex-direction: column;
   border-right: 1px solid #eceff3;
@@ -447,11 +447,34 @@ export const PORTAL_STYLES = `
   font-size: 13px;
   color: #111827;
 }
-.ts-hours {
+.ts-cell-body {
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ts-shift {
+  display: block;
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ts-shift.cancelled {
+  background: #fecaca;
+  color: #991b1b;
+  text-decoration: line-through;
+}
+.ts-hours {
   text-align: center;
   color: #9ca3af;
-  font-size: 14px;
+  font-size: 13px;
 }
 .ts-cell.has-time .ts-hours { color: #111827; font-weight: 650; }
 .ts-cell.outside .ts-daynum,

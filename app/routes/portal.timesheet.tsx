@@ -71,10 +71,30 @@ export default function PortalTimesheetPage() {
             {week.days.map((day) => (
               <div
                 key={day.dateKey}
-                className={`ts-cell${day.inMonth ? "" : " outside"}${day.isToday ? " today" : ""}${day.paidSeconds > 0 ? " has-time" : ""}`}
+                className={`ts-cell${day.inMonth ? "" : " outside"}${day.isToday ? " today" : ""}${day.shifts.length || day.paidSeconds > 0 ? " has-time" : ""}`}
               >
                 <span className="ts-daynum">{day.day}</span>
-                <span className="ts-hours">{day.hoursLabel}</span>
+                <div className="ts-cell-body">
+                  {day.shifts.map((shift) => (
+                    <span
+                      key={shift.id}
+                      className={`ts-shift${shift.cancelled ? " cancelled" : ""}`}
+                      style={
+                        shift.cancelled
+                          ? undefined
+                          : { background: shift.color }
+                      }
+                      title={`${shift.timeRangeLabel}${shift.locationName ? ` · ${shift.locationName}` : ""}${shift.cancelled ? " · On leave" : ""}`}
+                    >
+                      {shift.timeRangeLabel}
+                    </span>
+                  ))}
+                  {day.paidSeconds > 0 ? (
+                    <span className="ts-hours">{day.hoursLabel}</span>
+                  ) : day.shifts.length === 0 ? (
+                    <span className="ts-hours">—</span>
+                  ) : null}
+                </div>
               </div>
             ))}
             <div className="ts-cell ts-week-total">

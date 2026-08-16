@@ -4,13 +4,20 @@ import {
   activateEmployeeOnFirstLogin,
   findEmployeeByPin,
 } from "./workforce.server";
-import { getShopSettings, isManagerRole } from "./settings.server";
+import { getApprovedTimeOffForRange, getShopSettings, isManagerRole } from "./settings.server";
 import {
+  formatClockTime,
   summarizeTimeEntrySeconds,
   type HourFormat,
+  type TimeFormat,
 } from "./time-tracking.server";
 import { normalizeShopDomain } from "../utils/portal-url.server";
 import type { PortalFeatureKey } from "../utils/portal-path";
+import {
+  SHIFT_STATUS,
+  shiftIsCancelledForLeave,
+  syncApprovedLeaveShiftCancellations,
+} from "./time-off-shifts.server";
 
 export type PortalFeatureFlag = {
   key: PortalFeatureKey;
@@ -149,6 +156,14 @@ export function assertPortalFeature(
   }
 }
 
+export type PortalTimesheetShift = {
+  id: string;
+  timeRangeLabel: string;
+  locationName: string;
+  cancelled: boolean;
+  color: string;
+};
+
 export type PortalTimesheetDay = {
   dateKey: string;
   day: number;
@@ -157,6 +172,7 @@ export type PortalTimesheetDay = {
   hoursLabel: string;
   paidSeconds: number;
   status: "worked" | "open" | "none";
+  shifts: PortalTimesheetShift[];
 };
 
 export type PortalTimesheetWeek = {
@@ -176,25 +192,65 @@ export async function getPortalTimesheet(params: {
   const gridStart = startOfMondayWeek(monthStart);
   const gridEnd = endOfSundayWeek(monthEnd);
 
-  const entries = await prisma.timeEntry.findMany({
-    where: {
-      shopId: shop.id,
-      employeeId: employee.id,
-      clockInAt: { gte: gridStart, lte: gridEnd },
-    },
-    include: { breaks: true },
-    orderBy: { clockInAt: "asc" },
-  });
-
   const hourFormat = settings.hourFormat as HourFormat;
+  const timeFormat = settings.timeFormat as TimeFormat;
   const now = new Date();
   const todayKey = toDateKey(now);
+  const staffColors = parseColorMap(settings.scheduleStaffColors);
+  const locationColors = parseColorMap(settings.scheduleLocationColors);
+
+  await syncApprovedLeaveShiftCancellations(shop.id);
+
+  const [entries, shifts, leaveRequests] = await Promise.all([
+    prisma.timeEntry.findMany({
+      where: {
+        shopId: shop.id,
+        employeeId: employee.id,
+        clockInAt: { gte: gridStart, lte: gridEnd },
+      },
+      include: { breaks: true },
+      orderBy: { clockInAt: "asc" },
+    }),
+    prisma.shift.findMany({
+      where: {
+        shopId: shop.id,
+        employeeId: employee.id,
+        status: { in: [SHIFT_STATUS.SCHEDULED, SHIFT_STATUS.CANCELLED_LEAVE] },
+        startsAt: { lte: gridEnd },
+        endsAt: { gte: gridStart },
+      },
+      include: { location: true },
+      orderBy: { startsAt: "asc" },
+    }),
+    getApprovedTimeOffForRange(shop.id, toDateKey(gridStart), toDateKey(gridEnd)),
+  ]);
+
   const byDate = new Map<string, typeof entries>();
   for (const entry of entries) {
     const key = toDateKey(entry.clockInAt);
     const list = byDate.get(key) ?? [];
     list.push(entry);
     byDate.set(key, list);
+  }
+
+  const shiftsByDate = new Map<string, PortalTimesheetShift[]>();
+  for (const shift of shifts) {
+    const key = toDateKey(shift.startsAt);
+    const cancelled = shiftIsCancelledForLeave(shift, leaveRequests, employee.id);
+    const color =
+      staffColors[employee.id] ||
+      locationColors[shift.locationId] ||
+      "#2563eb";
+    const row: PortalTimesheetShift = {
+      id: shift.id,
+      timeRangeLabel: `${formatClockTime(shift.startsAt, timeFormat)} - ${formatClockTime(shift.endsAt, timeFormat)}`,
+      locationName: shift.location.name,
+      cancelled,
+      color,
+    };
+    const list = shiftsByDate.get(key) ?? [];
+    list.push(row);
+    shiftsByDate.set(key, list);
   }
 
   const weeks: PortalTimesheetWeek[] = [];
@@ -218,6 +274,7 @@ export async function getPortalTimesheet(params: {
         0,
       );
       const open = dayEntries.some((entry) => !entry.clockOutAt);
+      const dayShifts = shiftsByDate.get(dateKey) ?? [];
       const cell: PortalTimesheetDay = {
         dateKey,
         day: cursor.getDate(),
@@ -227,6 +284,7 @@ export async function getPortalTimesheet(params: {
           paidSeconds > 0 ? formatTimesheetHours(paidSeconds, hourFormat) : "—",
         paidSeconds,
         status: open ? "open" : paidSeconds > 0 ? "worked" : "none",
+        shifts: dayShifts,
       };
       weekDays.push(cell);
       if (inMonth) {
@@ -286,6 +344,20 @@ function endOfSundayWeek(value: Date) {
   end.setHours(23, 59, 59, 999);
   end.setDate(end.getDate() + (6 - mondayOffset(end)));
   return end;
+}
+
+function parseColorMap(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return {};
+  }
 }
 
 function toDateKey(value: Date) {
