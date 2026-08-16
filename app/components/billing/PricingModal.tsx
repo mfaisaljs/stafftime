@@ -6,6 +6,8 @@ import {
   estimatedMonthlyTotal,
   formatUsd,
   effectiveMaxStaff,
+  FREE_PLAN,
+  FREE_PLAN_HANDLE,
   getPlan,
   PAID_PLANS,
   type Plan,
@@ -18,11 +20,13 @@ function PlanCheckoutForm({
   planHandle,
   className,
   disabled,
+  extraSeats,
   children,
 }: {
   planHandle: string;
   className?: string;
   disabled?: boolean;
+  extraSeats?: number;
   children: ReactNode;
 }) {
   const [searchParams] = useSearchParams();
@@ -32,10 +36,14 @@ function PlanCheckoutForm({
   return (
     <Form
       method="post"
+      reloadDocument
       className="pricing-checkout-form"
       action={`/app/pricing${actionParams.toString() ? `?${actionParams.toString()}` : ""}`}
     >
       <input type="hidden" name="plan" value={planHandle} />
+      {extraSeats != null && extraSeats > 0 ? (
+        <input type="hidden" name="extra_seats" value={extraSeats} />
+      ) : null}
       <button type="submit" className={className} disabled={disabled}>
         {children}
       </button>
@@ -63,6 +71,7 @@ export function PricingPlans({
   initialStaffCount = 1,
   currentExtraStaffCount = 0,
   atCap = false,
+  needsPlanSelection = false,
   variant = "page",
 }: {
   pricingPlansUrl: string;
@@ -70,29 +79,42 @@ export function PricingPlans({
   initialStaffCount?: number;
   currentExtraStaffCount?: number;
   atCap?: boolean;
+  needsPlanSelection?: boolean;
   variant?: "page" | "modal";
 }) {
   const currentPlan = getPlan(currentPlanHandle);
-  const planStaffCap = effectiveMaxStaff(currentPlan);
-  const [extraStaff, setExtraStaff] = useState(() =>
-    clampStaff(initialStaffCount - currentPlan.includedStaff, 0, EXTRA_SEAT_SLIDER_MAX),
-  );
+  const freePlan = FREE_PLAN;
+  const onFreeTrack =
+    needsPlanSelection || currentPlanHandle === FREE_PLAN_HANDLE;
+  const sliderPlan = onFreeTrack ? freePlan : currentPlan;
+  const isFreeCurrent =
+    currentPlanHandle === FREE_PLAN_HANDLE && !needsPlanSelection;
+  const [extraStaff, setExtraStaff] = useState(() => {
+    const derived = Math.max(
+      currentExtraStaffCount,
+      initialStaffCount - sliderPlan.includedStaff,
+    );
+    return clampStaff(derived > 0 ? derived : 1, 0, EXTRA_SEAT_SLIDER_MAX);
+  });
   const [estimateByPlan, setEstimateByPlan] = useState<Record<string, number>>({
     workforce: 10,
     enterprise: 100,
   });
 
-  const extraPrice = extraStaff * currentPlan.extraStaffRate;
-  const currentExtraPrice = currentExtraStaffCount * currentPlan.extraStaffRate;
+  const extraPrice = extraStaff * sliderPlan.extraStaffRate;
+  const currentExtraPrice = currentExtraStaffCount * sliderPlan.extraStaffRate;
   const noExtras = extraStaff === 0;
+  const showPlanSelected = !needsPlanSelection;
 
   return (
     <>
       <div className={`pricing-modal pricing-modal--${variant}`}>
         <s-paragraph tone="neutral" color="subdued">
-          {atCap
-            ? `${currentPlan.name} is at its ${planStaffCap} staff max.`
-            : `${currentPlan.name} includes ${currentPlan.includedStaff} staff and allows up to ${planStaffCap}. Extra seats are ${formatUsd(currentPlan.extraStaffRate)} each.`}
+          {needsPlanSelection
+            ? `${freePlan.name} includes ${freePlan.includedStaff} staff with no monthly fee. Paid plans add more included seats and features.`
+            : atCap
+              ? `${currentPlan.name} is at its ${effectiveMaxStaff(currentPlan)} staff max.`
+              : `${currentPlan.name} includes ${currentPlan.includedStaff} staff and allows up to ${effectiveMaxStaff(currentPlan)}. Extra seats are ${formatUsd(currentPlan.extraStaffRate)} each.`}
         </s-paragraph>
 
         <div className="pricing-cards">
@@ -102,14 +124,16 @@ export function PricingPlans({
                 ? plan.includedStaff
                 : (estimateByPlan[plan.handle] ?? plan.includedStaff);
             const estimate = estimatedMonthlyTotal(plan, estimateStaff);
-            const isCurrent = currentPlanHandle === plan.handle;
+            const isCurrent = showPlanSelected && currentPlanHandle === plan.handle;
 
             return (
               <article
                 key={plan.handle}
-                className={`pricing-card${plan.featured ? " featured" : ""}`}
+                className={`pricing-card${plan.featured && !isCurrent ? " featured" : ""}`}
               >
-                {plan.featured ? (
+                {isCurrent ? (
+                  <s-badge tone="info">Current</s-badge>
+                ) : plan.featured ? (
                   <s-badge tone="success">Most popular</s-badge>
                 ) : null}
                 <h3>{plan.name}</h3>
@@ -175,18 +199,26 @@ export function PricingPlans({
         </div>
 
         <div className="pricing-free-bar">
-          <s-badge tone="warning">{currentPlan.name} plan</s-badge>
+          {isFreeCurrent ? (
+            <s-badge tone="info">Current</s-badge>
+          ) : onFreeTrack ? (
+            <s-badge tone="warning">{freePlan.name} plan</s-badge>
+          ) : (
+            <s-badge tone="warning">{currentPlan.name} plan</s-badge>
+          )}
           <div className="pricing-free-copy">
-            <strong>Up to {currentPlan.includedStaff} Staff Members included</strong>
+            <strong>
+              Up to {sliderPlan.includedStaff} Staff Members included
+            </strong>
             <span className="pricing-extra-usage">
-              {currentExtraStaffCount > 0
+              {showPlanSelected && currentExtraStaffCount > 0
                 ? `${currentExtraStaffCount} extra seat${currentExtraStaffCount === 1 ? "" : "s"} in use (${formatUsd(currentExtraPrice)}/mo)`
                 : "No extra seats in use"}
             </span>
             <span>
               {noExtras
-                ? `No extra-seat charge within ${currentPlan.includedStaff} included seats.`
-                : `${formatUsd(currentPlan.extraStaffRate)} per extra staff / month`}
+                ? `No extra-seat charge within ${sliderPlan.includedStaff} included seats.`
+                : `${formatUsd(sliderPlan.extraStaffRate)} per extra staff / month`}
             </span>
           </div>
           <label className="pricing-slider">
@@ -216,7 +248,28 @@ export function PricingPlans({
             aria-label="Extra staff count"
           />
           {noExtras ? (
-            variant === "modal" ? (
+            onFreeTrack ? (
+              needsPlanSelection || !isFreeCurrent ? (
+                <PlanCheckoutForm
+                  planHandle={FREE_PLAN_HANDLE}
+                  className="pricing-cta primary"
+                >
+                  Select Free plan
+                </PlanCheckoutForm>
+              ) : variant === "modal" ? (
+                <s-button
+                  variant="secondary"
+                  commandFor={PRICING_MODAL_ID}
+                  command="--hide"
+                >
+                  Continue with {freePlan.name}
+                </s-button>
+              ) : (
+                <s-button variant="secondary" href="/app/staff">
+                  Continue with {freePlan.name}
+                </s-button>
+              )
+            ) : variant === "modal" ? (
               <s-button
                 variant="secondary"
                 commandFor={PRICING_MODAL_ID}
@@ -231,10 +284,13 @@ export function PricingPlans({
             )
           ) : (
             <PlanCheckoutForm
-              planHandle={currentPlan.handle}
+              planHandle={sliderPlan.handle}
+              extraSeats={extraStaff}
               className="pricing-cta primary"
             >
-              Subscribe for {formatUsd(extraPrice)}
+              {onFreeTrack && needsPlanSelection
+                ? `Select Free plan + ${formatUsd(extraPrice)}/mo extras`
+                : `Subscribe for ${formatUsd(extraPrice)}`}
             </PlanCheckoutForm>
           )}
         </div>
@@ -249,12 +305,14 @@ export function PricingModal({
   initialStaffCount = 1,
   currentExtraStaffCount = 0,
   atCap = false,
+  needsPlanSelection = false,
 }: {
   pricingPlansUrl: string;
   currentPlanHandle?: string;
   initialStaffCount?: number;
   currentExtraStaffCount?: number;
   atCap?: boolean;
+  needsPlanSelection?: boolean;
 }) {
   return (
     <s-modal id={PRICING_MODAL_ID} heading="Choose a plan" size="large">
@@ -264,6 +322,7 @@ export function PricingModal({
         initialStaffCount={initialStaffCount}
         currentExtraStaffCount={currentExtraStaffCount}
         atCap={atCap}
+        needsPlanSelection={needsPlanSelection}
         variant="modal"
       />
     </s-modal>

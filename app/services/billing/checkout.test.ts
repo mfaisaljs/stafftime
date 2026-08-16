@@ -17,10 +17,15 @@ describe("billing checkout helpers", () => {
       "https://example.test/app/pricing?embedded=1&host=abc123",
     );
     expect(billingReturnUrl(request, "free", "test.myshopify.com")).toBe(
-      "https://example.test/app/billing?plan_handle=free&shop=test.myshopify.com&host=abc123&embedded=1",
+      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling%3Fplan_handle%3Dfree%26shop%3Dtest.myshopify.com%26host%3Dabc123%26embedded%3D1&shop=test.myshopify.com&host=abc123",
     );
     expect(billingReturnUrl(request, "workforce", "test.myshopify.com")).toBe(
-      "https://example.test/app/billing?plan_handle=workforce&shop=test.myshopify.com&host=abc123&embedded=1",
+      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling%3Fplan_handle%3Dworkforce%26shop%3Dtest.myshopify.com%26host%3Dabc123%26embedded%3D1&shop=test.myshopify.com&host=abc123",
+    );
+    expect(
+      billingReturnUrl(request, "free", "test.myshopify.com", 2),
+    ).toBe(
+      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling%3Fplan_handle%3Dfree%26shop%3Dtest.myshopify.com%26extra_seats%3D2%26host%3Dabc123%26embedded%3D1&shop=test.myshopify.com&host=abc123",
     );
   });
 

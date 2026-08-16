@@ -7,6 +7,8 @@ import {
   saveShopifyShopGid,
   syncSubscriptionFromPlanHandle,
 } from "../services/billing.server";
+import prisma from "../db.server";
+import { shopFromDest } from "../utils/http.server";
 
 const SHOP_GID_QUERY = `#graphql
   query BillingShopGid {
@@ -37,6 +39,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   if (planHandle) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
+    const extraSeats = Math.max(0, Number(url.searchParams.get("extra_seats") ?? 0));
+    if (extraSeats > 0) {
+      await prisma.shop.update({
+        where: { domain: shopFromDest(session.shop).toLowerCase() },
+        data: { reportedStaffUsage: extraSeats },
+      });
+    }
     await ensureUsageCycle(session.shop);
     return shopifyRedirect("/app/staff?billing=updated");
   }

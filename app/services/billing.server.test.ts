@@ -93,6 +93,13 @@ describe("billing plan catalog", () => {
     expect(subscribedSeatCount(5, 2)).toBe(7);
   });
 
+  it("flags shops that have not completed plan selection", async () => {
+    const { shopNeedsPlanSelection } = await import("./billing.server");
+    expect(shopNeedsPlanSelection("none")).toBe(true);
+    expect(shopNeedsPlanSelection("active")).toBe(false);
+    expect(shopNeedsPlanSelection("trial")).toBe(false);
+  });
+
   it("builds a recurring plus usage line for paid plans", () => {
     const items = appSubscriptionLineItems(getPlan("small-business"));
     expect(items).toHaveLength(2);
@@ -193,6 +200,10 @@ describe("billing enforcement and usage", () => {
 
   it("blocks adds when subscribed seats are full", async () => {
     const shop = await ensureShop(TEST_DOMAIN);
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: { subscriptionStatus: "active" },
+    });
     await createEmployee({
       shopId: shop.id,
       firstName: "One",
@@ -219,11 +230,11 @@ describe("billing enforcement and usage", () => {
     ).rejects.toBeInstanceOf(SubscribedSeatLimitError);
   });
 
-  it("allows one extra hire after usage billing is active on Free", async () => {
+  it("allows one extra hire when an extra seat is subscribed on Free", async () => {
     const shop = await ensureShop(TEST_DOMAIN);
     await prisma.shop.update({
       where: { id: shop.id },
-      data: { subscriptionStatus: "active" },
+      data: { subscriptionStatus: "active", reportedStaffUsage: 1 },
     });
     await createEmployee({
       shopId: shop.id,
@@ -286,11 +297,14 @@ describe("billing enforcement and usage", () => {
     expect(second).toEqual({ skipped: true, reason: "zero_delta" });
     expect(calls).toHaveLength(0);
 
-    await createEmployee({
-      shopId: shop.id,
-      firstName: "Third",
-      lastName: "Seat",
-      pin: "1099",
+    await prisma.employee.create({
+      data: {
+        shopId: shop.id,
+        firstName: "Third",
+        lastName: "Seat",
+        pinHash: "hash-third",
+        qrCode: `qr-third-${shop.id}`,
+      },
     });
     const third = await reconcileStaffUsage(TEST_DOMAIN, { fetchImpl });
     expect(third).toMatchObject({ skipped: false, delta: 1 });
@@ -313,11 +327,14 @@ describe("billing enforcement and usage", () => {
       reason: "zero_delta",
     });
 
-    const sixth = await createEmployee({
-      shopId: shop.id,
-      firstName: "Sixth",
-      lastName: "Seat",
-      pin: "1506",
+    const sixth = await prisma.employee.create({
+      data: {
+        shopId: shop.id,
+        firstName: "Sixth",
+        lastName: "Seat",
+        pinHash: "hash-sixth",
+        qrCode: `qr-sixth-${shop.id}`,
+      },
     });
     expect(await reconcileStaffUsage(TEST_DOMAIN, { fetchImpl })).toMatchObject({
       skipped: false,

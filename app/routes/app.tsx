@@ -1,12 +1,28 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Outlet, useLoaderData, useRouteError } from "react-router";
+import { Outlet, redirect, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
 import { authenticate } from "../shopify.server";
+import { getShopBilling } from "../services/billing.server";
+import { ensureShop } from "../services/workforce.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const url = new URL(request.url);
+
+  if (
+    !url.pathname.startsWith("/app/pricing") &&
+    !url.pathname.startsWith("/app/billing")
+  ) {
+    await ensureShop(session.shop);
+    const billing = await getShopBilling(session.shop);
+    if (billing.needsPlanSelection) {
+      const params = new URLSearchParams(url.searchParams);
+      params.set("welcome", "1");
+      throw redirect(`/app/pricing?${params.toString()}`);
+    }
+  }
 
   // eslint-disable-next-line no-undef
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };

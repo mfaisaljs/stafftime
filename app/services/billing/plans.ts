@@ -128,6 +128,10 @@ export function subscribedSeatCount(
   return includedStaff + Math.max(0, reportedStaffUsage);
 }
 
+export function subscribedSeatsFullMessage(subscribedSeats: number) {
+  return `All ${subscribedSeats} subscribed seats are in use. Add extra seats on Pricing.`;
+}
+
 export function extraSeatMax(plan: Plan) {
   return Math.max(0, plan.maxStaff - plan.includedStaff);
 }

@@ -14,6 +14,7 @@ import {
   type Plan,
   type PlanHandle,
   subscribedSeatCount,
+  subscribedSeatsFullMessage,
   effectiveMaxStaff,
 } from "./billing/plans";
 
@@ -43,10 +44,6 @@ export class SubscribedSeatLimitError extends Error {
   }
 }
 
-export function subscribedSeatsFullMessage(subscribedSeats: number) {
-  return `All ${subscribedSeats} subscribed seats are in use. Add extra seats on Pricing.`;
-}
-
 /** How many staff can be added before billing blocks a new hire. */
 export function seatCapacityForAdds(params: {
   plan: Plan;
@@ -59,17 +56,7 @@ export function seatCapacityForAdds(params: {
     params.reportedStaffUsage,
   );
   const planMax = effectiveMaxStaff(params.plan);
-  let capacity = subscribed;
-
-  if (
-    params.subscriptionStatus === "active" &&
-    params.activeStaffCount >= params.plan.includedStaff &&
-    capacity < planMax
-  ) {
-    capacity = Math.min(capacity + 1, planMax);
-  }
-
-  return capacity;
+  return Math.min(subscribed, planMax);
 }
 
 export type ShopBilling = {
@@ -94,7 +81,12 @@ export type ShopBilling = {
   atCap: boolean;
   nextPlan: Plan | null;
   pricingPlansUrl: string;
+  needsPlanSelection: boolean;
 };
+
+export function shopNeedsPlanSelection(subscriptionStatus: string) {
+  return subscriptionStatus === "none";
+}
 
 const DEFAULT_BILLING = {
   planHandle: FREE_PLAN_HANDLE,
@@ -150,6 +142,7 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
         shopDomain,
         appHandle: getAppHandle(),
       }),
+      needsPlanSelection: true,
     };
   }
 
@@ -193,6 +186,7 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
       shopDomain: shop.domain,
       appHandle: getAppHandle(),
     }),
+    needsPlanSelection: shopNeedsPlanSelection(shop.subscriptionStatus),
   };
 }
 

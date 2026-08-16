@@ -6,9 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
-  "lastUpdated": "2026-08-16T13:25:00.000Z",
+  "lastUpdated": "2026-08-16T13:35:00.000Z",
   "notes": [
-    "ST108 complete: subscribed-seats-full copy points to Pricing only; plan card shows Add extra seats CTA when at subscribed cap.",
+    "ST110 complete: billing return uses exit-iframe; session-token restores shop/host from shopify-reload; SHOPIFY_APP_URL set for ngrok dev.",
+    "ST109 complete: new installs redirect to /app/pricing; Free plan in slider section with Select Free plan; Current badge on active plan.",
     "ST105 complete: Free plan capped at 4 staff total (2 included + 2 extras); usage billing cap $12/mo.",
     "ST104 complete: webhooks register on install (afterAuth) + local.toml subscriptions for ngrok dev.",
     "Pricing page shows current extra seat count in banner and bottom bar.",

@@ -5,7 +5,8 @@ import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
-import { ensureUsageCycle, getShopBilling, subscribedSeatsFullMessage } from "../services/billing.server";
+import { ensureUsageCycle, getShopBilling } from "../services/billing.server";
+import { subscribedSeatsFullMessage } from "../services/billing/plans";
 import {
   openPricingModal,
   PricingModal,

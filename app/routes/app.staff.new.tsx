@@ -17,8 +17,8 @@ import {
   SubscribedSeatLimitError,
   getShopBilling,
   reconcileStaffUsage,
-  subscribedSeatsFullMessage,
 } from "../services/billing.server";
+import { subscribedSeatsFullMessage } from "../services/billing/plans";
 import { createEmployee } from "../services/workforce.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {

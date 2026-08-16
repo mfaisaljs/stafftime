@@ -2062,6 +2062,49 @@
         "app/routes/app.staff.new.tsx"
       ],
       "lastUpdated": "2026-08-16T13:25:00.000Z"
+    },
+    {
+      "id": "ST109",
+      "taskId": "T018",
+      "title": "Onboarding plan selection on Pricing",
+      "description": "New installs land on /app/pricing until a plan is chosen; Free is in the slider bar with Select Free plan; paid cards show Current badge.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST108"],
+      "acceptanceCriteria": [
+        "subscriptionStatus none redirects app routes to /app/pricing?welcome=1",
+        "Free plan has no card; slider section has Select Free plan button",
+        "Paid plan cards and Free bar show Current badge when active",
+        "Free plan selection syncs locally without Shopify checkout"
+      ],
+      "files": [
+        "app/routes/app.tsx",
+        "app/routes/app.pricing.tsx",
+        "app/components/billing/PricingModal.tsx",
+        "app/services/billing.server.ts"
+      ],
+      "lastUpdated": "2026-08-16T13:30:00.000Z"
+    },
+    {
+      "id": "ST110",
+      "taskId": "T018",
+      "title": "Fix billing approval return blank page",
+      "description": "Billing return URL uses /auth/exit-iframe; session-token restores shop/host from shopify-reload; SHOPIFY_APP_URL set for dev tunnel.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST109"],
+      "acceptanceCriteria": [
+        "billingReturnUrl returns exit-iframe URL with billing destination",
+        "session-token without shop redirects with shop/host from shopify-reload",
+        "Approving extra seats lands on staff with billing=updated"
+      ],
+      "files": [
+        "app/services/billing/checkout.ts",
+        "app/services/billing/checkout.test.ts",
+        "app/routes/auth.$.tsx",
+        ".env"
+      ],
+      "lastUpdated": "2026-08-16T13:35:00.000Z"
     }
   ]
 }
