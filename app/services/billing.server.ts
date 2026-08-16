@@ -7,6 +7,7 @@ import {
   FREE_PLAN_HANDLE,
   getAppHandle,
   getPlan,
+  nextPlan,
   shopifyPricingPlansUrl,
   usageDeltaForStaffChange,
   usageOverage,
@@ -16,13 +17,17 @@ import {
 
 export class StaffSeatLimitError extends Error {
   readonly staffLimit: number;
+  readonly nextPlanName: string | null;
 
-  constructor(staffLimit: number) {
+  constructor(staffLimit: number, nextPlanName: string | null) {
     super(
-      `Staff seat limit reached (${staffLimit}). Upgrade your plan to add more staff.`,
+      nextPlanName
+        ? `This plan allows up to ${staffLimit} staff. Upgrade to ${nextPlanName} to add more.`
+        : `This plan allows up to ${staffLimit} staff.`,
     );
     this.name = "StaffSeatLimitError";
     this.staffLimit = staffLimit;
+    this.nextPlanName = nextPlanName;
   }
 }
 
@@ -44,6 +49,7 @@ export type ShopBilling = {
   activeStaffCount: number;
   availableSeats: number;
   atCap: boolean;
+  nextPlan: Plan | null;
   pricingPlansUrl: string;
 };
 
@@ -93,6 +99,7 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
       activeStaffCount: 0,
       availableSeats: plan.maxStaff,
       atCap: false,
+      nextPlan: nextPlan(plan.handle),
       pricingPlansUrl: shopifyPricingPlansUrl({
         shopDomain,
         appHandle: getAppHandle(),
@@ -123,6 +130,7 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
     activeStaffCount,
     availableSeats: Math.max(staffLimit - activeStaffCount, 0),
     atCap: activeStaffCount >= staffLimit,
+    nextPlan: nextPlan(plan.handle),
     pricingPlansUrl: shopifyPricingPlansUrl({
       shopDomain: shop.domain,
       appHandle: getAppHandle(),
@@ -199,9 +207,10 @@ export async function refreshSubscription(shopDomain: string) {
 export async function assertStaffSeatAvailable(shopId: string) {
   const shop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
   const activeStaffCount = await countActiveStaff(shopId);
-  const staffLimit = getPlan(shop.planHandle).maxStaff;
+  const plan = getPlan(shop.planHandle);
+  const staffLimit = plan.maxStaff;
   if (activeStaffCount >= staffLimit) {
-    throw new StaffSeatLimitError(staffLimit);
+    throw new StaffSeatLimitError(staffLimit, nextPlan(plan.handle)?.name ?? null);
   }
 }
 

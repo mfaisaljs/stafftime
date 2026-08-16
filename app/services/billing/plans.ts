@@ -124,6 +124,22 @@ export function extraSeatMax(plan: Plan) {
   return Math.max(0, plan.maxStaff - plan.includedStaff);
 }
 
+const PLAN_ORDER: PlanHandle[] = [
+  "free",
+  "small-business",
+  "workforce",
+  "enterprise",
+];
+
+export function nextPlan(handle: string | null | undefined): Plan | null {
+  const current = getPlan(handle);
+  const index = PLAN_ORDER.indexOf(current.handle);
+  if (index < 0 || index >= PLAN_ORDER.length - 1) {
+    return null;
+  }
+  return getPlan(PLAN_ORDER[index + 1]);
+}
+
 export function extraStaffCount(staffCount: number, includedStaff: number) {
   return Math.max(0, Math.floor(staffCount) - includedStaff);
 }

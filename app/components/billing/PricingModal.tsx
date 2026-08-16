@@ -4,6 +4,7 @@ import {
   extraSeatMax,
   formatUsd,
   getPlan,
+  nextPlan,
   PAID_PLANS,
   type Plan,
 } from "../../services/billing/plans";
@@ -32,14 +33,17 @@ export function PricingPlans({
   pricingPlansUrl,
   currentPlanHandle = "free",
   initialStaffCount = 2,
+  atCap = false,
   variant = "page",
 }: {
   pricingPlansUrl: string;
   currentPlanHandle?: string;
   initialStaffCount?: number;
+  atCap?: boolean;
   variant?: "page" | "modal";
 }) {
   const currentPlan = getPlan(currentPlanHandle);
+  const recommendedPlan = nextPlan(currentPlan.handle);
   const extraMax = extraSeatMax(currentPlan);
   const [extraStaff, setExtraStaff] = useState(() =>
     clampStaff(initialStaffCount - currentPlan.includedStaff, 0, extraMax),
@@ -56,8 +60,11 @@ export function PricingPlans({
     <>
       <div className="pricing-modal">
         <s-paragraph tone="neutral" color="subdued">
-          Monthly plans include extra staff seats billed through Shopify. Free
-          shops can use two seats with no charge.
+          {atCap && recommendedPlan
+            ? `${currentPlan.name} is at its ${currentPlan.maxStaff} staff max. Upgrade to ${recommendedPlan.name} (up to ${recommendedPlan.maxStaff}) to add more.`
+            : atCap
+              ? `${currentPlan.name} is at its ${currentPlan.maxStaff} staff max.`
+              : `${currentPlan.name} includes ${currentPlan.includedStaff} staff and allows up to ${currentPlan.maxStaff}. Extra seats are ${formatUsd(currentPlan.extraStaffRate)} each.`}
         </s-paragraph>
 
         <div className="pricing-cards">
@@ -68,13 +75,16 @@ export function PricingPlans({
                 : (estimateByPlan[plan.handle] ?? plan.includedStaff);
             const estimate = estimatedMonthlyTotal(plan, estimateStaff);
             const isCurrent = currentPlanHandle === plan.handle;
+            const isNext = recommendedPlan?.handle === plan.handle;
 
             return (
               <article
                 key={plan.handle}
-                className={`pricing-card${plan.featured ? " featured" : ""}`}
+                className={`pricing-card${plan.featured || isNext ? " featured" : ""}`}
               >
-                {plan.featured ? (
+                {isNext ? (
+                  <s-badge tone="success">Recommended next</s-badge>
+                ) : plan.featured ? (
                   <s-badge tone="success">Most popular</s-badge>
                 ) : null}
                 <h3>{plan.name}</h3>
@@ -206,10 +216,12 @@ export function PricingModal({
   pricingPlansUrl,
   currentPlanHandle = "free",
   initialStaffCount = 2,
+  atCap = false,
 }: {
   pricingPlansUrl: string;
   currentPlanHandle?: string;
   initialStaffCount?: number;
+  atCap?: boolean;
 }) {
   return (
     <s-modal id={PRICING_MODAL_ID} heading="Choose a plan" size="large">
@@ -217,6 +229,7 @@ export function PricingModal({
         pricingPlansUrl={pricingPlansUrl}
         currentPlanHandle={currentPlanHandle}
         initialStaffCount={initialStaffCount}
+        atCap={atCap}
         variant="modal"
       />
     </s-modal>

@@ -1890,6 +1890,31 @@
         "prisma/migrations/20260816050000_shop_usage_cycle/migration.sql"
       ],
       "lastUpdated": "2026-08-16T11:25:00.000Z"
+    },
+    {
+      "id": "ST101",
+      "taskId": "T018",
+      "title": "Block at plan max and offer next plan",
+      "description": "Hard-block staff adds at plan.maxStaff and point merchants to the next plan (Free→Small Business→Workforce→Enterprise).",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST100"],
+      "acceptanceCriteria": [
+        "assertStaffSeatAvailable throws at maxStaff with the next plan name",
+        "Staff Add at cap opens pricing with Upgrade to {next plan}",
+        "Add staff page banner/action names the next plan",
+        "Pricing UI marks the next plan as Recommended next"
+      ],
+      "files": [
+        "app/services/billing/plans.ts",
+        "app/services/billing.server.ts",
+        "app/services/billing.server.test.ts",
+        "app/routes/app.staff._index.tsx",
+        "app/routes/app.staff.new.tsx",
+        "app/routes/app.pricing.tsx",
+        "app/components/billing/PricingModal.tsx"
+      ],
+      "lastUpdated": "2026-08-16T11:40:00.000Z"
     }
   ]
 }

@@ -31,6 +31,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     planHandle: billing.planHandle,
     pricingPlansUrl: billing.pricingPlansUrl,
     atCap: billing.atCap,
+    nextPlan: billing.nextPlan
+      ? {
+          name: billing.nextPlan.name,
+          monthlyPrice: billing.nextPlan.monthlyPrice,
+          includedStaff: billing.nextPlan.includedStaff,
+          maxStaff: billing.nextPlan.maxStaff,
+        }
+      : null,
   };
 };
 
@@ -49,6 +57,7 @@ export default function StaffManagementPage() {
     planHandle,
     pricingPlansUrl,
     atCap,
+    nextPlan,
   } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const fetcher = useFetcher<BulkActionResult>();
@@ -236,18 +245,26 @@ export default function StaffManagementPage() {
               </div>
               <span>{usagePercent}% used</span>
               {availableStaff === 0 && (
-                <strong className="limit-text">Staff Limit Reached</strong>
+                <strong className="limit-text">
+                  {nextPlan
+                    ? `${planName} max is ${staffLimit}. Upgrade to ${nextPlan.name} (up to ${nextPlan.maxStaff}).`
+                    : `${planName} max is ${staffLimit} staff.`}
+                </strong>
               )}
             </div>
           </div>
           <div className="plan-action">
-            <span>Upgrade to add more staff</span>
+            <span>
+              {nextPlan
+                ? `Upgrade to ${nextPlan.name} to add more staff`
+                : "Upgrade to add more staff"}
+            </span>
             <s-button
               variant="primary"
               commandFor={PRICING_MODAL_ID}
               command="--show"
             >
-              Upgrade Plan
+              {nextPlan ? `Upgrade to ${nextPlan.name}` : "Upgrade Plan"}
             </s-button>
           </div>
         </section>
@@ -274,7 +291,7 @@ export default function StaffManagementPage() {
               commandFor={PRICING_MODAL_ID}
               command="--show"
             >
-              Add Shopify Staff
+              {nextPlan ? `Upgrade to ${nextPlan.name}` : "Staff limit reached"}
             </s-button>
           ) : (
             <s-button variant="primary" href="/app/staff/new">
@@ -611,6 +628,7 @@ export default function StaffManagementPage() {
         pricingPlansUrl={pricingPlansUrl}
         currentPlanHandle={planHandle}
         initialStaffCount={Math.max(totalStaff, 2)}
+        atCap={atCap}
       />
       <style>{STAFF_MANAGEMENT_STYLES}</style>
     </s-page>

@@ -4,6 +4,7 @@ import {
   extraStaffPrice,
   getPlan,
   includedStaffFromHandle,
+  nextPlan,
   staffLimitFromHandle,
   usageDeltaForStaffChange,
 } from "./billing/plans";
@@ -59,6 +60,13 @@ describe("billing plan catalog", () => {
     expect(staffLimitFromHandle("workforce")).toBe(100);
     expect(staffLimitFromHandle("enterprise")).toBe(500);
     expect(staffLimitFromHandle("unknown")).toBe(22);
+  });
+
+  it("offers the next plan after each max", () => {
+    expect(nextPlan("free")?.handle).toBe("small-business");
+    expect(nextPlan("small-business")?.handle).toBe("workforce");
+    expect(nextPlan("workforce")?.handle).toBe("enterprise");
+    expect(nextPlan("enterprise")).toBeNull();
   });
 
   it("prices extra staff as (n - included) * rate", () => {
@@ -172,9 +180,11 @@ describe("billing enforcement and usage", () => {
       })),
     });
 
-    await expect(assertStaffSeatAvailable(shop.id)).rejects.toBeInstanceOf(
-      StaffSeatLimitError,
-    );
+    await expect(assertStaffSeatAvailable(shop.id)).rejects.toMatchObject({
+      name: "StaffSeatLimitError",
+      staffLimit: 22,
+      nextPlanName: "Small Business",
+    });
   });
 
   it("reports +1 on the 3rd Free seat and 0 on the 2nd", async () => {

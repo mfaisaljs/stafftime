@@ -29,6 +29,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     locations,
     atCap: billing.atCap,
     staffLimit: billing.staffLimit,
+    planName: billing.plan.name,
+    nextPlanName: billing.nextPlan?.name ?? null,
+    nextPlanMax: billing.nextPlan?.maxStaff ?? null,
   };
 };
 
@@ -45,7 +48,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const billing = await getShopBilling(session.shop);
     if (billing.atCap) {
       return {
-        error: `Staff seat limit reached (${billing.staffLimit}). Upgrade your plan to add more staff.`,
+        error: billing.nextPlan
+          ? `This plan allows up to ${billing.staffLimit} staff. Upgrade to ${billing.nextPlan.name} to add more.`
+          : `This plan allows up to ${billing.staffLimit} staff.`,
         atCap: true,
       };
     }
@@ -105,7 +110,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function StaffPage() {
-  const { locations, atCap, staffLimit } = useLoaderData<typeof loader>();
+  const { locations, atCap, staffLimit, planName, nextPlanName, nextPlanMax } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const showCapError = atCap || actionData?.atCap;
   const [pin, setPin] = useState("");
@@ -152,11 +158,13 @@ export default function StaffPage() {
       {showCapError && (
         <s-banner heading="Staff seat limit reached" tone="warning">
           <s-text>
-            This shop can have {staffLimit} active staff on the current plan.
-            Upgrade to add more seats.
+            {planName} allows up to {staffLimit} staff.
+            {nextPlanName
+              ? ` Upgrade to ${nextPlanName} (up to ${nextPlanMax}) to add more.`
+              : ""}
           </s-text>
           <s-button variant="primary" href="/app/pricing">
-            View plans
+            {nextPlanName ? `Upgrade to ${nextPlanName}` : "View plans"}
           </s-button>
         </s-banner>
       )}

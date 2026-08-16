@@ -18,6 +18,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     extraStaffCount: billing.extraStaffCount,
     extraStaffRate: billing.extraStaffRate,
     activeStaffCount: billing.activeStaffCount,
+    atCap: billing.atCap,
+    nextPlanName: billing.nextPlan?.name ?? null,
+    nextPlanMax: billing.nextPlan?.maxStaff ?? null,
     pricingPlansUrl: billing.pricingPlansUrl,
   };
 };
@@ -31,6 +34,9 @@ export default function PricingPage() {
     extraStaffCount,
     extraStaffRate,
     activeStaffCount,
+    atCap,
+    nextPlanName,
+    nextPlanMax,
     pricingPlansUrl,
   } = useLoaderData<typeof loader>();
 
@@ -44,12 +50,16 @@ export default function PricingPage() {
               ? ` + ${extraStaffCount} extra at $${extraStaffRate}/mo`
               : ""}
             ) of {staffLimit} max.
+            {atCap && nextPlanName
+              ? ` Upgrade to ${nextPlanName} (up to ${nextPlanMax}) to add more.`
+              : ""}
           </s-text>
         </s-banner>
         <PricingPlans
           pricingPlansUrl={pricingPlansUrl}
           currentPlanHandle={planHandle}
           initialStaffCount={Math.max(activeStaffCount, 2)}
+          atCap={atCap}
           variant="page"
         />
       </s-stack>
