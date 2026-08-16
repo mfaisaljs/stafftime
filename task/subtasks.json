@@ -2486,6 +2486,24 @@
         "app/routes/app.usage.tsx"
       ],
       "lastUpdated": "2026-08-16T16:15:00.000Z"
+    },
+    {
+      "id": "ST132",
+      "taskId": "T018",
+      "title": "Align Usage cap remaining with usage records",
+      "description": "Usage remaining cap uses usageRecordTotal instead of Shopify balanceUsed so it matches the Usage fee and charges table.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST131"],
+      "acceptanceCriteria": [
+        "usageUsed ReferenceError fixed",
+        "Usage fee shows usageRecordTotal only (no local.extraCharge fallback)",
+        "Remaining cap = cappedAmount minus usageRecordTotal"
+      ],
+      "files": [
+        "app/routes/app.usage.tsx"
+      ],
+      "lastUpdated": "2026-08-16T16:30:00.000Z"
     }
   ]
 }

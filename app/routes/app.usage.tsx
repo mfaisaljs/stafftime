@@ -36,10 +36,6 @@ const USAGE_BILLING_QUERY = `#graphql
                   amount
                   currencyCode
                 }
-                balanceUsed {
-                  amount
-                  currencyCode
-                }
               }
             }
           }
@@ -68,7 +64,6 @@ type PricingDetails = {
   terms?: string;
   price?: Money;
   cappedAmount?: Money;
-  balanceUsed?: Money;
 };
 
 type UsageRecord = {
@@ -157,7 +152,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const usageDetails = usage?.plan?.pricingDetails;
   const recurringDetails = recurring?.plan?.pricingDetails;
   const usageRecords = usage?.usageRecords?.nodes ?? [];
-  const usageUsed = Number(usageDetails?.balanceUsed?.amount ?? 0);
   const usageCap = Number(usageDetails?.cappedAmount?.amount ?? 0);
   const usageRecordTotal = usageRecords.reduce(
     (sum, record) => sum + Number(record.price?.amount ?? 0),
@@ -186,7 +180,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     recurringInterval: intervalLabel(recurringDetails?.interval),
     usageCapAmount: usageDetails?.cappedAmount ?? null,
     usageRemaining:
-      usageCap > 0 ? Math.max(0, usageCap - usageUsed) : null,
+      usageCap > 0 ? Math.max(0, usageCap - usageRecordTotal) : null,
     usageTerms: usageDetails?.terms ?? null,
     usageRecordTotal,
     usageRecords,
