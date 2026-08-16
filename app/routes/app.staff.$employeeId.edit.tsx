@@ -103,7 +103,10 @@ export default function EditStaffPage() {
     employee.paymentMethod === "PAYSTACK" ? "REVOLUT" : employee.paymentMethod,
   );
   const [bankAccountType, setBankAccountType] = useState(
-    employee.bankAccountType ?? "DOMESTIC",
+    (employee.paymentMethod === "BANK_TRANSFER" ||
+      employee.paymentMethod === "DIRECT_DEPOSIT")
+      ? (employee.bankAccountType ?? "DOMESTIC")
+      : "DOMESTIC",
   );
   const availability = new Set(
     (employee.weeklyAvailability ?? "MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY")
@@ -127,6 +130,37 @@ export default function EditStaffPage() {
   const showSquareFields = paymentMethod === "SQUARE";
   const showBankFields = BANK_PAYMENT_METHODS.includes(paymentMethod);
   const showNoPaymentFields = NO_DETAIL_PAYMENT_METHODS.includes(paymentMethod);
+  const savedPaymentMethod =
+    employee.paymentMethod === "PAYSTACK" ? "REVOLUT" : employee.paymentMethod;
+  const detailsBelongToSelectedMethod =
+    paymentMethod === savedPaymentMethod ||
+    (BANK_PAYMENT_METHODS.includes(paymentMethod) &&
+      BANK_PAYMENT_METHODS.includes(savedPaymentMethod));
+  const providerEmail = detailsBelongToSelectedMethod
+    ? (employee.paypalEmail ?? "")
+    : "";
+  const providerAccountName = detailsBelongToSelectedMethod
+    ? (employee.paypalAccountName ?? "")
+    : "";
+  const bankDefaults = detailsBelongToSelectedMethod
+    ? {
+        bankAccountType: employee.bankAccountType ?? "DOMESTIC",
+        bankName: employee.bankName ?? "",
+        accountHolderName: employee.accountHolderName ?? "",
+        accountNumber: employee.accountNumber ?? "",
+        routingNumber: employee.routingNumber ?? "",
+        swiftBic: employee.swiftBic ?? "",
+        iban: employee.iban ?? "",
+      }
+    : {
+        bankAccountType: "DOMESTIC",
+        bankName: "",
+        accountHolderName: "",
+        accountNumber: "",
+        routingNumber: "",
+        swiftBic: "",
+        iban: "",
+      };
 
   const generatePin = () => {
     setPin(String(Math.floor(1000 + Math.random() * 9000)));
@@ -304,7 +338,20 @@ export default function EditStaffPage() {
                 <select
                   name="paymentMethod"
                   value={paymentMethod}
-                  onChange={(event) => setPaymentMethod(event.currentTarget.value)}
+                  onChange={(event) => {
+                    const next = event.currentTarget.value;
+                    setPaymentMethod(next);
+                    if (
+                      BANK_PAYMENT_METHODS.includes(next) &&
+                      BANK_PAYMENT_METHODS.includes(savedPaymentMethod)
+                    ) {
+                      setBankAccountType(
+                        employee.bankAccountType ?? "DOMESTIC",
+                      );
+                    } else {
+                      setBankAccountType("DOMESTIC");
+                    }
+                  }}
                 >
                   {PAYMENT_METHOD_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -314,35 +361,35 @@ export default function EditStaffPage() {
                 </select>
               </label>
               {showPayPalFields && (
-                <div className="staff-grid two">
+                <div className="staff-grid two" key="PAYPAL">
                   <Field
                     label="PayPal Email"
                     name="paypalEmail"
                     type="email"
-                    defaultValue={employee.paypalEmail ?? ""}
+                    defaultValue={providerEmail}
                   />
                   <Field
                     label="PayPal Account Name"
                     name="paypalAccountName"
-                    defaultValue={employee.paypalAccountName ?? ""}
+                    defaultValue={providerAccountName}
                   />
                 </div>
               )}
               {showStripeFields && (
-                <div className="staff-grid one">
+                <div className="staff-grid one" key="STRIPE">
                   <Field
                     label="Stripe Account Email"
                     name="paypalEmail"
                     type="email"
                     placeholder="Stripe account email address"
-                    defaultValue={employee.paypalEmail ?? ""}
+                    defaultValue={providerEmail}
                   />
                   <label className="staff-label">
                     Stripe Account ID
                     <input
                       name="paypalAccountName"
                       placeholder="acct_xxxxxxxxxxxxxx"
-                      defaultValue={employee.paypalAccountName ?? ""}
+                      defaultValue={providerAccountName}
                     />
                     <span className="staff-help">
                       Stripe Connect account ID (if applicable)
@@ -351,19 +398,19 @@ export default function EditStaffPage() {
                 </div>
               )}
               {showWiseFields && (
-                <div className="staff-grid one">
+                <div className="staff-grid one" key="WISE">
                   <Field
                     label="Wise Email"
                     name="paypalEmail"
                     type="email"
                     placeholder="Wise account email"
-                    defaultValue={employee.paypalEmail ?? ""}
+                    defaultValue={providerEmail}
                   />
                   <Field
                     label="Wise Account Holder Name"
                     name="paypalAccountName"
                     placeholder="Name on Wise account"
-                    defaultValue={employee.paypalAccountName ?? ""}
+                    defaultValue={providerAccountName}
                   />
                   <label className="staff-label">
                     Wise Account Currency
@@ -378,72 +425,72 @@ export default function EditStaffPage() {
                 </div>
               )}
               {showPayoneerFields && (
-                <div className="staff-grid one">
+                <div className="staff-grid one" key="PAYONEER">
                   <Field
                     label="Payoneer Email"
                     name="paypalEmail"
                     type="email"
                     placeholder="Payoneer account email"
-                    defaultValue={employee.paypalEmail ?? ""}
+                    defaultValue={providerEmail}
                   />
                   <Field
                     label="Payoneer Account Name"
                     name="paypalAccountName"
                     placeholder="Name on Payoneer account"
-                    defaultValue={employee.paypalAccountName ?? ""}
+                    defaultValue={providerAccountName}
                   />
                 </div>
               )}
               {showRevolutFields && (
-                <div className="staff-grid one">
+                <div className="staff-grid one" key="REVOLUT">
                   <Field
                     label="Revolut Email/Phone"
                     name="paypalEmail"
                     placeholder="Email or phone linked to Revolut"
-                    defaultValue={employee.paypalEmail ?? ""}
+                    defaultValue={providerEmail}
                   />
                   <Field
                     label="Revolut Username"
                     name="paypalAccountName"
                     placeholder="@username (if applicable)"
-                    defaultValue={employee.paypalAccountName ?? ""}
+                    defaultValue={providerAccountName}
                   />
                 </div>
               )}
               {showVenmoFields && (
-                <div className="staff-grid one">
+                <div className="staff-grid one" key="VENMO">
                   <Field
                     label="Venmo Username"
                     name="paypalAccountName"
                     placeholder="@username"
-                    defaultValue={employee.paypalAccountName ?? ""}
+                    defaultValue={providerAccountName}
                   />
                   <Field
                     label="Venmo Phone Number"
                     name="paypalEmail"
                     placeholder="Phone number linked to Venmo"
-                    defaultValue={employee.paypalEmail ?? ""}
+                    defaultValue={providerEmail}
                   />
                 </div>
               )}
               {showSquareFields && (
-                <div className="staff-grid one">
+                <div className="staff-grid one" key="SQUARE">
                   <Field
                     label="Cash App $Cashtag"
                     name="paypalAccountName"
                     placeholder="$cashtag"
-                    defaultValue={employee.paypalAccountName ?? ""}
+                    defaultValue={providerAccountName}
                   />
                   <Field
                     label="Cash App Phone/Email"
                     name="paypalEmail"
                     placeholder="Phone or email linked to Cash App"
-                    defaultValue={employee.paypalEmail ?? ""}
+                    defaultValue={providerEmail}
                   />
                 </div>
               )}
               {showBankFields && (
-                <div className="staff-grid one">
+                <div className="staff-grid one" key={`BANK-${paymentMethod}`}>
                   <label className="staff-label">
                     Bank Account Type
                     <select
@@ -463,19 +510,19 @@ export default function EditStaffPage() {
                     label="Bank Name"
                     name="bankName"
                     placeholder="Enter bank name"
-                    defaultValue={employee.bankName ?? ""}
+                    defaultValue={bankDefaults.bankName}
                   />
                   <Field
                     label="Account Holder Name"
                     name="accountHolderName"
                     placeholder="Enter account holder name"
-                    defaultValue={employee.accountHolderName ?? ""}
+                    defaultValue={bankDefaults.accountHolderName}
                   />
                   <Field
                     label="Account Number"
                     name="accountNumber"
                     placeholder="Enter account number"
-                    defaultValue={employee.accountNumber ?? ""}
+                    defaultValue={bankDefaults.accountNumber}
                   />
                   {bankAccountType === "INTERNATIONAL" ? (
                     <>
@@ -483,13 +530,13 @@ export default function EditStaffPage() {
                         label="SWIFT/BIC Code"
                         name="swiftBic"
                         placeholder="Enter SWIFT/BIC code"
-                        defaultValue={employee.swiftBic ?? ""}
+                        defaultValue={bankDefaults.swiftBic}
                       />
                       <Field
                         label="IBAN"
                         name="iban"
                         placeholder="Enter IBAN"
-                        defaultValue={employee.iban ?? ""}
+                        defaultValue={bankDefaults.iban}
                       />
                     </>
                   ) : (
@@ -497,7 +544,7 @@ export default function EditStaffPage() {
                       label="Routing Number"
                       name="routingNumber"
                       placeholder="Enter routing number"
-                      defaultValue={employee.routingNumber ?? ""}
+                      defaultValue={bankDefaults.routingNumber}
                     />
                   )}
                 </div>

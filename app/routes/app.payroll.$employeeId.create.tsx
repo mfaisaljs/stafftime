@@ -875,6 +875,7 @@ function FormSection({
 type StaffPaymentEmployee = {
   id: string;
   currency: string;
+  paymentMethod: string;
   paypalEmail: string;
   paypalAccountName: string;
   bankAccountType: string;
@@ -894,8 +895,9 @@ function StaffPaymentDetailsCard({
   paymentMethod: string;
 }) {
   const meta = paymentMethodMeta(paymentMethod);
-  const rows = paymentDetailRows(employee, paymentMethod);
-  const incomplete = !paymentDetailsComplete(employee, paymentMethod);
+  const details = paymentDetailsForMethod(employee, paymentMethod);
+  const rows = paymentDetailRows(details, paymentMethod);
+  const incomplete = !paymentDetailsComplete(details, paymentMethod);
   const Icon = meta.icon;
 
   return (
@@ -1073,6 +1075,38 @@ function paymentMethodMeta(method: string) {
         sectionTitle: "Account Information",
       };
   }
+}
+
+function isBankPaymentMethod(method: string) {
+  return method === "BANK_TRANSFER" || method === "DIRECT_DEPOSIT";
+}
+
+/** Profile fields are shared across methods; only expose them for the staff member's saved method. */
+function paymentDetailsForMethod(
+  employee: StaffPaymentEmployee,
+  selectedMethod: string,
+): StaffPaymentEmployee {
+  const saved = employee.paymentMethod;
+  const methodMatches =
+    selectedMethod === saved ||
+    (isBankPaymentMethod(selectedMethod) && isBankPaymentMethod(saved));
+
+  if (methodMatches) {
+    return employee;
+  }
+
+  return {
+    ...employee,
+    paypalEmail: "",
+    paypalAccountName: "",
+    bankAccountType: "",
+    bankName: "",
+    accountHolderName: "",
+    accountNumber: "",
+    routingNumber: "",
+    swiftBic: "",
+    iban: "",
+  };
 }
 
 function paymentDetailRows(
