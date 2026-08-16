@@ -177,7 +177,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       includedStaff: local.includedStaff,
       extraStaffRate: local.extraStaffRate,
       extraSeats: local.reportedStaffUsage,
-      extraCharge: local.reportedStaffUsage * local.extraStaffRate,
       usageCap: local.plan.usageCappedAmount,
       activeStaffCount: local.activeStaffCount,
       activeExtraStaff,
@@ -186,7 +185,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     recurringCharge: recurringDetails?.price ?? null,
     recurringInterval: intervalLabel(recurringDetails?.interval),
     usageCapAmount: usageDetails?.cappedAmount ?? null,
-    usageFee: usageDetails?.balanceUsed ?? null,
     usageRemaining:
       usageCap > 0 ? Math.max(0, usageCap - usageUsed) : null,
     usageTerms: usageDetails?.terms ?? null,
@@ -204,7 +202,6 @@ export default function UsagePage() {
     recurringCharge,
     recurringInterval,
     usageCapAmount,
-    usageFee,
     usageRemaining,
     usageTerms,
     usageRecordTotal,
@@ -262,9 +259,7 @@ export default function UsagePage() {
                 <s-stack direction="block" gap="small-200">
                   <s-text color="subdued">Usage fee</s-text>
                   <s-heading>
-                    {subscription
-                      ? formatUsd(usageRecordTotal || local.extraCharge)
-                      : formatUsd(local.extraCharge)}
+                    {subscription ? formatUsd(usageRecordTotal) : formatUsd(0)}
                   </s-heading>
                   <s-text color="subdued">Subscribed extras this period</s-text>
                 </s-stack>
