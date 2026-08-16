@@ -2637,7 +2637,7 @@
       "id": "ST140",
       "taskId": "T012",
       "title": "Serve clock-in/out selfie photos in admin staff detail",
-      "description": "Add authenticated time-entry photo route so POS selfies stored as data URLs render in the staff attendance table and modal.",
+      "description": "Add authenticated time-entry photo route and preserve embedded Admin query params so POS selfies stored as data URLs render in the staff attendance table and modal.",
       "status": "completed",
       "priority": "high",
       "dependencies": ["ST068"],
@@ -2646,11 +2646,12 @@
         "Staff detail attendance thumbnails and Clock photos modal load without 404"
       ],
       "files": [
+        "app/routes/app.staff.$employeeId._index.tsx",
         "app/routes/app.staff.$employeeId.time-entry.$timeEntryId.photo.tsx",
         "app/services/clock-photo.server.ts",
         "app/services/clock-photo.server.test.ts"
       ],
-      "lastUpdated": "2026-08-16T23:40:00.000Z"
+      "lastUpdated": "2026-08-16T23:45:00.000Z"
     }
   ]
 }
