@@ -7,7 +7,6 @@ import { authenticate } from "../shopify.server";
 import { getShopBilling } from "../services/billing.server";
 import { ensureShop } from "../services/workforce.server";
 import ChatraWidget from "../components/ChatraWidget";
-import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -29,14 +28,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   const shopDomain = shopFromDest(session.shop).toLowerCase();
-  const shopHandle = shopDomain.replace(/\.myshopify\.com$/i, "");
-  const shopRecord = await prisma.shop.findUnique({
-    where: { domain: shopDomain },
-    select: { name: true },
-  });
-  const savedName = shopRecord?.name?.trim();
-  const shopName =
-    savedName && savedName.toLowerCase() !== shopDomain ? savedName : shopHandle;
+  const shopName = shopDomain.replace(/\.myshopify\.com$/i, "");
 
   // eslint-disable-next-line no-undef
   return {

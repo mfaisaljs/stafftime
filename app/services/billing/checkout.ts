@@ -129,7 +129,7 @@ export async function restoreEmbeddedBillingParams(request: Request) {
   throw redirect(`${url.pathname}?${url.searchParams.toString()}`);
 }
 
-/** Top-level session-token bounce after billing: send the merchant back into Admin. */
+/** Top-level session-token bounce: send the merchant back into Admin instead of a blank 200. */
 export function redirectSessionTokenToAdmin(request: Request) {
   const url = new URL(request.url);
   if (!url.pathname.endsWith("/auth/session-token")) {
@@ -148,12 +148,12 @@ export function redirectSessionTokenToAdmin(request: Request) {
 
   let reloadUrl: URL;
   try {
-    reloadUrl = new URL(reload);
+    reloadUrl = new URL(reload, url.origin);
   } catch {
     return;
   }
 
-  if (!reloadUrl.pathname.startsWith("/app/billing")) {
+  if (!reloadUrl.pathname.startsWith("/app")) {
     return;
   }
 

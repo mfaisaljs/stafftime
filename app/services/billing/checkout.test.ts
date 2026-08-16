@@ -6,6 +6,7 @@ import {
   isShopifyBillingTest,
   nextSubscribedExtraSeats,
   parseCheckoutPlanHandle,
+  redirectSessionTokenToAdmin,
 } from "./checkout";
 
 describe("billing checkout helpers", () => {
@@ -66,6 +67,29 @@ describe("billing checkout helpers", () => {
       delete process.env.SHOPIFY_BILLING_TEST;
     } else {
       process.env.SHOPIFY_BILLING_TEST = previous;
+    }
+  });
+
+  it("sends session-token bounces for any /app route back into Admin", () => {
+    const previousKey = process.env.SHOPIFY_API_KEY;
+    process.env.SHOPIFY_API_KEY = "test-api-key";
+    const request = new Request(
+      "https://example.test/auth/session-token?shop=spaceraceplayground.myshopify.com&shopify-reload=https%3A%2F%2Fexample.test%2Fapp%2Fstaff%3Fembedded%3D1",
+    );
+    try {
+      redirectSessionTokenToAdmin(request);
+      throw new Error("expected redirect");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Response);
+      expect((error as Response).headers.get("Location")).toBe(
+        "https://admin.shopify.com/store/spaceraceplayground/apps/test-api-key/app/staff?embedded=1",
+      );
+    } finally {
+      if (previousKey) {
+        process.env.SHOPIFY_API_KEY = previousKey;
+      } else {
+        delete process.env.SHOPIFY_API_KEY;
+      }
     }
   });
 

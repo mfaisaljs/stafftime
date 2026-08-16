@@ -2404,6 +2404,26 @@
         "app/root.tsx"
       ],
       "lastUpdated": "2026-08-16T15:48:00.000Z"
+    },
+    {
+      "id": "ST128",
+      "taskId": "T018",
+      "title": "Fix blank 200 on embedded route changes",
+      "description": "Session-token shopify-reload for any /app path returns to Admin instead of an empty 200 bounce page.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST118"],
+      "acceptanceCriteria": [
+        "/auth/session-token with shopify-reload=/app/staff redirects to Admin staff URL",
+        "App layout loader no longer queries Prisma on every navigation"
+      ],
+      "files": [
+        "app/services/billing/checkout.ts",
+        "app/routes/auth.$.tsx",
+        "app/routes/app.tsx",
+        "app/services/billing/checkout.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T15:52:00.000Z"
     }
   ]
 }

@@ -8,6 +8,7 @@
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
   "lastUpdated": "2026-08-16T15:26:00.000Z",
   "notes": [
+    "ST128 complete: session-token bounces for /app/staff and other app routes redirect into Admin instead of a blank 200.",
     "ST127 complete: Chatra visitor profile shows store name and myshopify domain.",
     "ST126 complete: app name is Trubuild: Staff Management; handle is trubuild-staff-management.",
     "ST125 complete: spaceraceplayground always uses Shopify test billing; other shops read SHOPIFY_BILLING_TEST.",

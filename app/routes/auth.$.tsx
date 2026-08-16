@@ -48,8 +48,8 @@ function ensureAuthSearchParams(request: Request) {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await redirectBillingExitIframe(request);
-  redirectSessionTokenToAdmin(request);
   ensureAuthSearchParams(request);
+  redirectSessionTokenToAdmin(request);
   await restoreEmbeddedBillingParams(request);
   await authenticate.admin(request);
 
