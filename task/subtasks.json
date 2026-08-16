@@ -2521,6 +2521,35 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-16T16:35:00.000Z"
+    },
+    {
+      "id": "ST134",
+      "taskId": "T015",
+      "title": "Save bar forms show Shopify admin toasts",
+      "description": "Add useSaveBarToast and useQueryParamToast so every data-save-bar save shows toast feedback instead of success banners.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "Shared showAdminToast utility uses shopify.toast",
+        "Save-bar routes use useSaveBarToast on action success/error",
+        "Redirect-after-save flows toast via query params on destination pages"
+      ],
+      "files": [
+        "app/utils/admin-toast.ts",
+        "app/hooks/useSaveBarToast.ts",
+        "app/hooks/useQueryParamToast.ts",
+        "app/routes/app.settings.tsx",
+        "app/routes/app.staff.new.tsx",
+        "app/routes/app.staff.$employeeId.edit.tsx",
+        "app/routes/app.payroll.$employeeId.create.tsx",
+        "app/routes/app.time-off.new.tsx",
+        "app/components/time-off/TimeOffPolicyForm.tsx",
+        "app/components/commission-programs/CommissionProgramForm.tsx",
+        "app/components/tasklists/TaskListForm.tsx",
+        ".cursor/rules/shopify-save-bar.mdc"
+      ],
+      "lastUpdated": "2026-08-16T16:45:00.000Z"
     }
   ]
 }

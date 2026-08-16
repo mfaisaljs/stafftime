@@ -67,7 +67,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     },
   });
 
-  return redirect("/app/tasklists");
+  return redirect("/app/tasklists?saved=1");
 };
 
 export default function CreateTaskListPage() {

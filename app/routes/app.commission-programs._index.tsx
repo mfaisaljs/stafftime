@@ -11,6 +11,7 @@ import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { FileText, Plus, Tag, ToggleRight, Type, User, Users } from "lucide-react";
 import { authenticate } from "../shopify.server";
+import { useQueryParamToast } from "../hooks/useQueryParamToast";
 import prisma from "../db.server";
 
 type ProgramRow = {
@@ -82,21 +83,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function CommissionProgramsIndex() {
   const { programs } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
-  const created = searchParams.get("created") === "1";
-  const updated = searchParams.get("updated") === "1";
   const fetcher = useFetcher();
   const navigate = useNavigate();
+
+  useQueryParamToast({
+    created: "Commission program created.",
+    updated: "Commission program updated.",
+  });
 
   return (
     <AppPage heading="Commission Programs" inlineSize="large">
       <div className="commission-page">
-        {created && (
-          <s-banner tone="success" heading="Commission program created." />
-        )}
-        {updated && (
-          <s-banner tone="success" heading="Commission program updated." />
-        )}
-
         <div className="commission-header">
           <Link className="button-link" to="/app/commission-programs/new">
             <s-button variant="primary">

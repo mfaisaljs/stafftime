@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
+import { useQueryParamToast } from "../hooks/useQueryParamToast";
 import { AppPage } from "../components/AppPage";
 import { Plus } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -168,6 +169,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function PayrollIndexPage() {
   const { rows } = useLoaderData<typeof loader>();
+
+  useQueryParamToast({
+    saved: "Payroll payment saved.",
+  });
 
   return (
     <AppPage heading="Payroll" inlineSize="large">

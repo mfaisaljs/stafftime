@@ -17,6 +17,7 @@ import { CircleHelp, Copy, Info } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAdminShop } from "../services/admin.server";
+import { useSaveBarToast } from "../hooks/useSaveBarToast";
 import prisma from "../db.server";
 
 const WEEKDAYS = [
@@ -133,6 +134,7 @@ export default function SettingsPage() {
   const { settings, portalUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
+  useSaveBarToast(actionData);
   const dirtyInputRef = useRef<HTMLInputElement>(null);
   const [allowEarlyClockIn, setAllowEarlyClockIn] = useState(
     settings.allowEarlyClockIn,
@@ -161,13 +163,6 @@ export default function SettingsPage() {
 
   return (
     <AppPage heading="Settings" inlineSize="large">
-      {actionData && "error" in actionData && actionData.error && (
-        <s-banner heading={actionData.error} tone="critical" />
-      )}
-      {actionData && "success" in actionData && actionData.success && (
-        <s-banner heading={actionData.success} tone="success" />
-      )}
-
       <Form method="post" data-save-bar data-discard-confirmation>
         <input
           ref={dirtyInputRef}

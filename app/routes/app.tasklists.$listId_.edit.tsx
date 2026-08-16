@@ -153,7 +153,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     }
   });
 
-  return redirect("/app/tasklists");
+  return redirect("/app/tasklists?saved=1");
 };
 
 export default function EditTaskListPage() {

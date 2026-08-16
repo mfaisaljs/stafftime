@@ -1,6 +1,7 @@
 import { Form } from "react-router";
 import { AppPage } from "../AppPage";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useSaveBarToast } from "../../hooks/useSaveBarToast";
 import {
   AlertCircle,
   CalendarDays,
@@ -143,6 +144,10 @@ export default function CommissionProgramForm({
 
   const pageHeading =
     mode === "edit" ? "Edit Commission Program" : "Create Commission Program";
+
+  useSaveBarToast(
+    actionError && !staffErrorFromAction ? { error: actionError } : null,
+  );
 
   useEffect(() => {
     if (!dateRangeOpen) return;
@@ -335,9 +340,6 @@ export default function CommissionProgramForm({
 
   return (
     <AppPage heading={pageHeading} inlineSize="large">
-      {actionError && !staffErrorFromAction && (
-        <s-banner tone="critical" heading={actionError} />
-      )}
       <Form
         method="post"
         data-save-bar

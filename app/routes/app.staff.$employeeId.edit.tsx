@@ -15,6 +15,7 @@ import {
   getEmployeeLocations,
 } from "../services/admin.server";
 import { updateEmployee } from "../services/workforce.server";
+import { useSaveBarToast } from "../hooks/useSaveBarToast";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -98,6 +99,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 export default function EditStaffPage() {
   const { employee, locations } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  useSaveBarToast(actionData);
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState(employee.payrollType);
   const [paymentMethod, setPaymentMethod] = useState(
@@ -170,12 +172,6 @@ export default function EditStaffPage() {
   return (
     <AppPage heading="Edit Shopify Staff" inlineSize="large">
       <s-section heading={`${employee.firstName} ${employee.lastName}`}>
-        {actionData?.error && (
-          <s-banner heading={actionData.error} tone="critical" />
-        )}
-        {actionData?.success && (
-          <s-banner heading={actionData.success} tone="success" />
-        )}
         <Form method="post" data-save-bar>
           <s-stack direction="block" gap="large">
             <FormSection title="Basic Information" description="Update contact information.">

@@ -21,6 +21,7 @@ import {
 } from "../services/billing.server";
 import { subscribedSeatsFullMessage } from "../services/billing/plans";
 import { createEmployee } from "../services/workforce.server";
+import { useSaveBarToast } from "../hooks/useSaveBarToast";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -125,6 +126,9 @@ export default function StaffPage() {
   const { locations, atCap, atSubscribedCap, subscribedSeats, staffLimit, planName, nextPlanName, nextPlanMax } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  useSaveBarToast(
+    actionData?.atCap || actionData?.atSubscribedCap ? null : actionData,
+  );
   const showCapError = atCap || actionData?.atCap;
   const showSubscribedCapError = atSubscribedCap || actionData?.atSubscribedCap;
   const [pin, setPin] = useState("");
@@ -188,12 +192,6 @@ export default function StaffPage() {
             {nextPlanName ? `Upgrade to ${nextPlanName}` : "View plans"}
           </s-button>
         </s-banner>
-      )}
-      {actionData?.error && !actionData.atCap && !actionData.atSubscribedCap && (
-        <s-banner heading={actionData.error} tone="critical" />
-      )}
-      {actionData?.success && (
-        <s-banner heading={actionData.success} tone="success" />
       )}
       <Form
         method="post"

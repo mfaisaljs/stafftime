@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
+import { useSaveBarToast } from "../../hooks/useSaveBarToast";
+import { useSaveBarToast } from "../../hooks/useSaveBarToast";
 import { Form } from "react-router";
 import { AppPage } from "../AppPage";
 import { User } from "lucide-react";
@@ -48,6 +50,8 @@ export function TimeOffPolicyForm({
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const pageHeading = mode === "edit" ? "Edit Policy" : "Create Policy";
 
+  useSaveBarToast(actionError ? { error: actionError } : null);
+
   const markDirty = () => {
     if (dirtyInputRef.current) {
       dirtyInputRef.current.value = String(Date.now());
@@ -76,8 +80,6 @@ export function TimeOffPolicyForm({
 
   return (
     <AppPage heading={pageHeading} inlineSize="large">
-      {actionError && <s-banner heading={actionError} tone="critical" />}
-
       <Form
         method="post"
         data-save-bar

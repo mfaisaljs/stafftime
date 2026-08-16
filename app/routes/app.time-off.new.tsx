@@ -23,6 +23,7 @@ import {
 } from "../services/admin.server";
 import { InlineDateRangeCalendar } from "../components/InlineDateRangeCalendar";
 import { toDateKey } from "../components/DateRangeSelector";
+import { useSaveBarToast } from "../hooks/useSaveBarToast";
 import {
   createApprovedTimeOffRequestForShop,
 } from "../services/time-off-shifts.server";
@@ -121,6 +122,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function CreateTimeOffPage() {
   const { employees, locations, policies } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  useSaveBarToast(actionData);
   const navigation = useNavigation();
   const navigate = useNavigate();
   const isSubmitting = navigation.state === "submitting";
@@ -139,10 +141,6 @@ export default function CreateTimeOffPage() {
 
   return (
     <AppPage heading="Create Time Off" inlineSize="large">
-      {actionData && "error" in actionData && actionData.error && (
-        <s-banner heading={actionData.error} tone="critical" />
-      )}
-
       <Form method="post" data-save-bar>
         <s-stack direction="block" gap="large">
           <FormSection

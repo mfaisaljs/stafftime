@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useSaveBarToast } from "../../hooks/useSaveBarToast";
 import { Form } from "react-router";
 import { AppPage } from "../AppPage";
 import { GripVertical, Plus, X } from "lucide-react";
@@ -70,6 +71,7 @@ export default function TaskListForm({
   initialList = null,
   actionError = null,
 }: TaskListFormProps) {
+  useSaveBarToast(actionError ? { error: actionError } : null);
   const [assignStaff, setAssignStaff] = useState(initialList?.assignStaff ?? true);
   const [assignManagers, setAssignManagers] = useState(
     initialList?.assignManagers ?? false,
@@ -176,8 +178,6 @@ export default function TaskListForm({
 
   return (
     <AppPage heading={pageHeading} inlineSize="large">
-      {actionError && <s-banner heading={actionError} tone="critical" />}
-
       <Form method="post" data-save-bar>
         {Array.from(selectedEmployeeIds).map((id) => (
           <input key={`staff-${id}`} type="hidden" name="employeeIds" value={id} />

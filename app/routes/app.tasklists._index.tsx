@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { useFetcher, useLoaderData, useNavigate } from "react-router";
+import { useQueryParamToast } from "../hooks/useQueryParamToast";
 import { AppPage } from "../components/AppPage";
 import {
   Check,
@@ -89,6 +90,10 @@ export default function TaskListsIndexPage() {
   const fetcher = useFetcher();
   const navigate = useNavigate();
   const isEmpty = taskLists.length === 0;
+
+  useQueryParamToast({
+    saved: "Task list saved.",
+  });
 
   return (
     <AppPage heading="TaskLists" inlineSize="large">

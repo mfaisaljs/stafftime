@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { AppPage } from "../components/AppPage";
 import { Link, useActionData, useFetcher, useLoaderData, useNavigate, useSearchParams } from "react-router";
 import { useEffect, useState } from "react";
+import { useQueryParamToast } from "../hooks/useQueryParamToast";
 import { ArrowUpDown, Search } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -67,7 +68,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   );
 
   return {
-    created: url.searchParams.get("created") === "1",
     status,
     timeOffs: requests.map((request) => ({
       id: request.id,
@@ -144,7 +144,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function TimeOffIndexPage() {
-  const { timeOffs, created, status } = useLoaderData<typeof loader>();
+  const { timeOffs, status } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const fetcher = useFetcher<typeof action>();
   const reviewFeedback = fetcher.data ?? actionData;
@@ -158,6 +158,10 @@ export default function TimeOffIndexPage() {
   const [declineTarget, setDeclineTarget] = useState<
     (typeof timeOffs)[number] | null
   >(null);
+
+  useQueryParamToast({
+    created: "Time off created and approved.",
+  });
 
   const submitReview = (requestId: string, reviewStatus: "APPROVED" | "DECLINED") => {
     const formData = new FormData();
@@ -224,9 +228,6 @@ export default function TimeOffIndexPage() {
         Create Time Off
       </s-button>
 
-      {created && (
-        <s-banner tone="success" heading="Time off created and approved." />
-      )}
       {reviewFeedback && "error" in reviewFeedback && reviewFeedback.error && (
         <s-banner tone="critical" heading={reviewFeedback.error} />
       )}

@@ -1,7 +1,8 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { useLoaderData, useNavigate } from "react-router";
 import { AppPage } from "../components/AppPage";
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useQueryParamToast } from "../hooks/useQueryParamToast";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAdminShop } from "../services/admin.server";
@@ -15,10 +16,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     orderBy: { createdAt: "desc" },
   });
 
-  const url = new URL(request.url);
   return {
-    created: url.searchParams.get("created") === "1",
-    updated: url.searchParams.get("updated") === "1",
     policies: policies.map((policy) => ({
       id: policy.id,
       name: policy.name,
@@ -31,20 +29,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function TimeOffPolicyIndexPage() {
-  const { policies, created, updated } = useLoaderData<typeof loader>();
+  const { policies } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [selected, setSelected] = useState<string[]>([]);
   const allSelected = policies.length > 0 && selected.length === policies.length;
 
-  const showCreated = useMemo(
-    () => created || searchParams.get("created") === "1",
-    [created, searchParams],
-  );
-  const showUpdated = useMemo(
-    () => updated || searchParams.get("updated") === "1",
-    [updated, searchParams],
-  );
+  useQueryParamToast({
+    created: "Policy created.",
+    updated: "Policy updated.",
+  });
 
   const toggleAll = () => {
     setSelected(allSelected ? [] : policies.map((policy) => policy.id));
@@ -68,13 +61,6 @@ export default function TimeOffPolicyIndexPage() {
       >
         Create Policy
       </s-button>
-
-      {showCreated && (
-        <s-banner tone="success" heading="Policy created." />
-      )}
-      {showUpdated && (
-        <s-banner tone="success" heading="Policy updated." />
-      )}
 
       <section className="policy-card">
         <div className="table-scroll">

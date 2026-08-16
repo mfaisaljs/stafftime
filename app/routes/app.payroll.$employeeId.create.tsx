@@ -34,6 +34,7 @@ import {
   getShopSettings,
 } from "../services/settings.server";
 import { SHIFT_STATUS } from "../services/time-off-shifts.server";
+import { useSaveBarToast } from "../hooks/useSaveBarToast";
 import {
   DateRangeSelector,
   defaultDateRangeValue,
@@ -423,12 +424,13 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     }
   });
 
-  return redirect("/app/payroll");
+  return redirect("/app/payroll?saved=1");
 };
 
 export default function CreatePayrollPage() {
   const { employee, overview, commission } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  useSaveBarToast(actionData);
   const navigation = useNavigation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [proofName, setProofName] = useState("");
@@ -525,10 +527,6 @@ export default function CreatePayrollPage() {
 
   return (
     <AppPage heading="Create Payroll" inlineSize="large">
-      {actionData && "error" in actionData && actionData.error && (
-        <s-banner heading={actionData.error} tone="critical" />
-      )}
-
       <Form method="post" encType="multipart/form-data" data-save-bar>
         <s-stack direction="block" gap="large">
           <FormSection
