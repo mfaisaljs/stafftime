@@ -13,6 +13,7 @@ import {
   billingErrorMessage,
   billingReturnUrl,
   parseCheckoutPlanHandle,
+  savePendingBillingCheckout,
 } from "../services/billing/checkout";
 import { ensureShop } from "../services/workforce.server";
 
@@ -58,10 +59,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   try {
+    await savePendingBillingCheckout(session.shop, planHandle, extraSeats);
     await billing.request({
       plan: planHandle,
       isTest: process.env.SHOPIFY_BILLING_TEST !== "false",
-      returnUrl: billingReturnUrl(request, planHandle, session.shop, extraSeats),
+      returnUrl: billingReturnUrl(request, session.shop),
     });
   } catch (error) {
     if (error instanceof Response) {

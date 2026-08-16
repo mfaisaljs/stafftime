@@ -1,5 +1,9 @@
 import type { PlanHandle } from "./plans";
 import { isPlanHandle } from "./plans";
+import prisma from "../../db.server";
+import { shopFromDest } from "../../utils/http.server";
+
+export const MAX_BILLING_RETURN_URL_LENGTH = 255;
 
 export function parseCheckoutPlanHandle(
   value: FormDataEntryValue | null,
@@ -11,41 +15,53 @@ export function parseCheckoutPlanHandle(
   return handle;
 }
 
-export function billingReturnUrl(
-  request: Request,
-  planHandle: PlanHandle,
+export async function savePendingBillingCheckout(
   shop: string,
-  extraSeats = 0,
+  planHandle: PlanHandle,
+  extraSeats: number,
 ) {
+  await prisma.shop.update({
+    where: { domain: shopFromDest(shop).toLowerCase() },
+    data: {
+      pendingBillingPlanHandle: planHandle,
+      pendingBillingExtraSeats: Math.max(0, extraSeats),
+    },
+  });
+}
+
+export async function takePendingBillingCheckout(shop: string) {
+  const domain = shopFromDest(shop).toLowerCase();
+  const record = await prisma.shop.findUnique({ where: { domain } });
+  if (!record?.pendingBillingPlanHandle) {
+    return null;
+  }
+
+  const pending = {
+    planHandle: record.pendingBillingPlanHandle as PlanHandle,
+    extraSeats: record.pendingBillingExtraSeats ?? 0,
+  };
+
+  await prisma.shop.update({
+    where: { domain },
+    data: {
+      pendingBillingPlanHandle: null,
+      pendingBillingExtraSeats: null,
+    },
+  });
+
+  return pending;
+}
+
+export function billingReturnUrl(request: Request, shop: string) {
   const origin = (process.env.SHOPIFY_APP_URL || new URL(request.url).origin).replace(
     /\/$/,
     "",
   );
-  const billingUrl = new URL(`${origin}/app/billing`);
-  billingUrl.searchParams.set("plan_handle", planHandle);
-  billingUrl.searchParams.set("shop", shop);
-
-  if (extraSeats > 0) {
-    billingUrl.searchParams.set("extra_seats", String(extraSeats));
-  }
-
   const requestUrl = new URL(request.url);
   const host = requestUrl.searchParams.get("host");
-  if (host) {
-    billingUrl.searchParams.set("host", host);
-  }
-  const embedded = requestUrl.searchParams.get("embedded");
-  if (embedded) {
-    billingUrl.searchParams.set("embedded", embedded);
-  }
 
-  // After approving a charge Shopify loads the return URL outside the embedded
-  // iframe. exit-iframe breaks out and sends the merchant back to /app/billing.
   const exitUrl = new URL(`${origin}/auth/exit-iframe`);
-  exitUrl.searchParams.set(
-    "exitIframe",
-    `${billingUrl.pathname}${billingUrl.search}`,
-  );
+  exitUrl.searchParams.set("exitIframe", "/app/billing");
   exitUrl.searchParams.set("shop", shop);
   if (host) {
     exitUrl.searchParams.set("host", host);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   billingErrorMessage,
   billingReturnUrl,
+  MAX_BILLING_RETURN_URL_LENGTH,
   parseCheckoutPlanHandle,
 } from "./checkout";
 
@@ -12,21 +13,31 @@ describe("billing checkout helpers", () => {
     expect(parseCheckoutPlanHandle("")).toBeNull();
   });
 
-  it("builds the billing welcome return URL with embedded context", () => {
+  it("builds a short exit-iframe billing return URL with embedded context", () => {
+    const previousAppUrl = process.env.SHOPIFY_APP_URL;
+    delete process.env.SHOPIFY_APP_URL;
     const request = new Request(
       "https://example.test/app/pricing?embedded=1&host=abc123",
     );
-    expect(billingReturnUrl(request, "free", "test.myshopify.com")).toBe(
-      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling%3Fplan_handle%3Dfree%26shop%3Dtest.myshopify.com%26host%3Dabc123%26embedded%3D1&shop=test.myshopify.com&host=abc123",
+    const url = billingReturnUrl(request, "test.myshopify.com");
+    if (previousAppUrl) {
+      process.env.SHOPIFY_APP_URL = previousAppUrl;
+    }
+    expect(url).toBe(
+      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling&shop=test.myshopify.com&host=abc123",
     );
-    expect(billingReturnUrl(request, "workforce", "test.myshopify.com")).toBe(
-      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling%3Fplan_handle%3Dworkforce%26shop%3Dtest.myshopify.com%26host%3Dabc123%26embedded%3D1&shop=test.myshopify.com&host=abc123",
+    expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
+  });
+
+  it("keeps return URL under Shopify limit with ngrok and long host", () => {
+    const request = new Request(
+      "https://largely-main-ringtail.ngrok-free.app/app/pricing?embedded=1&host=YWRtaW4uc2hvcGlmeS5jb20vc3RvcmUvc3BhY2VyYWNlcGxheWdyb3VuZA",
     );
-    expect(
-      billingReturnUrl(request, "free", "test.myshopify.com", 2),
-    ).toBe(
-      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling%3Fplan_handle%3Dfree%26shop%3Dtest.myshopify.com%26extra_seats%3D2%26host%3Dabc123%26embedded%3D1&shop=test.myshopify.com&host=abc123",
+    const url = billingReturnUrl(
+      request,
+      "spaceraceplayground.myshopify.com",
     );
+    expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
   });
 
   it("formats billing API errors", () => {

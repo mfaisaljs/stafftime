@@ -2105,6 +2105,29 @@
         ".env"
       ],
       "lastUpdated": "2026-08-16T13:35:00.000Z"
+    },
+    {
+      "id": "ST111",
+      "taskId": "T018",
+      "title": "Short billing return URL under 255 chars",
+      "description": "Shopify billing returnUrl max 255 chars; plan/extra seats stored as pending checkout on Shop before billing.request.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST110"],
+      "acceptanceCriteria": [
+        "billingReturnUrl is exit-iframe to /app/billing only, under 255 chars",
+        "Pending plan and extra seats saved before checkout and consumed on /app/billing",
+        "Subscribe no longer fails with return url too long"
+      ],
+      "files": [
+        "app/services/billing/checkout.ts",
+        "app/services/billing/checkout.test.ts",
+        "app/routes/app.pricing.tsx",
+        "app/routes/app.billing.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260816060000_shop_pending_billing/migration.sql"
+      ],
+      "lastUpdated": "2026-08-16T13:40:00.000Z"
     }
   ]
 }

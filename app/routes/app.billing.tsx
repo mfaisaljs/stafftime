@@ -7,6 +7,7 @@ import {
   saveShopifyShopGid,
   syncSubscriptionFromPlanHandle,
 } from "../services/billing.server";
+import { takePendingBillingCheckout } from "../services/billing/checkout";
 import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
 
@@ -22,7 +23,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session, redirect: shopifyRedirect } =
     await authenticate.admin(request);
   const url = new URL(request.url);
-  const planHandle = url.searchParams.get("plan_handle");
+  let planHandle = url.searchParams.get("plan_handle");
+  let extraSeats = Math.max(0, Number(url.searchParams.get("extra_seats") ?? 0));
+
+  if (!planHandle) {
+    const pending = await takePendingBillingCheckout(session.shop);
+    if (pending) {
+      planHandle = pending.planHandle;
+      extraSeats = pending.extraSeats;
+    }
+  }
 
   try {
     const response = await admin.graphql(SHOP_GID_QUERY);
@@ -39,7 +49,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   if (planHandle) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
-    const extraSeats = Math.max(0, Number(url.searchParams.get("extra_seats") ?? 0));
     if (extraSeats > 0) {
       await prisma.shop.update({
         where: { domain: shopFromDest(session.shop).toLowerCase() },

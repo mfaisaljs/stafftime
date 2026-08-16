@@ -87,6 +87,8 @@ model Shop {
   shopifyShopGid     String?
   reportedStaffUsage Int       @default(0)
   usageCycleKey      String?
+  pendingBillingPlanHandle String?
+  pendingBillingExtraSeats Int?
 
   locations           StoreLocation[]
   employees           Employee[]
