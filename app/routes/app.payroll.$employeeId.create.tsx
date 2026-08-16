@@ -12,7 +12,7 @@ import {
   useLoaderData,
   useNavigation,
 } from "react-router";
-import { Upload, User } from "lucide-react";
+import { Building2, Upload, User, Wallet } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
@@ -217,8 +217,20 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       hourlyRate: employee.hourlyRate,
       salaryAmount: employee.salaryAmount,
       currency: employee.currency,
-      paymentMethod: employee.paymentMethod || "PAYPAL",
+      paymentMethod:
+        employee.paymentMethod === "PAYSTACK"
+          ? "REVOLUT"
+          : employee.paymentMethod || "PAYPAL",
       rateLabel: formatRateLabel(employee),
+      paypalEmail: employee.paypalEmail ?? "",
+      paypalAccountName: employee.paypalAccountName ?? "",
+      bankAccountType: employee.bankAccountType ?? "",
+      bankName: employee.bankName ?? "",
+      accountHolderName: employee.accountHolderName ?? "",
+      accountNumber: employee.accountNumber ?? "",
+      routingNumber: employee.routingNumber ?? "",
+      swiftBic: employee.swiftBic ?? "",
+      iban: employee.iban ?? "",
     },
     overview: {
       hoursWorked: formatDurationHms(totalWorkedSeconds, hourFormat),
@@ -403,6 +415,7 @@ export default function CreatePayrollPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [proofName, setProofName] = useState("");
   const [paymentType, setPaymentType] = useState("SALARY");
+  const [paymentMethod, setPaymentMethod] = useState(employee.paymentMethod);
   const [amount, setAmount] = useState(overview.remaining.toFixed(2));
   const [period, setPeriod] = useState<DateRangeValue>(() =>
     defaultDateRangeValue(2),
@@ -751,7 +764,13 @@ export default function CreatePayrollPage() {
           >
             <label className="field-label">
               Payment Method
-              <select name="paymentMethod" defaultValue={employee.paymentMethod}>
+              <select
+                name="paymentMethod"
+                value={paymentMethod}
+                onChange={(event) =>
+                  setPaymentMethod(event.currentTarget.value)
+                }
+              >
                 {PAYMENT_METHOD_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -759,6 +778,11 @@ export default function CreatePayrollPage() {
                 ))}
               </select>
             </label>
+
+            <StaffPaymentDetailsCard
+              employee={employee}
+              paymentMethod={paymentMethod}
+            />
 
             <label className="field-label">
               Additional Notes
@@ -846,6 +870,332 @@ function FormSection({
       <div className="form-section-card">{children}</div>
     </div>
   );
+}
+
+type StaffPaymentEmployee = {
+  id: string;
+  currency: string;
+  paypalEmail: string;
+  paypalAccountName: string;
+  bankAccountType: string;
+  bankName: string;
+  accountHolderName: string;
+  accountNumber: string;
+  routingNumber: string;
+  swiftBic: string;
+  iban: string;
+};
+
+function StaffPaymentDetailsCard({
+  employee,
+  paymentMethod,
+}: {
+  employee: StaffPaymentEmployee;
+  paymentMethod: string;
+}) {
+  const meta = paymentMethodMeta(paymentMethod);
+  const rows = paymentDetailRows(employee, paymentMethod);
+  const incomplete = !paymentDetailsComplete(employee, paymentMethod);
+  const Icon = meta.icon;
+
+  return (
+    <div className="payment-details-panel">
+      <div className="payment-details-header">
+        <div>
+          <strong>Staff Payment Details</strong>
+          <span>Review payment details before processing</span>
+        </div>
+        <span className="payment-details-badge">{meta.label}</span>
+      </div>
+
+      <div className="payment-details-method">
+        <span className="payment-details-method-icon" aria-hidden="true">
+          <Icon size={16} />
+        </span>
+        <div>
+          <strong>{meta.detailsTitle}</strong>
+          <span>{meta.detailsDescription}</span>
+        </div>
+      </div>
+
+      {rows.length > 0 ? (
+        <div className="payment-details-card">
+          <h4>{meta.sectionTitle}</h4>
+          <dl className="payment-details-list">
+            {rows.map((row) => {
+              const display = displayPaymentValue(row.value, row.emptyDisplay);
+              return (
+                <div key={row.label} className="payment-details-row">
+                  <dt>{row.label}</dt>
+                  <dd
+                    className={
+                      display === "Not set" || display === "—"
+                        ? "muted"
+                        : undefined
+                    }
+                  >
+                    {display}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      ) : (
+        <div className="payment-details-card">
+          <p className="payment-details-empty">
+            No extra account details are required for {meta.label}.
+          </p>
+        </div>
+      )}
+
+      {incomplete ? (
+        <div className="payment-details-warning">
+          <div>
+            <strong>Incomplete payment details</strong>
+            <p>
+              Some required payment details are missing. Please update the staff
+              profile.
+            </p>
+          </div>
+          <s-button
+            href={`/app/staff/${employee.id}/edit`}
+            variant="secondary"
+          >
+            Update staff profile
+          </s-button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function paymentMethodMeta(method: string) {
+  const label =
+    PAYMENT_METHOD_OPTIONS.find((option) => option.value === method)?.label ??
+    method;
+
+  switch (method) {
+    case "BANK_TRANSFER":
+      return {
+        label,
+        icon: Building2,
+        detailsTitle: "Bank Transfer Details",
+        detailsDescription: "Direct bank transfer to staff account",
+        sectionTitle: "Bank Account Information",
+      };
+    case "DIRECT_DEPOSIT":
+      return {
+        label,
+        icon: Building2,
+        detailsTitle: "Direct Deposit Details",
+        detailsDescription: "Deposit directly to staff bank account",
+        sectionTitle: "Bank Account Information",
+      };
+    case "PAYPAL":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "PayPal Details",
+        detailsDescription: "Pay via PayPal to staff account",
+        sectionTitle: "PayPal Account Information",
+      };
+    case "STRIPE":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Stripe Details",
+        detailsDescription: "Pay via Stripe to staff account",
+        sectionTitle: "Stripe Account Information",
+      };
+    case "WISE":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Wise Details",
+        detailsDescription: "Pay via Wise to staff account",
+        sectionTitle: "Wise Account Information",
+      };
+    case "PAYONEER":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Payoneer Details",
+        detailsDescription: "Pay via Payoneer to staff account",
+        sectionTitle: "Payoneer Account Information",
+      };
+    case "REVOLUT":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Revolut Details",
+        detailsDescription: "Pay via Revolut to staff account",
+        sectionTitle: "Revolut Account Information",
+      };
+    case "VENMO":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Venmo Details",
+        detailsDescription: "Pay via Venmo to staff account",
+        sectionTitle: "Venmo Account Information",
+      };
+    case "SQUARE":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Cash App Details",
+        detailsDescription: "Pay via Cash App to staff account",
+        sectionTitle: "Cash App Account Information",
+      };
+    case "CASH":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Cash Payment",
+        detailsDescription: "Pay staff in cash",
+        sectionTitle: "Payment Information",
+      };
+    case "CHECK":
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: "Check Payment",
+        detailsDescription: "Pay staff by check",
+        sectionTitle: "Payment Information",
+      };
+    default:
+      return {
+        label,
+        icon: Wallet,
+        detailsTitle: `${label} Details`,
+        detailsDescription: `Pay via ${label}`,
+        sectionTitle: "Account Information",
+      };
+  }
+}
+
+function paymentDetailRows(
+  employee: StaffPaymentEmployee,
+  method: string,
+): Array<{ label: string; value: string; emptyDisplay?: string }> {
+  const bankTypeLabel =
+    employee.bankAccountType === "INTERNATIONAL"
+      ? "International (SWIFT)"
+      : employee.bankAccountType === "DOMESTIC"
+        ? "Domestic"
+        : "";
+
+  switch (method) {
+    case "BANK_TRANSFER":
+    case "DIRECT_DEPOSIT": {
+      const rows: Array<{
+        label: string;
+        value: string;
+        emptyDisplay?: string;
+      }> = [
+        { label: "Bank name", value: employee.bankName },
+        {
+          label: "Account type",
+          value: bankTypeLabel,
+          emptyDisplay: "—",
+        },
+        { label: "Account holder", value: employee.accountHolderName },
+        { label: "Account number", value: employee.accountNumber },
+      ];
+      if (employee.bankAccountType === "DOMESTIC") {
+        rows.push({ label: "Routing number", value: employee.routingNumber });
+      } else {
+        rows.push(
+          { label: "SWIFT/BIC", value: employee.swiftBic },
+          { label: "IBAN", value: employee.iban },
+        );
+      }
+      return rows;
+    }
+    case "PAYPAL":
+      return [
+        { label: "PayPal email", value: employee.paypalEmail },
+        { label: "Account name", value: employee.paypalAccountName },
+      ];
+    case "STRIPE":
+      return [
+        { label: "Account email", value: employee.paypalEmail },
+        { label: "Account ID", value: employee.paypalAccountName },
+      ];
+    case "WISE":
+      return [
+        { label: "Wise email", value: employee.paypalEmail },
+        { label: "Account holder", value: employee.paypalAccountName },
+        { label: "Currency", value: employee.currency },
+      ];
+    case "PAYONEER":
+      return [
+        { label: "Payoneer email", value: employee.paypalEmail },
+        { label: "Account name", value: employee.paypalAccountName },
+      ];
+    case "REVOLUT":
+      return [
+        { label: "Email/Phone", value: employee.paypalEmail },
+        { label: "Username", value: employee.paypalAccountName },
+      ];
+    case "VENMO":
+      return [
+        { label: "Username", value: employee.paypalAccountName },
+        { label: "Phone number", value: employee.paypalEmail },
+      ];
+    case "SQUARE":
+      return [
+        { label: "$Cashtag", value: employee.paypalAccountName },
+        { label: "Phone/Email", value: employee.paypalEmail },
+      ];
+    default:
+      return [];
+  }
+}
+
+function paymentDetailsComplete(
+  employee: StaffPaymentEmployee,
+  method: string,
+) {
+  const has = (value: string) => Boolean(value.trim());
+
+  switch (method) {
+    case "CASH":
+    case "CHECK":
+      return true;
+    case "BANK_TRANSFER":
+    case "DIRECT_DEPOSIT":
+      if (
+        !has(employee.bankName) ||
+        !has(employee.accountHolderName) ||
+        !has(employee.accountNumber)
+      ) {
+        return false;
+      }
+      if (employee.bankAccountType === "DOMESTIC") {
+        return has(employee.routingNumber);
+      }
+      return has(employee.swiftBic) && has(employee.iban);
+    case "PAYPAL":
+    case "STRIPE":
+    case "WISE":
+    case "PAYONEER":
+    case "REVOLUT":
+      return has(employee.paypalEmail);
+    case "VENMO":
+      return has(employee.paypalAccountName) || has(employee.paypalEmail);
+    case "SQUARE":
+      return has(employee.paypalAccountName) || has(employee.paypalEmail);
+    default:
+      return true;
+  }
+}
+
+function displayPaymentValue(value: string, emptyDisplay = "Not set") {
+  const trimmed = value.trim();
+  if (!trimmed) return emptyDisplay;
+  return trimmed;
 }
 
 function MetricTile({
@@ -1255,6 +1605,155 @@ const CREATE_PAYROLL_STYLES = `
     justify-content: flex-end;
   }
 
+  .payment-details-panel {
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    display: grid;
+    gap: 12px;
+    overflow: hidden;
+    padding: 16px;
+  }
+
+  .payment-details-header {
+    align-items: start;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .payment-details-header > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .payment-details-header span {
+    color: #616161;
+    font-size: 13px;
+  }
+
+  .payment-details-badge {
+    background: #eaf7ee;
+    border-radius: 999px;
+    color: #0d7a3d;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+  }
+
+  .payment-details-method {
+    align-items: center;
+    background: #f6f6f7;
+    border-radius: 10px;
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .payment-details-method-icon {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    color: #4a4a4a;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .payment-details-method > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .payment-details-method span {
+    color: #616161;
+    font-size: 12px;
+  }
+
+  .payment-details-card {
+    background: #fafafa;
+    border: 1px solid #ececec;
+    border-radius: 10px;
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .payment-details-card h4 {
+    color: #303030;
+    font-size: 13px;
+    font-weight: 650;
+    margin: 0;
+  }
+
+  .payment-details-empty {
+    color: #616161;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .payment-details-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .payment-details-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(110px, 150px) 1fr;
+  }
+
+  .payment-details-row dt {
+    color: #616161;
+    font-size: 13px;
+  }
+
+  .payment-details-row dd {
+    color: #303030;
+    font-size: 13px;
+    margin: 0;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .payment-details-row dd.muted {
+    color: #8c8c8c;
+  }
+
+  .payment-details-warning {
+    align-items: center;
+    background: #fff6e8;
+    border: 1px solid #f3d9a8;
+    border-radius: 10px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 12px 14px;
+  }
+
+  .payment-details-warning > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .payment-details-warning strong {
+    color: #8a5a00;
+    font-size: 13px;
+  }
+
+  .payment-details-warning p {
+    color: #8a5a00;
+    font-size: 12px;
+    margin: 0;
+  }
+
   @media (max-width: 900px) {
     .form-section,
     .overview-metrics,
@@ -1270,6 +1769,19 @@ const CREATE_PAYROLL_STYLES = `
 
     .form-actions {
       justify-content: stretch;
+    }
+
+    .payment-details-warning {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .payment-details-row {
+      grid-template-columns: 1fr;
+    }
+
+    .payment-details-row dd {
+      text-align: left;
     }
   }
 `;

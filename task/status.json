@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-16T02:25:00.000Z",
+  "lastUpdated": "2026-08-16T02:30:00.000Z",
   "notes": [
+    "Updated: Create Payroll shows Staff Payment Details card for the selected method, with incomplete warning + Update staff profile.",
     "Updated: Square payment fields use Cash App $Cashtag and Phone/Email.",
     "Updated: Venmo payment fields are Username (@username) and Phone Number.",
     "Updated: payment method Paystack replaced with Revolut (Email/Phone + Username fields).",
