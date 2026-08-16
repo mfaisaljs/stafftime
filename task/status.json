@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
-  "lastUpdated": "2026-08-16T14:55:00.000Z",
+  "lastUpdated": "2026-08-16T15:20:00.000Z",
   "notes": [
+    "ST122 complete: adding extras on the current plan no longer re-requests the $24.99 subscription; usage record + local seat count only.",
     "ST121 complete: upgrading or changing plans resets reportedStaffUsage; same-plan extra adds still stack.",
     "ST120 complete: usage caps Free $301, Small Business $275, Workforce $650, Enterprise $2100.",
     "ST119 complete: Free usage cap is $300 (50 extras x $6); Free max staff is 52.",

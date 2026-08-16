@@ -27,6 +27,13 @@ export function parseCheckoutPlanHandle(
   return handle;
 }
 
+export async function saveSubscribedExtraSeats(shop: string, extraSeats: number) {
+  await prisma.shop.update({
+    where: { domain: shopFromDest(shop).toLowerCase() },
+    data: { reportedStaffUsage: Math.max(0, extraSeats) },
+  });
+}
+
 export async function savePendingBillingCheckout(
   shop: string,
   planHandle: PlanHandle,

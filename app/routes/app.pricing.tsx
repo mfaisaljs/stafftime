@@ -16,6 +16,7 @@ import {
   nextSubscribedExtraSeats,
   parseCheckoutPlanHandle,
   savePendingBillingCheckout,
+  saveSubscribedExtraSeats,
 } from "../services/billing/checkout";
 import { ensureShop } from "../services/workforce.server";
 
@@ -61,6 +62,31 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (planHandle === FREE_PLAN_HANDLE && extraSeats === 0) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
     await ensureUsageCycle(session.shop);
+    return shopifyRedirect("/app/staff?billing=updated");
+  }
+
+  const alreadyOnThisPlan =
+    planHandle === currentBilling.planHandle &&
+    !currentBilling.needsPlanSelection &&
+    currentBilling.subscriptionStatus !== "none";
+
+  if (alreadyOnThisPlan && seatsToAdd > 0) {
+    await saveSubscribedExtraSeats(session.shop, extraSeats);
+    try {
+      await billing.createUsageRecord({
+        description: `${seatsToAdd} extra staff seat${seatsToAdd === 1 ? "" : "s"}`,
+        price: {
+          amount: seatsToAdd * currentBilling.extraStaffRate,
+          currencyCode: "USD",
+        },
+        isTest: process.env.SHOPIFY_BILLING_TEST !== "false",
+      });
+    } catch (error) {
+      if (error instanceof Response) {
+        throw error;
+      }
+      // Capacity is saved even if Shopify usage recording is unavailable.
+    }
     return shopifyRedirect("/app/staff?billing=updated");
   }
 
