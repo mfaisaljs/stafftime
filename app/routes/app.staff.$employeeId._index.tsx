@@ -8,7 +8,6 @@ import {
   BadgePercent,
   BarChart2,
   Briefcase,
-  Camera,
   CheckCircle,
   Clock,
   Coins,
@@ -321,8 +320,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       firstIn: formatClockTime(entry.clockInAt, timeFormat),
       lastOut: entry.clockOutAt ? formatClockTime(entry.clockOutAt, timeFormat) : "—",
       totalHours: formatDurationHms(summary.totalWorkedSeconds, hourFormat),
-      photoUrl: entry.photoUrl ?? null,
-      clockOutPhotoUrl: entry.clockOutPhotoUrl ?? null,
+      hasClockInPhoto: Boolean(entry.photoUrl),
+      hasClockOutPhoto: Boolean(entry.clockOutPhotoUrl),
     };
   });
 
@@ -505,14 +504,25 @@ function OverviewTab({
     firstIn: string;
     lastOut: string;
     totalHours: string;
-    photoUrl: string | null;
-    clockOutPhotoUrl: string | null;
+    hasClockInPhoto: boolean;
+    hasClockOutPhoto: boolean;
   }>;
 }) {
   const fullName = `${employee.firstName} ${employee.lastName}`;
   const [photoRow, setPhotoRow] = useState<(typeof attendanceRows)[number] | null>(
     null,
   );
+  const photoBase = `/app/staff/${employee.id}/time-entry`;
+
+  const openPhotos = (row: (typeof attendanceRows)[number]) => {
+    setPhotoRow(row);
+    requestAnimationFrame(() => {
+      const modal = document.getElementById("attendance-photos-modal") as
+        | (HTMLElement & { showOverlay?: () => void })
+        | null;
+      modal?.showOverlay?.();
+    });
+  };
 
   return (
     <>
@@ -680,7 +690,7 @@ function OverviewTab({
             </thead>
             <tbody>
               {attendanceRows.map((row) => {
-                const hasPhotos = Boolean(row.photoUrl || row.clockOutPhotoUrl);
+                const hasPhotos = row.hasClockInPhoto || row.hasClockOutPhoto;
                 return (
                   <tr key={row.id}>
                     <td>{formatTableDate(row.date)}</td>
@@ -692,16 +702,42 @@ function OverviewTab({
                     <td>{row.totalHours}</td>
                     <td>
                       {hasPhotos ? (
-                        <s-button
-                          variant="tertiary"
-                          commandFor="attendance-photos-modal"
-                          onClick={() => setPhotoRow(row)}
-                        >
-                          <span className="button-with-icon">
-                            <Camera aria-hidden="true" size={14} />
+                        <div className="photo-cell">
+                          {row.hasClockInPhoto ? (
+                            <button
+                              type="button"
+                              className="photo-thumb-btn"
+                              onClick={() => openPhotos(row)}
+                              aria-label="View clock-in photo"
+                            >
+                              <img
+                                className="photo-thumb"
+                                src={`${photoBase}/${row.id}/photo?kind=in`}
+                                alt=""
+                              />
+                            </button>
+                          ) : null}
+                          {row.hasClockOutPhoto ? (
+                            <button
+                              type="button"
+                              className="photo-thumb-btn"
+                              onClick={() => openPhotos(row)}
+                              aria-label="View clock-out photo"
+                            >
+                              <img
+                                className="photo-thumb"
+                                src={`${photoBase}/${row.id}/photo?kind=out`}
+                                alt=""
+                              />
+                            </button>
+                          ) : null}
+                          <s-button
+                            variant="tertiary"
+                            onClick={() => openPhotos(row)}
+                          >
                             View
-                          </span>
-                        </s-button>
+                          </s-button>
+                        </div>
                       ) : (
                         <span className="muted-cell">No photos</span>
                       )}
@@ -729,9 +765,9 @@ function OverviewTab({
             <div className="photo-modal-grid">
               <figure className="photo-card">
                 <figcaption>Clock in</figcaption>
-                {photoRow.photoUrl ? (
+                {photoRow.hasClockInPhoto ? (
                   <img
-                    src={photoRow.photoUrl}
+                    src={`${photoBase}/${photoRow.id}/photo?kind=in`}
                     alt={`Clock-in selfie for ${formatTableDate(photoRow.date)}`}
                   />
                 ) : (
@@ -740,9 +776,9 @@ function OverviewTab({
               </figure>
               <figure className="photo-card">
                 <figcaption>Clock out</figcaption>
-                {photoRow.clockOutPhotoUrl ? (
+                {photoRow.hasClockOutPhoto ? (
                   <img
-                    src={photoRow.clockOutPhotoUrl}
+                    src={`${photoBase}/${photoRow.id}/photo?kind=out`}
                     alt={`Clock-out selfie for ${formatTableDate(photoRow.date)}`}
                   />
                 ) : (
@@ -1476,6 +1512,28 @@ const STAFF_DETAIL_STYLES = `
   .muted-cell {
     color: #8c8c8c;
     font-size: 12px;
+  }
+
+  .photo-cell {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+  }
+
+  .photo-thumb-btn {
+    background: none;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    cursor: pointer;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .photo-thumb {
+    display: block;
+    height: 36px;
+    object-fit: cover;
+    width: 36px;
   }
 
   .photo-modal-body {
