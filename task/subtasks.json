@@ -2669,6 +2669,39 @@
         "app/routes/_index/route.tsx"
       ],
       "lastUpdated": "2026-08-16T23:55:00.000Z"
+    },
+    {
+      "id": "ST142",
+      "taskId": "T004",
+      "title": "Dashboard Add App opens POS UI extension settings",
+      "description": "Point the dashboard setup guide Add App action to Shopify Admin's POS UI extensions settings for the current shop and open it externally.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST001"],
+      "acceptanceCriteria": [
+        "Dashboard Add App uses the current shop handle in the Shopify Admin POS UI extensions URL",
+        "Add App opens in a new browser tab"
+      ],
+      "files": [
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-16T23:55:00.000Z"
+    },
+    {
+      "id": "ST143",
+      "taskId": "T002",
+      "title": "Dashboard Book Consultation Calendly link",
+      "description": "Point dashboard Book Consultation card to CloudCommerce Calendly booking page in a new tab.",
+      "status": "completed",
+      "priority": "low",
+      "dependencies": ["ST133"],
+      "acceptanceCriteria": [
+        "Book Consultation opens https://calendly.com/cloudcommerceus-support/30min in a new tab"
+      ],
+      "files": [
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-16T23:58:00.000Z"
     }
   ]
 }

@@ -74,17 +74,37 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     };
   });
 
-  return { dateRange, recentActivity, portalUrl: publicPortalUrl(session.shop), ...board };
+  const shopHandle = session.shop.replace(/\.myshopify\.com$/i, "");
+  const posUiExtensionsUrl = `https://admin.shopify.com/store/${shopHandle}/apps/point-of-sale-channel/settings/pos-ui-extensions`;
+
+  return {
+    dateRange,
+    recentActivity,
+    portalUrl: publicPortalUrl(session.shop),
+    posUiExtensionsUrl,
+    ...board,
+  };
 };
 
 export default function DashboardPage() {
-  const { dateRange, live, timeFormat, metrics, rows, recentActivity, portalUrl } =
-    useLoaderData<typeof loader>();
+  const {
+    dateRange,
+    live,
+    timeFormat,
+    metrics,
+    rows,
+    recentActivity,
+    portalUrl,
+    posUiExtensionsUrl,
+  } = useLoaderData<typeof loader>();
 
   return (
     <AppPage heading="Dashboard" inlineSize="large">
       <div className="dashboard-page">
-        <SetupGuide portalUrl={portalUrl} />
+        <SetupGuide
+          portalUrl={portalUrl}
+          posUiExtensionsUrl={posUiExtensionsUrl}
+        />
 
         <AttendanceBoard
           basePath="/app"
@@ -102,7 +122,7 @@ export default function DashboardPage() {
             icon={<CalendarDays size={22} />}
             title="Book Consultation"
             description="Talk with our team about rollout, payroll, and workforce setup."
-            href="mailto:support@example.com?subject=StaffTime%20consultation"
+            href="https://calendly.com/cloudcommerceus-support/30min"
             actionLabel="Book Now"
           />
         </div>
@@ -113,7 +133,13 @@ export default function DashboardPage() {
   );
 }
 
-function SetupGuide({ portalUrl }: { portalUrl: string }) {
+function SetupGuide({
+  portalUrl,
+  posUiExtensionsUrl,
+}: {
+  portalUrl: string;
+  posUiExtensionsUrl: string;
+}) {
   const appPath = useAppPath();
   const storageKey = "stafftime.setupGuide.v1";
   const [ready, setReady] = useState(false);
@@ -161,18 +187,29 @@ function SetupGuide({ portalUrl }: { portalUrl: string }) {
     }
   }, [collapsed, dismissed, done, ready]);
 
-  const steps = SETUP_STEPS.map((step) =>
-    step.id === "portal"
-      ? {
-          ...step,
-          actions: step.actions.map((action) =>
-            action.label === "View Portal"
-              ? { ...action, href: portalUrl, external: true }
-              : action,
-          ),
-        }
-      : step,
-  );
+  const steps = SETUP_STEPS.map((step) => {
+    if (step.id === "portal") {
+      return {
+        ...step,
+        actions: step.actions.map((action) =>
+          action.label === "View Portal"
+            ? { ...action, href: portalUrl, external: true }
+            : action,
+        ),
+      };
+    }
+    if (step.id === "pos") {
+      return {
+        ...step,
+        actions: step.actions.map((action) =>
+          action.label === "Add App"
+            ? { ...action, href: posUiExtensionsUrl, external: true }
+            : action,
+        ),
+      };
+    }
+    return step;
+  });
   const completedCount = steps.filter((step) => done[step.id]).length;
   const total = steps.length;
   const percent = Math.round((completedCount / total) * 100);

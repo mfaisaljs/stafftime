@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-08-16T23:55:00.000Z",
+  "lastUpdated": "2026-08-16T23:58:00.000Z",
   "notes": [
+    "ST143 complete: dashboard Book Consultation links to Calendly in a new tab.",
+    "ST142 complete: dashboard Add App opens Shopify Admin POS UI extensions settings in a new tab.",
     "ST141 complete: main app root no longer redirects Shopify Admin shop query params into the portal.",
     "ST140 update: staff detail photo img URLs preserve embedded Admin query params for authenticated loading.",
     "ST140 complete: staff detail clock-in/out photo route serves stored POS selfies (fixes 404 thumbnails).",
