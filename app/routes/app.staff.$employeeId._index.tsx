@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useLoaderData, useSearchParams } from "react-router";
 import { AppLink } from "../components/AppLink";
-import { clockPhotoFingerprint, clockPhotoPath } from "../services/clock-photo.server";
+import { ClockPhoto } from "../components/ClockPhoto";
+import { clockPhotoFingerprint, clockPhotoPath, clockPhotosMatch } from "../services/clock-photo.server";
 import {
   AlertCircle,
   ArrowLeft,
@@ -343,6 +344,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
             fingerprint: clockPhotoFingerprint(entry.clockOutPhotoUrl),
           })
         : null,
+      sameClockPhotos: clockPhotosMatch(entry.photoUrl, entry.clockOutPhotoUrl),
     };
   });
 
@@ -529,6 +531,7 @@ function OverviewTab({
     hasClockOutPhoto: boolean;
     clockInPhotoSrc: string | null;
     clockOutPhotoSrc: string | null;
+    sameClockPhotos: boolean;
   }>;
 }) {
   const fullName = `${employee.firstName} ${employee.lastName}`;
@@ -732,9 +735,9 @@ function OverviewTab({
                               onClick={() => openPhotos(row)}
                               aria-label="View clock-in photo"
                             >
-                              <img
+                              <ClockPhoto
                                 className="photo-thumb"
-                                src={row.clockInPhotoSrc ?? ""}
+                                src={row.clockInPhotoSrc}
                                 alt=""
                               />
                               <span>In</span>
@@ -747,9 +750,9 @@ function OverviewTab({
                               onClick={() => openPhotos(row)}
                               aria-label="View clock-out photo"
                             >
-                              <img
+                              <ClockPhoto
                                 className="photo-thumb"
-                                src={row.clockOutPhotoSrc ?? ""}
+                                src={row.clockOutPhotoSrc}
                                 alt=""
                               />
                               <span>Out</span>
@@ -786,12 +789,18 @@ function OverviewTab({
               {formatTableDate(photoRow.date)} · In {photoRow.firstIn}
               {photoRow.lastOut !== "—" ? ` · Out ${photoRow.lastOut}` : ""}
             </p>
+            {photoRow.sameClockPhotos ? (
+              <p className="photo-modal-meta">
+                Clock-out saved the same selfie as clock-in. POS reused the
+                camera capture — take a new photo on the next clock-out.
+              </p>
+            ) : null}
             <div className="photo-modal-grid">
               <figure className="photo-card">
                 <figcaption>Clock in</figcaption>
                 {photoRow.hasClockInPhoto ? (
-                  <img
-                    src={photoRow.clockInPhotoSrc ?? ""}
+                  <ClockPhoto
+                    src={photoRow.clockInPhotoSrc}
                     alt={`Clock-in selfie for ${formatTableDate(photoRow.date)}`}
                   />
                 ) : (
@@ -801,8 +810,8 @@ function OverviewTab({
               <figure className="photo-card">
                 <figcaption>Clock out</figcaption>
                 {photoRow.hasClockOutPhoto ? (
-                  <img
-                    src={photoRow.clockOutPhotoSrc ?? ""}
+                  <ClockPhoto
+                    src={photoRow.clockOutPhotoSrc}
                     alt={`Clock-out selfie for ${formatTableDate(photoRow.date)}`}
                   />
                 ) : (

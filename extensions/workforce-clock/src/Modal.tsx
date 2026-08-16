@@ -36,6 +36,7 @@ function WorkforceModal() {
   const [now, setNow] = useState(Date.now());
   const clockOffsetRef = useRef(0);
   const pinPadOpenRef = useRef(false);
+  const lastSelfieRef = useRef("");
 
   const syncClockOffset = useCallback((status: EmployeeStatus, serverTime?: number) => {
     if (typeof serverTime === "number") {
@@ -205,11 +206,15 @@ function WorkforceModal() {
         (action === "clock-in" || action === "clock-out") &&
         verified.settings?.requirePhoto
       ) {
-        const selfie = await captureClockSelfie();
+        const selfie = await captureClockSelfie(
+          action === "clock-out" ? lastSelfieRef.current : undefined,
+        );
         photoPayload = {
           photo: selfie.photo,
           photoType: selfie.photoType,
         };
+        lastSelfieRef.current =
+          action === "clock-out" ? "" : selfie.photo;
       }
 
       const data = (await apiFetch(`/api/pos/${action}`, {
@@ -239,6 +244,7 @@ function WorkforceModal() {
     setScreen("main");
     setNote("");
     setLoading(false);
+    lastSelfieRef.current = "";
     setTimeout(() => showNativePinPad(), 0);
   }
 

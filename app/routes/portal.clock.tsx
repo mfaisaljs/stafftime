@@ -59,6 +59,7 @@ export default function PortalClockPage() {
   const [now, setNow] = useState(Date.now());
   const [note, setNote] = useState("");
   const offsetRef = useRef(status.serverTime ? status.serverTime - Date.now() : 0);
+  const lastSelfieRef = useRef("");
   const busy = fetcher.state !== "idle";
   const flash = fetcher.data;
 
@@ -91,6 +92,11 @@ export default function PortalClockPage() {
     if (requirePhoto && (intent === "clock-in" || intent === "clock-out")) {
       try {
         photo = await captureSelfie();
+        if (intent === "clock-out" && photo === lastSelfieRef.current) {
+          window.alert("Clock-out needs a new selfie.");
+          photo = await captureSelfie();
+        }
+        lastSelfieRef.current = intent === "clock-out" ? "" : photo;
       } catch (error) {
         window.alert(
           error instanceof Error ? error.message : "Selfie is required.",

@@ -59,6 +59,7 @@ function ManagerViewModal() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [clockBusy, setClockBusy] = useState(false);
   const pinPadOpenRef = useRef(false);
+  const lastSelfieByStaffRef = useRef<Record<string, string>>({});
 
   const clearSession = useCallback(async () => {
     try {
@@ -70,6 +71,7 @@ function ManagerViewModal() {
     setBootstrap(null);
     setSelectedStaffId(null);
     setDetail(null);
+    lastSelfieByStaffRef.current = {};
   }, []);
 
   const loadBootstrap = useCallback(async (nextManager: ManagerEmployee) => {
@@ -277,9 +279,18 @@ function ManagerViewModal() {
           (action === "clock-in" || action === "clock-out") &&
           bootstrap?.settings?.requirePhoto
         ) {
-          const selfie = await captureClockSelfie();
+          const selfie = await captureClockSelfie(
+            action === "clock-out"
+              ? lastSelfieByStaffRef.current[selectedStaffId]
+              : undefined,
+          );
           photo = selfie.photo;
           photoType = selfie.photoType;
+          if (action === "clock-out") {
+            delete lastSelfieByStaffRef.current[selectedStaffId];
+          } else {
+            lastSelfieByStaffRef.current[selectedStaffId] = selfie.photo;
+          }
         }
         const result = await managerClockAction({
           managerId: manager.id,

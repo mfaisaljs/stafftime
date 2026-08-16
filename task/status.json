@@ -8,7 +8,7 @@
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
   "lastUpdated": "2026-08-16T23:15:00.000Z",
   "notes": [
-    "Clock-in and clock-out selfies now use separate /in and /out photo URLs so the admin table cannot reuse one cached image for both.",
+    "Clock-in/out showing the same selfie: POS reused the camera capture on rapid clock-out; admin now loads each photo without cache and POS asks for a new selfie if it matches clock-in.",
     "ST139 complete: portal Manager View and My Profile match POS Overview / Shifts / Payroll tabs with date range.",
     "ST138 complete: portal Timesheet calendar shows scheduled shift blocks plus clocked hours.",
     "ST137 complete: public /portal staff kiosk with PIN auth, ShopDomain, subdomain host routing, and clock/timesheet/time-off/profile/tasks/manager/shifts.",

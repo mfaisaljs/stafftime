@@ -2647,6 +2647,9 @@
       ],
       "files": [
         "app/routes/api.clock-photo.$timeEntryId.$kind.tsx",
+        "app/components/ClockPhoto.tsx",
+        "extensions/workforce-clock/src/camera.ts",
+        "extensions/manager-view/src/camera.ts",
         "app/services/clock-photo.server.ts",
         "app/services/clock-photo.server.test.ts",
         "app/routes/app.staff.$employeeId._index.tsx"
