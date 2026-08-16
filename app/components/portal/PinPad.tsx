@@ -37,6 +37,37 @@ export function PinPad(props: {
     setPin((current) => (current.length >= 4 ? current : `${current}${value}`));
   }
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        props.onCancel();
+        return;
+      }
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        press("del");
+        return;
+      }
+
+      const digit =
+        /^\d$/.test(event.key)
+          ? event.key
+          : /^Numpad\d$/.test(event.code)
+            ? event.code.slice(-1)
+            : "";
+      if (!digit) return;
+      event.preventDefault();
+      press(digit);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.busy, props.onCancel]);
+
   return (
     <div className="pin-overlay" role="dialog" aria-modal="true" aria-label="Enter PIN">
       <div className="pin-card">
