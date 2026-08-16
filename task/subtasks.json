@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-16T22:10:00.000Z",
+  "lastUpdated": "2026-08-16T22:45:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -2589,6 +2589,26 @@
         "app/routes/_index/route.tsx"
       ],
       "lastUpdated": "2026-08-16T22:10:00.000Z"
+    },
+    {
+      "id": "ST138",
+      "taskId": "T019",
+      "title": "Portal timesheet monthly calendar grid",
+      "description": "Match the staff portal Timesheet to the monthly calendar layout with week totals, month navigation, and compact hour labels.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST137"],
+      "acceptanceCriteria": [
+        "Timesheet shows Monday-Sunday month grid with a Total column",
+        "Month arrows change months and Month total uses compact hour labels",
+        "Today is highlighted; out-of-month dates are muted"
+      ],
+      "files": [
+        "app/routes/portal.timesheet.tsx",
+        "app/services/portal.server.ts",
+        "app/components/portal/portal-styles.ts"
+      ],
+      "lastUpdated": "2026-08-16T22:45:00.000Z"
     }
   ]
 }

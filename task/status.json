@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-08-16T22:10:00.000Z",
+  "lastUpdated": "2026-08-16T22:45:00.000Z",
   "notes": [
+    "ST138 complete: portal Timesheet is a Monday-Sunday monthly calendar with week totals and compact hour labels.",
     "ST137 complete: public /portal staff kiosk with PIN auth, ShopDomain, subdomain host routing, and clock/timesheet/time-off/profile/tasks/manager/shifts.",
     "ST069 complete: Staff Portal feature toggles hide cards and block disabled portal routes.",
     "ST136 complete: AppLink/useAppPath/useAppNavigate applied across admin routes to preserve embedded params.",

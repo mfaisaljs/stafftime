@@ -120,7 +120,8 @@ describe("staff web portal", { timeout: 30000 }, () => {
       employeeId: employee.id,
     });
     expect(timesheet.days.some((day) => day.status === "worked")).toBe(true);
-    expect(timesheet.totalHoursLabel).not.toBe("0h 0m");
+    expect(timesheet.weeks.length).toBeGreaterThan(0);
+    expect(timesheet.totalHoursLabel).not.toBe("0m");
   });
 
   it("exposes portal feature flags from settings", async () => {

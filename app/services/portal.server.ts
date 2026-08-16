@@ -6,7 +6,6 @@ import {
 } from "./workforce.server";
 import { getShopSettings, isManagerRole } from "./settings.server";
 import {
-  formatDuration,
   summarizeTimeEntrySeconds,
   type HourFormat,
 } from "./time-tracking.server";
@@ -152,11 +151,17 @@ export function assertPortalFeature(
 
 export type PortalTimesheetDay = {
   dateKey: string;
-  dateLabel: string;
-  clockInLabel: string;
-  clockOutLabel: string;
+  day: number;
+  inMonth: boolean;
+  isToday: boolean;
   hoursLabel: string;
+  paidSeconds: number;
   status: "worked" | "open" | "none";
+};
+
+export type PortalTimesheetWeek = {
+  days: PortalTimesheetDay[];
+  totalLabel: string;
 };
 
 export async function getPortalTimesheet(params: {
@@ -166,14 +171,16 @@ export async function getPortalTimesheet(params: {
 }) {
   const { shop, settings, employee } = await loadPortalEmployee(params);
   const month = resolveMonth(params.month);
-  const start = new Date(month.year, month.monthIndex, 1, 0, 0, 0, 0);
-  const end = new Date(month.year, month.monthIndex + 1, 0, 23, 59, 59, 999);
+  const monthStart = new Date(month.year, month.monthIndex, 1, 0, 0, 0, 0);
+  const monthEnd = new Date(month.year, month.monthIndex + 1, 0, 23, 59, 59, 999);
+  const gridStart = startOfMondayWeek(monthStart);
+  const gridEnd = endOfSundayWeek(monthEnd);
 
   const entries = await prisma.timeEntry.findMany({
     where: {
       shopId: shop.id,
       employeeId: employee.id,
-      clockInAt: { gte: start, lte: end },
+      clockInAt: { gte: gridStart, lte: gridEnd },
     },
     include: { breaks: true },
     orderBy: { clockInAt: "asc" },
@@ -181,6 +188,7 @@ export async function getPortalTimesheet(params: {
 
   const hourFormat = settings.hourFormat as HourFormat;
   const now = new Date();
+  const todayKey = toDateKey(now);
   const byDate = new Map<string, typeof entries>();
   for (const entry of entries) {
     const key = toDateKey(entry.clockInAt);
@@ -189,65 +197,95 @@ export async function getPortalTimesheet(params: {
     byDate.set(key, list);
   }
 
+  const weeks: PortalTimesheetWeek[] = [];
   const days: PortalTimesheetDay[] = [];
-  let totalPaidSeconds = 0;
-  const cursor = new Date(start);
-  while (cursor.getTime() <= end.getTime()) {
-    const dateKey = toDateKey(cursor);
-    const dayEntries = byDate.get(dateKey) ?? [];
-    const paidSeconds = dayEntries.reduce(
-      (sum, entry) =>
-        sum +
-        summarizeTimeEntrySeconds(entry, now, {
-          deductBreakTime: settings.deductBreakTime,
-        }).paidSeconds,
-      0,
-    );
-    totalPaidSeconds += paidSeconds;
-    const first = dayEntries[0];
-    const last = dayEntries.at(-1);
-    const open = dayEntries.some((entry) => !entry.clockOutAt);
-    days.push({
-      dateKey,
-      dateLabel: cursor.toLocaleDateString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      }),
-      clockInLabel: first
-        ? first.clockInAt.toLocaleTimeString(undefined, {
-            hour: "numeric",
-            minute: "2-digit",
-          })
-        : "—",
-      clockOutLabel: last?.clockOutAt
-        ? last.clockOutAt.toLocaleTimeString(undefined, {
-            hour: "numeric",
-            minute: "2-digit",
-          })
-        : open
-          ? "In progress"
-          : "—",
-      hoursLabel: dayEntries.length
-        ? formatDuration(paidSeconds, hourFormat, false)
-        : "—",
-      status: open ? "open" : dayEntries.length ? "worked" : "none",
+  let monthPaidSeconds = 0;
+  const cursor = new Date(gridStart);
+
+  while (cursor.getTime() <= gridEnd.getTime()) {
+    const weekDays: PortalTimesheetDay[] = [];
+    let weekSeconds = 0;
+    for (let i = 0; i < 7; i += 1) {
+      const dateKey = toDateKey(cursor);
+      const inMonth = cursor.getMonth() === month.monthIndex;
+      const dayEntries = byDate.get(dateKey) ?? [];
+      const paidSeconds = dayEntries.reduce(
+        (sum, entry) =>
+          sum +
+          summarizeTimeEntrySeconds(entry, now, {
+            deductBreakTime: settings.deductBreakTime,
+          }).paidSeconds,
+        0,
+      );
+      const open = dayEntries.some((entry) => !entry.clockOutAt);
+      const cell: PortalTimesheetDay = {
+        dateKey,
+        day: cursor.getDate(),
+        inMonth,
+        isToday: dateKey === todayKey,
+        hoursLabel:
+          paidSeconds > 0 ? formatTimesheetHours(paidSeconds, hourFormat) : "—",
+        paidSeconds,
+        status: open ? "open" : paidSeconds > 0 ? "worked" : "none",
+      };
+      weekDays.push(cell);
+      if (inMonth) {
+        days.push(cell);
+        monthPaidSeconds += paidSeconds;
+      }
+      weekSeconds += inMonth ? paidSeconds : 0;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push({
+      days: weekDays,
+      totalLabel:
+        weekSeconds > 0 ? formatTimesheetHours(weekSeconds, hourFormat) : "—",
     });
-    cursor.setDate(cursor.getDate() + 1);
   }
 
   return {
     employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
-    monthLabel: start.toLocaleDateString(undefined, {
+    monthLabel: monthStart.toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     }),
     month: month.key,
     prevMonth: shiftMonth(month.key, -1),
     nextMonth: shiftMonth(month.key, 1),
-    totalHoursLabel: formatDuration(totalPaidSeconds, hourFormat, false),
+    totalHoursLabel: formatTimesheetHours(monthPaidSeconds, hourFormat),
+    weeks,
     days,
   };
+}
+
+function formatTimesheetHours(totalSeconds: number, hourFormat: HourFormat) {
+  if (hourFormat === "DECIMAL") {
+    return `${(Math.max(0, totalSeconds) / 3600).toFixed(2)}h`;
+  }
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const mins = Math.floor((safe % 3600) / 60);
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
+
+function mondayOffset(value: Date) {
+  return (value.getDay() + 6) % 7;
+}
+
+function startOfMondayWeek(value: Date) {
+  const start = new Date(value);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - mondayOffset(start));
+  return start;
+}
+
+function endOfSundayWeek(value: Date) {
+  const end = new Date(value);
+  end.setHours(23, 59, 59, 999);
+  end.setDate(end.getDate() + (6 - mondayOffset(end)));
+  return end;
 }
 
 function toDateKey(value: Date) {
