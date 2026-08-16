@@ -1,4 +1,4 @@
-export const APP_DISPLAY_NAME = "Trubuild: POS Staff Clock In";
+export const APP_DISPLAY_NAME = "Trubuild: Staff Management";
 
 export function appPageHeading(routeName: string) {
   const name = routeName.trim();

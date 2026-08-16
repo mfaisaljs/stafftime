@@ -1,4 +1,4 @@
-name = "Trubuild: POS Staff Clock In"
+name = "Trubuild: Staff Management"
 roles = ["frontend", "backend"]
 webhooks_path = "/webhooks"
 port = 3458

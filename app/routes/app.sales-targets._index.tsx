@@ -6,6 +6,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAdminShop, getEmployeeLocations, getEmployees } from "../services/admin.server";
 import prisma from "../db.server";
+import { APP_DISPLAY_NAME } from "../utils/app-title";
 
 function parseIds(raw: string): string[] {
   try {
@@ -234,7 +235,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return {
     posEditorUrl,
-    appName: "Trubuild: POS Staff Clock In",
+    appName: APP_DISPLAY_NAME,
     employees: employees
       .filter((employee) => employee.status !== "ARCHIVED")
       .map((employee) => ({

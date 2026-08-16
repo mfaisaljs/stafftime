@@ -2363,6 +2363,28 @@
         "app/services/billing/checkout.test.ts"
       ],
       "lastUpdated": "2026-08-16T15:30:00.000Z"
+    },
+    {
+      "id": "ST126",
+      "taskId": "T015",
+      "title": "Rename app to Trubuild: Staff Management",
+      "description": "Display name and Shopify handle updated from POS Staff Clock In / trubuild-staff-management-39.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST116"],
+      "acceptanceCriteria": [
+        "App display name is Trubuild: Staff Management",
+        "Shopify handle default is trubuild-staff-management"
+      ],
+      "files": [
+        "shopify.app.toml",
+        "shopify.app.local.toml",
+        "shopify.web.toml",
+        "app/utils/app-title.ts",
+        "app/services/billing/plans.ts",
+        "app/routes/app.sales-targets._index.tsx"
+      ],
+      "lastUpdated": "2026-08-16T15:42:00.000Z"
     }
   ]
 }

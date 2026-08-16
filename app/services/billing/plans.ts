@@ -285,5 +285,5 @@ export function shopifyPricingPlansUrl(params: {
 }
 
 export function getAppHandle() {
-  return process.env.SHOPIFY_APP_HANDLE?.trim() || "trubuild-staff-management-39";
+  return process.env.SHOPIFY_APP_HANDLE?.trim() || "trubuild-staff-management";
 }
