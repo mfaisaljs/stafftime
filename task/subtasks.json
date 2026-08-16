@@ -2445,6 +2445,26 @@
         "app/routes/app.usage.tsx"
       ],
       "lastUpdated": "2026-08-16T16:00:00.000Z"
+    },
+    {
+      "id": "ST130",
+      "taskId": "T018",
+      "title": "Fix blank 200 on embedded route navigation",
+      "description": "Preserve embedded query params on s-app-nav links and stop session-token redirects for normal /app routes.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST128"],
+      "acceptanceCriteria": [
+        "Nav links append location.search",
+        "session-token redirect only for billing returns",
+        "Admin app URLs use trubuild-staff-management handle"
+      ],
+      "files": [
+        "app/routes/app.tsx",
+        "app/services/billing/checkout.ts",
+        "app/services/billing/checkout.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T16:05:00.000Z"
     }
   ]
 }

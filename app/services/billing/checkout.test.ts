@@ -18,35 +18,23 @@ describe("billing checkout helpers", () => {
   });
 
   it("returns the merchant to Admin after charge approval", () => {
-    const previousKey = process.env.SHOPIFY_API_KEY;
-    process.env.SHOPIFY_API_KEY = "test-api-key";
     const request = new Request(
       "https://example.test/app/pricing?embedded=1&host=abc123",
     );
     const url = billingReturnUrl(request, "test.myshopify.com");
-    if (previousKey) {
-      process.env.SHOPIFY_API_KEY = previousKey;
-    } else {
-      delete process.env.SHOPIFY_API_KEY;
-    }
     expect(url).toBe(
-      "https://admin.shopify.com/store/test/apps/test-api-key/app/billing",
+      "https://admin.shopify.com/store/test/apps/trubuild-staff-management/app/billing",
     );
     expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
   });
 
   it("keeps the Admin return URL under Shopify's 255-character limit", () => {
-    const previousKey = process.env.SHOPIFY_API_KEY;
-    process.env.SHOPIFY_API_KEY = "94ec09cf3eaee34d49da7c9a2e1b91cd";
     const url = billingReturnUrl(
       new Request("https://staff-time.onrender.com/app/pricing"),
       "spaceraceplayground.myshopify.com",
     );
-    if (previousKey) {
-      process.env.SHOPIFY_API_KEY = previousKey;
-    }
     expect(url).toBe(
-      "https://admin.shopify.com/store/spaceraceplayground/apps/94ec09cf3eaee34d49da7c9a2e1b91cd/app/billing",
+      "https://admin.shopify.com/store/spaceraceplayground/apps/trubuild-staff-management/app/billing",
     );
     expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
   });
@@ -88,11 +76,9 @@ describe("billing checkout helpers", () => {
     ).toBe(true);
   });
 
-  it("sends session-token bounces for any /app route back into Admin", () => {
-    const previousKey = process.env.SHOPIFY_API_KEY;
-    process.env.SHOPIFY_API_KEY = "test-api-key";
+  it("sends billing session-token bounces back into Admin", () => {
     const request = new Request(
-      "https://example.test/auth/session-token?shop=spaceraceplayground.myshopify.com&shopify-reload=https%3A%2F%2Fexample.test%2Fapp%2Fstaff%3Fembedded%3D1",
+      "https://example.test/auth/session-token?shop=spaceraceplayground.myshopify.com&shopify-reload=https%3A%2F%2Fexample.test%2Fapp%2Fbilling%3Fembedded%3D1%26charge_id%3D123",
     );
     try {
       redirectSessionTokenToAdmin(request);
@@ -100,15 +86,16 @@ describe("billing checkout helpers", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Response);
       expect((error as Response).headers.get("Location")).toBe(
-        "https://admin.shopify.com/store/spaceraceplayground/apps/test-api-key/app/staff?embedded=1",
+        "https://admin.shopify.com/store/spaceraceplayground/apps/trubuild-staff-management/app/billing?embedded=1&charge_id=123",
       );
-    } finally {
-      if (previousKey) {
-        process.env.SHOPIFY_API_KEY = previousKey;
-      } else {
-        delete process.env.SHOPIFY_API_KEY;
-      }
     }
+  });
+
+  it("does not redirect session-token bounces for normal app navigation", () => {
+    const request = new Request(
+      "https://example.test/auth/session-token?shop=spaceraceplayground.myshopify.com&shopify-reload=https%3A%2F%2Fexample.test%2Fapp%2Fusage%3Fembedded%3D1",
+    );
+    expect(() => redirectSessionTokenToAdmin(request)).not.toThrow();
   });
 
   it("formats billing API errors", () => {

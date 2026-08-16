@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Outlet, redirect, useLoaderData, useRouteError } from "react-router";
+import type { ReactNode } from "react";
+import { Outlet, redirect, useLoaderData, useLocation, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
@@ -17,6 +18,11 @@ const SHOP_NAME_QUERY = `#graphql
     }
   }
 `;
+
+function AppNavLink({ href, children }: { href: string; children: ReactNode }) {
+  const { search } = useLocation();
+  return <s-link href={`${href}${search}`}>{children}</s-link>;
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -74,18 +80,18 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <ChatraWidget shopDomain={shopDomain} shopName={shopName} />
       <s-app-nav>
-        <s-link href="/app">Dashboard</s-link>
-        <s-link href="/app/staff">Staff</s-link>
-        <s-link href="/app/reports">Reports</s-link>
-        <s-link href="/app/schedules">Schedule</s-link>
-        <s-link href="/app/commission-programs">Commission Program</s-link>
-        <s-link href="/app/sales-targets">Sales Target</s-link>
-        <s-link href="/app/payroll">Payroll</s-link>
-        <s-link href="/app/tasklists">Tasklist</s-link>
-        <s-link href="/app/time-off">Time Off</s-link>
-        <s-link href="/app/pricing">Pricing</s-link>
-        <s-link href="/app/usage">Usage</s-link>
-        <s-link href="/app/settings">Settings</s-link>
+        <AppNavLink href="/app">Dashboard</AppNavLink>
+        <AppNavLink href="/app/staff">Staff</AppNavLink>
+        <AppNavLink href="/app/reports">Reports</AppNavLink>
+        <AppNavLink href="/app/schedules">Schedule</AppNavLink>
+        <AppNavLink href="/app/commission-programs">Commission Program</AppNavLink>
+        <AppNavLink href="/app/sales-targets">Sales Target</AppNavLink>
+        <AppNavLink href="/app/payroll">Payroll</AppNavLink>
+        <AppNavLink href="/app/tasklists">Tasklist</AppNavLink>
+        <AppNavLink href="/app/time-off">Time Off</AppNavLink>
+        <AppNavLink href="/app/pricing">Pricing</AppNavLink>
+        <AppNavLink href="/app/usage">Usage</AppNavLink>
+        <AppNavLink href="/app/settings">Settings</AppNavLink>
       </s-app-nav>
       <Outlet />
     </AppProvider>

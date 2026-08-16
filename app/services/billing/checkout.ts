@@ -1,5 +1,5 @@
 import type { PlanHandle } from "./plans";
-import { EXTRA_SEAT_MAX, isPlanHandle } from "./plans";
+import { EXTRA_SEAT_MAX, getAppHandle, isPlanHandle } from "./plans";
 import prisma from "../../db.server";
 import { shopFromDest } from "../../utils/http.server";
 import { redirect } from "react-router";
@@ -159,9 +159,9 @@ export function shopifyAdminAppUrl(shop: string, appPath = "/app/billing") {
   const store = shopFromDest(shop)
     .replace(/\.myshopify\.com$/i, "")
     .toLowerCase();
-  const apiKey = process.env.SHOPIFY_API_KEY ?? "";
+  const appHandle = getAppHandle();
   const path = appPath.startsWith("/") ? appPath : `/${appPath}`;
-  return `https://admin.shopify.com/store/${store}/apps/${apiKey}${path}`;
+  return `https://admin.shopify.com/store/${store}/apps/${appHandle}${path}`;
 }
 
 export function billingReturnUrl(_request: Request, shop: string) {
@@ -189,7 +189,7 @@ export async function restoreEmbeddedBillingParams(request: Request) {
   throw redirect(`${url.pathname}?${url.searchParams.toString()}`);
 }
 
-/** Top-level session-token bounce: send the merchant back into Admin instead of a blank 200. */
+/** After billing approval, send the merchant back into Admin instead of a blank 200. */
 export function redirectSessionTokenToAdmin(request: Request) {
   const url = new URL(request.url);
   if (!url.pathname.endsWith("/auth/session-token")) {
@@ -213,7 +213,11 @@ export function redirectSessionTokenToAdmin(request: Request) {
     return;
   }
 
-  if (!reloadUrl.pathname.startsWith("/app")) {
+  const isBillingReturn =
+    reloadUrl.pathname.startsWith("/app/billing") ||
+    reloadUrl.searchParams.has("charge_id") ||
+    reloadUrl.searchParams.has("plan_handle");
+  if (!isBillingReturn) {
     return;
   }
 
