@@ -8,7 +8,7 @@
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
   "lastUpdated": "2026-08-16T12:20:00.000Z",
   "notes": [
-    "Fixed: extra seats bill via usage when staff are added; slider read-only after subscribe; usage syncs on page load.",
+    "Pricing page shows current extra seat count in banner and bottom bar.",
     "ST101 complete: staff adds are blocked at plan max (22/25/100/500) and the UI offers the next plan.",
     "ST100 complete: extras allowed up to maxStaff, usage +1/-1 after included seats, cycle re-report, Subscribe opens Shopify via open(_top).",
     "Updated: Free plan slider counts extra staff only (excludes the 2 included seats).",

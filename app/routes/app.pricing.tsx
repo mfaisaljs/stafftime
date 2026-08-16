@@ -3,7 +3,8 @@ import { useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { PricingPlans } from "../components/billing/PricingModal";
-import { ensureUsageCycle, getShopBilling, isActiveSubscription, reconcileStaffUsage } from "../services/billing.server";
+import { ensureUsageCycle, getShopBilling } from "../services/billing.server";
+import { formatUsd } from "../services/billing/plans";
 import {
   billingErrorMessage,
   billingReturnUrl,
@@ -27,7 +28,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     nextPlanName: billing.nextPlan?.name ?? null,
     nextPlanMax: billing.nextPlan?.maxStaff ?? null,
     pricingPlansUrl: billing.pricingPlansUrl,
-    usageBillingActive: isActiveSubscription(billing.subscriptionStatus),
   };
 };
 
@@ -39,15 +39,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (!planHandle) {
     return shopifyRedirect("/app/pricing?subscribe_error=pick_plan");
-  }
-
-  const currentBilling = await getShopBilling(session.shop);
-  if (
-    isActiveSubscription(currentBilling.subscriptionStatus) &&
-    planHandle === currentBilling.planHandle
-  ) {
-    await reconcileStaffUsage(session.shop);
-    return shopifyRedirect("/app/staff?billing=usage_synced");
   }
 
   try {
@@ -78,7 +69,6 @@ export default function PricingPage() {
     nextPlanName,
     nextPlanMax,
     pricingPlansUrl,
-    usageBillingActive,
   } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const subscribeError = searchParams.get("subscribe_error");
@@ -97,11 +87,12 @@ export default function PricingPage() {
         ) : null}
         <s-banner heading={`Current plan: ${planName}`} tone="info">
           <s-text>
-            {activeStaffCount} staff ({includedStaff} included
+            {activeStaffCount} staff · {includedStaff} included · {extraStaffCount}{" "}
+            extra seat{extraStaffCount === 1 ? "" : "s"}
             {extraStaffCount > 0
-              ? ` + ${extraStaffCount} extra at $${extraStaffRate}/mo`
-              : ""}
-            ) of {staffLimit} max.
+              ? ` (${formatUsd(extraStaffCount * extraStaffRate)}/mo)`
+              : ""}{" "}
+            · {staffLimit} max.
             {atCap && nextPlanName
               ? ` Upgrade to ${nextPlanName} (up to ${nextPlanMax}) to add more.`
               : ""}
@@ -111,8 +102,8 @@ export default function PricingPage() {
           pricingPlansUrl={pricingPlansUrl}
           currentPlanHandle={planHandle}
           initialStaffCount={Math.max(activeStaffCount, 2)}
+          currentExtraStaffCount={extraStaffCount}
           atCap={atCap}
-          usageBillingActive={usageBillingActive}
           variant="page"
         />
       </s-stack>

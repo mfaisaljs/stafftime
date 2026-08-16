@@ -51,9 +51,14 @@
 .pricing-included,
 .pricing-estimate-copy,
 .pricing-estimate small,
-.pricing-free-copy span {
+.pricing-free-copy span,
+.pricing-extra-usage {
   color: #616161;
   font-size: 13px;
+}
+
+.pricing-extra-usage {
+  font-weight: 600;
 }
 
 .pricing-included,

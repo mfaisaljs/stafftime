@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Form, useSearchParams } from "react-router";
 import "./PricingModal.css";
 import {
@@ -62,40 +62,33 @@ export function PricingPlans({
   pricingPlansUrl,
   currentPlanHandle = "free",
   initialStaffCount = 2,
+  currentExtraStaffCount = 0,
   atCap = false,
-  usageBillingActive = false,
   variant = "page",
 }: {
   pricingPlansUrl: string;
   currentPlanHandle?: string;
   initialStaffCount?: number;
+  currentExtraStaffCount?: number;
   atCap?: boolean;
-  usageBillingActive?: boolean;
   variant?: "page" | "modal";
 }) {
   const currentPlan = getPlan(currentPlanHandle);
   const recommendedPlan = nextPlan(currentPlan.handle);
   const extraMax = extraSeatMax(currentPlan);
-  const currentExtraStaff = clampStaff(
-    initialStaffCount - currentPlan.includedStaff,
-    0,
-    extraMax,
+  const [extraStaff, setExtraStaff] = useState(() =>
+    clampStaff(initialStaffCount - currentPlan.includedStaff, 0, extraMax),
   );
-  const [extraStaff, setExtraStaff] = useState(currentExtraStaff);
   const [estimateByPlan, setEstimateByPlan] = useState<Record<string, number>>({
     workforce: 10,
     enterprise: 100,
   });
 
-  useEffect(() => {
-    setExtraStaff(currentExtraStaff);
-  }, [currentExtraStaff]);
-
   const extraPrice = extraStaff * currentPlan.extraStaffRate;
+  const currentExtraPrice = currentExtraStaffCount * currentPlan.extraStaffRate;
   const noExtras = extraStaff === 0;
   const offerNextPlan =
     Boolean(recommendedPlan) && extrasTriggerNextPlan(currentPlan, extraStaff);
-  const sliderDisabled = usageBillingActive;
 
   return (
     <>
@@ -194,16 +187,17 @@ export function PricingPlans({
           <s-badge tone="warning">{currentPlan.name} plan</s-badge>
           <div className="pricing-free-copy">
             <strong>Up to {currentPlan.includedStaff} Staff Members included</strong>
+            <span className="pricing-extra-usage">
+              {currentExtraStaffCount > 0
+                ? `${currentExtraStaffCount} extra seat${currentExtraStaffCount === 1 ? "" : "s"} in use (${formatUsd(currentExtraPrice)}/mo)`
+                : "No extra seats in use"}
+            </span>
             <span>
-              {usageBillingActive
-                ? noExtras
-                  ? `Usage billing is active. Add staff beyond ${currentPlan.includedStaff} included seats to bill ${formatUsd(currentPlan.extraStaffRate)} per extra seat / month.`
-                  : `${extraStaff} extra seat${extraStaff === 1 ? "" : "s"} billed at ${formatUsd(currentPlan.extraStaffRate)}/mo each. Add staff to increase usage billing.`
-                : offerNextPlan && recommendedPlan
-                  ? `${formatUsd(extraPrice)}/mo in extras. Upgrade to ${recommendedPlan.name} (${formatUsd(recommendedPlan.monthlyPrice)}/mo, ${recommendedPlan.includedStaff} included).`
-                  : noExtras
-                    ? `No extra-seat charge within ${currentPlan.includedStaff} included seats.`
-                    : `${formatUsd(currentPlan.extraStaffRate)} per extra staff / month`}
+              {offerNextPlan && recommendedPlan
+                ? `${formatUsd(extraPrice)}/mo in extras. Upgrade to ${recommendedPlan.name} (${formatUsd(recommendedPlan.monthlyPrice)}/mo, ${recommendedPlan.includedStaff} included).`
+                : noExtras
+                  ? `No extra-seat charge within ${currentPlan.includedStaff} included seats.`
+                  : `${formatUsd(currentPlan.extraStaffRate)} per extra staff / month`}
             </span>
           </div>
           <label className="pricing-slider">
@@ -212,7 +206,6 @@ export function PricingPlans({
               min={0}
               max={extraMax}
               value={extraStaff}
-              disabled={sliderDisabled}
               onChange={(event) =>
                 setExtraStaff(Number(event.currentTarget.value))
               }
@@ -226,30 +219,12 @@ export function PricingPlans({
             max={extraMax}
             step={1}
             value={extraStaff}
-            disabled={sliderDisabled}
             onChange={(event) =>
               setExtraStaff(clampStaff(Number(event.currentTarget.value), 0, extraMax))
             }
             aria-label="Extra staff count"
           />
-          {usageBillingActive ? (
-            offerNextPlan && recommendedPlan ? (
-              <PlanCheckoutForm
-                planHandle={recommendedPlan.handle}
-                className="pricing-cta primary"
-              >
-                Upgrade to {recommendedPlan.name}
-              </PlanCheckoutForm>
-            ) : atCap ? (
-              <s-button variant="secondary" disabled>
-                Staff limit reached
-              </s-button>
-            ) : (
-              <s-button variant="primary" href="/app/staff/new">
-                Add staff
-              </s-button>
-            )
-          ) : noExtras ? (
+          {noExtras ? (
             variant === "modal" ? (
               <s-button
                 variant="secondary"
@@ -288,14 +263,14 @@ export function PricingModal({
   pricingPlansUrl,
   currentPlanHandle = "free",
   initialStaffCount = 2,
+  currentExtraStaffCount = 0,
   atCap = false,
-  usageBillingActive = false,
 }: {
   pricingPlansUrl: string;
   currentPlanHandle?: string;
   initialStaffCount?: number;
+  currentExtraStaffCount?: number;
   atCap?: boolean;
-  usageBillingActive?: boolean;
 }) {
   return (
     <s-modal id={PRICING_MODAL_ID} heading="Choose a plan" size="large">
@@ -303,8 +278,8 @@ export function PricingModal({
         pricingPlansUrl={pricingPlansUrl}
         currentPlanHandle={currentPlanHandle}
         initialStaffCount={initialStaffCount}
+        currentExtraStaffCount={currentExtraStaffCount}
         atCap={atCap}
-        usageBillingActive={usageBillingActive}
         variant="modal"
       />
     </s-modal>

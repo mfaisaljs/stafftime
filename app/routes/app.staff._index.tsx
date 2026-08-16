@@ -5,7 +5,7 @@ import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
-import { ensureUsageCycle, getShopBilling, isActiveSubscription } from "../services/billing.server";
+import { ensureUsageCycle, getShopBilling } from "../services/billing.server";
 import { formatUsd } from "../services/billing/plans";
 import {
   openPricingModal,
@@ -29,7 +29,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     extraStaffRate: billing.extraStaffRate,
     planName: billing.plan.name,
     planHandle: billing.planHandle,
-    subscriptionStatus: billing.subscriptionStatus,
     pricingPlansUrl: billing.pricingPlansUrl,
     atCap: billing.atCap,
     nextPlan: billing.nextPlan
@@ -56,7 +55,6 @@ export default function StaffManagementPage() {
     extraStaffRate,
     planName,
     planHandle,
-    subscriptionStatus,
     pricingPlansUrl,
     atCap,
     nextPlan,
@@ -273,9 +271,7 @@ export default function StaffManagementPage() {
 
         {searchParams.get("billing") && (
           <s-banner heading="Plan updated" tone="success" dismissible>
-            {searchParams.get("billing") === "usage_synced"
-              ? "Usage billing synced to your current staff count."
-              : `Your staff seat limit is now ${staffLimit}.`}
+            Your staff seat limit is now {staffLimit}.
           </s-banner>
         )}
 
@@ -632,8 +628,8 @@ export default function StaffManagementPage() {
         pricingPlansUrl={pricingPlansUrl}
         currentPlanHandle={planHandle}
         initialStaffCount={Math.max(totalStaff, 2)}
+        currentExtraStaffCount={extraStaffCount}
         atCap={atCap}
-        usageBillingActive={isActiveSubscription(subscriptionStatus)}
       />
       <style>{STAFF_MANAGEMENT_STYLES}</style>
     </s-page>
