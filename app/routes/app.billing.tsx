@@ -2,12 +2,16 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
-  ensureUsageCycle,
   refreshSubscription,
   saveShopifyShopGid,
   syncSubscriptionFromPlanHandle,
 } from "../services/billing.server";
-import { takePendingBillingCheckout, restoreEmbeddedBillingParams } from "../services/billing/checkout";
+import {
+  isShopifyBillingTest,
+  takePendingBillingCheckout,
+  restoreEmbeddedBillingParams,
+} from "../services/billing/checkout";
+import { getPlan } from "../services/billing/plans";
 import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
 
@@ -21,7 +25,7 @@ const SHOP_GID_QUERY = `#graphql
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await restoreEmbeddedBillingParams(request);
-  const { admin, session, redirect: shopifyRedirect } =
+  const { admin, billing, session, redirect: shopifyRedirect } =
     await authenticate.admin(request);
   const url = new URL(request.url);
   let planHandle = url.searchParams.get("plan_handle");
@@ -50,19 +54,34 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   if (planHandle) {
+    const plan = getPlan(planHandle);
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
     if (pendingCheckout || extraSeats > 0) {
       await prisma.shop.update({
         where: { domain: shopFromDest(session.shop).toLowerCase() },
         data: { reportedStaffUsage: extraSeats },
       });
+      if (extraSeats > 0) {
+        try {
+          await billing.createUsageRecord({
+            description: `${extraSeats} extra staff seat${extraSeats === 1 ? "" : "s"}`,
+            price: {
+              amount: extraSeats * plan.extraStaffRate,
+              currencyCode: "USD",
+            },
+            isTest: isShopifyBillingTest(session.shop),
+          });
+        } catch (error) {
+          if (error instanceof Response) {
+            throw error;
+          }
+        }
+      }
     }
-    await ensureUsageCycle(session.shop);
     return shopifyRedirect("/app/staff?billing=updated");
   }
 
   await refreshSubscription(session.shop);
-  await ensureUsageCycle(session.shop);
   return shopifyRedirect("/app/staff?billing=refreshed");
 };
 

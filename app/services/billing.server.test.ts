@@ -420,6 +420,7 @@ describe("billing enforcement and usage", () => {
     });
     expect(shopAfter.usageCycleKey).toBe("2026-08");
     expect(shopAfter.reportedStaffUsage).toBe(2);
+    expect(shopAfter.meteredStaffOverage).toBe(2);
   });
 
   it("reports +1 on create and -1 on archive only after included seats", async () => {

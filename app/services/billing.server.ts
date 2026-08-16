@@ -361,7 +361,7 @@ export async function reportStaffUsageDelta(
 
   await prisma.shop.update({
     where: { id: shop.id },
-    data: { reportedStaffUsage: shop.reportedStaffUsage + delta },
+    data: { meteredStaffOverage: shop.meteredStaffOverage + delta },
   });
 
   return { skipped: false, delta, idempotencyKey };
@@ -392,7 +392,7 @@ export async function rollUsageCycleIfNeeded(
     where: { id: shop.id },
     data: {
       usageCycleKey: cycleKey,
-      reportedStaffUsage: 0,
+      meteredStaffOverage: 0,
     },
   });
 
@@ -421,9 +421,16 @@ export async function reconcileStaffUsage(
     return { skipped: true as const, reason: "no_shop" as const };
   }
 
+  const shop = await prisma.shop.findUniqueOrThrow({
+    where: { id: billing.shopId },
+  });
   const includedStaff = billing.plan.includedStaff;
-  const targetOverage = usageOverage(billing.activeStaffCount, includedStaff);
-  const delta = targetOverage - billing.reportedStaffUsage;
+  const activeOverage = usageOverage(billing.activeStaffCount, includedStaff);
+  const targetOverage =
+    shop.reportedStaffUsage > 0
+      ? Math.min(activeOverage, shop.reportedStaffUsage)
+      : activeOverage;
+  const delta = targetOverage - shop.meteredStaffOverage;
   try {
     return await reportStaffUsageDelta(shopDomain, delta, deps);
   } catch {

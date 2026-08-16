@@ -159,8 +159,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const usageRecords = usage?.usageRecords?.nodes ?? [];
   const usageUsed = Number(usageDetails?.balanceUsed?.amount ?? 0);
   const usageCap = Number(usageDetails?.cappedAmount?.amount ?? 0);
-  const impliedQuantity =
-    local.extraStaffRate > 0 ? usageUsed / local.extraStaffRate : 0;
+  const usageRecordTotal = usageRecords.reduce(
+    (sum, record) => sum + Number(record.price?.amount ?? 0),
+    0,
+  );
+  const activeExtraStaff = Math.max(
+    0,
+    local.activeStaffCount - local.includedStaff,
+  );
 
   return {
     shop: session.shop,
@@ -173,6 +179,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       extraSeats: local.reportedStaffUsage,
       extraCharge: local.reportedStaffUsage * local.extraStaffRate,
       usageCap: local.plan.usageCappedAmount,
+      activeStaffCount: local.activeStaffCount,
+      activeExtraStaff,
     },
     subscription,
     recurringCharge: recurringDetails?.price ?? null,
@@ -182,7 +190,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     usageRemaining:
       usageCap > 0 ? Math.max(0, usageCap - usageUsed) : null,
     usageTerms: usageDetails?.terms ?? null,
-    usageQuantity: impliedQuantity,
+    usageRecordTotal,
     usageRecords,
     errors: payload.errors?.map((error) => error.message).filter(Boolean) ?? [],
   };
@@ -199,7 +207,7 @@ export default function UsagePage() {
     usageFee,
     usageRemaining,
     usageTerms,
-    usageQuantity,
+    usageRecordTotal,
     usageRecords,
     errors,
   } = useLoaderData<typeof loader>();
@@ -255,10 +263,10 @@ export default function UsagePage() {
                   <s-text color="subdued">Usage fee</s-text>
                   <s-heading>
                     {subscription
-                      ? formatMoney(usageFee)
+                      ? formatUsd(usageRecordTotal || usageUsed)
                       : formatUsd(local.extraCharge)}
                   </s-heading>
-                  <s-text color="subdued">Used this period</s-text>
+                  <s-text color="subdued">Subscribed extras this period</s-text>
                 </s-stack>
               </s-box>
               <s-box padding="small">
@@ -280,16 +288,11 @@ export default function UsagePage() {
               </s-box>
               <s-box padding="small">
                 <s-stack direction="block" gap="small-200">
-                  <s-text color="subdued">Extra seats</s-text>
-                  <s-heading>
-                    {subscription
-                      ? Number.isInteger(usageQuantity)
-                        ? String(usageQuantity)
-                        : usageQuantity.toFixed(1)
-                      : String(local.extraSeats)}
-                  </s-heading>
+                  <s-text color="subdued">Subscribed extra seats</s-text>
+                  <s-heading>{String(local.extraSeats)}</s-heading>
                   <s-text color="subdued">
-                    {formatUsd(local.extraStaffRate)} each
+                    {formatUsd(local.extraStaffRate)} each · {local.activeExtraStaff}{" "}
+                    in use
                   </s-text>
                 </s-stack>
               </s-box>

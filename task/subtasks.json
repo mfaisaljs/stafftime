@@ -2465,6 +2465,27 @@
         "app/services/billing/checkout.test.ts"
       ],
       "lastUpdated": "2026-08-16T16:05:00.000Z"
+    },
+    {
+      "id": "ST131",
+      "taskId": "T018",
+      "title": "Fix Usage page extra seat and charge display",
+      "description": "Separate subscribed extras from metered overage; Usage shows subscribed seats and correct fee instead of balanceUsed/rate.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST129"],
+      "acceptanceCriteria": [
+        "Usage extra seats shows reportedStaffUsage",
+        "Billing return creates usage record for subscribed extras only",
+        "meteredStaffOverage tracks staff meter separately"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "app/services/billing.server.ts",
+        "app/routes/app.billing.tsx",
+        "app/routes/app.usage.tsx"
+      ],
+      "lastUpdated": "2026-08-16T16:15:00.000Z"
     }
   ]
 }
