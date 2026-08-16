@@ -26,12 +26,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   let planHandle = url.searchParams.get("plan_handle");
   let extraSeats = Math.max(0, Number(url.searchParams.get("extra_seats") ?? 0));
+  let pendingCheckout = null;
 
   if (!planHandle) {
-    const pending = await takePendingBillingCheckout(session.shop);
-    if (pending) {
-      planHandle = pending.planHandle;
-      extraSeats = pending.extraSeats;
+    pendingCheckout = await takePendingBillingCheckout(session.shop);
+    if (pendingCheckout) {
+      planHandle = pendingCheckout.planHandle;
+      extraSeats = pendingCheckout.extraSeats;
     }
   }
 
@@ -50,7 +51,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   if (planHandle) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
-    if (extraSeats > 0) {
+    if (pendingCheckout || extraSeats > 0) {
       await prisma.shop.update({
         where: { domain: shopFromDest(session.shop).toLowerCase() },
         data: { reportedStaffUsage: extraSeats },

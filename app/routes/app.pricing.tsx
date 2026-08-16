@@ -26,7 +26,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     planHandle: billing.planHandle,
     planName: billing.plan.name,
     includedStaff: billing.includedStaff,
-    extraStaffCount: billing.extraStaffCount,
+    subscribedExtraSeats: billing.reportedStaffUsage,
     extraStaffRate: billing.extraStaffRate,
     activeStaffCount: billing.activeStaffCount,
     atCap: billing.atCap,
@@ -84,7 +84,7 @@ export default function PricingPage() {
     planHandle,
     planName,
     includedStaff,
-    extraStaffCount,
+    subscribedExtraSeats,
     extraStaffRate,
     activeStaffCount,
     atCap,
@@ -118,10 +118,10 @@ export default function PricingPage() {
         ) : (
           <s-banner heading={`Current plan: ${planName}`} tone="info">
             <s-text>
-              {activeStaffCount} staff · {includedStaff} included · {extraStaffCount}{" "}
-              extra seat{extraStaffCount === 1 ? "" : "s"}
-              {extraStaffCount > 0
-                ? ` (${formatUsd(extraStaffCount * extraStaffRate)}/mo)`
+              {activeStaffCount} staff · {includedStaff} included · {subscribedExtraSeats}{" "}
+              extra seat{subscribedExtraSeats === 1 ? "" : "s"} subscribed
+              {subscribedExtraSeats > 0
+                ? ` (${formatUsd(subscribedExtraSeats * extraStaffRate)}/mo)`
                 : ""}
               {atCap && nextPlanName
                 ? ` Upgrade to ${nextPlanName} (up to ${nextPlanMax}) to add more.`
@@ -133,7 +133,7 @@ export default function PricingPage() {
           pricingPlansUrl={pricingPlansUrl}
           currentPlanHandle={planHandle}
           initialStaffCount={Math.max(activeStaffCount, 1)}
-          currentExtraStaffCount={extraStaffCount}
+          currentExtraStaffCount={subscribedExtraSeats}
           atCap={atCap}
           needsPlanSelection={needsPlanSelection}
           variant="page"

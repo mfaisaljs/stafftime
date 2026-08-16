@@ -226,7 +226,7 @@ export function PricingPlans({
             </strong>
             <span className="pricing-extra-usage">
               {showPlanSelected && currentExtraStaffCount > 0
-                ? `${currentExtraStaffCount} extra seat${currentExtraStaffCount === 1 ? "" : "s"} in use (${formatUsd(currentExtraPrice)}/mo)`
+                ? `${currentExtraStaffCount} extra seat${currentExtraStaffCount === 1 ? "" : "s"} subscribed (${formatUsd(currentExtraPrice)}/mo)`
                 : "No extra seats in use"}
             </span>
             <span>

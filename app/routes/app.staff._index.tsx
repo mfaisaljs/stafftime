@@ -653,7 +653,7 @@ export default function StaffManagementPage() {
         pricingPlansUrl={pricingPlansUrl}
         currentPlanHandle={planHandle}
         initialStaffCount={Math.max(totalStaff, 1)}
-        currentExtraStaffCount={extraStaffCount}
+        currentExtraStaffCount={reportedStaffUsage}
         atCap={atCap}
       />
       <style>{STAFF_MANAGEMENT_STYLES}</style>
