@@ -19,6 +19,66 @@ export function nextSubscribedExtraSeats(
 
 const DEV_BILLING_TEST_SHOP = "spaceraceplayground";
 
+export function canRecordUsageWithoutCheckout(params: {
+  alreadyOnThisPlan: boolean;
+  seatsToAdd: number;
+  hasShopifyUsageSubscription: boolean;
+}) {
+  return (
+    params.alreadyOnThisPlan &&
+    params.seatsToAdd > 0 &&
+    params.hasShopifyUsageSubscription
+  );
+}
+
+const USAGE_SUBSCRIPTION_QUERY = `#graphql
+  query HasShopifyUsageSubscription {
+    currentAppInstallation {
+      activeSubscriptions {
+        status
+        lineItems {
+          plan {
+            pricingDetails {
+              __typename
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export async function hasActiveShopifyUsageSubscription(admin: {
+  graphql: (query: string) => Promise<Response>;
+}) {
+  try {
+    const response = await admin.graphql(USAGE_SUBSCRIPTION_QUERY);
+    const payload = (await response.json()) as {
+      data?: {
+        currentAppInstallation?: {
+          activeSubscriptions?: Array<{
+            status?: string;
+            lineItems?: Array<{
+              plan?: { pricingDetails?: { __typename?: string } };
+            }>;
+          }>;
+        };
+      };
+    };
+    return (
+      payload.data?.currentAppInstallation?.activeSubscriptions?.some(
+        (subscription) =>
+          subscription.status === "ACTIVE" &&
+          subscription.lineItems?.some(
+            (item) => item.plan?.pricingDetails?.__typename === "AppUsagePricing",
+          ),
+      ) ?? false
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isShopifyBillingTest(shop: string) {
   const domain = shopFromDest(shop).toLowerCase();
   if (

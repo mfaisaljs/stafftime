@@ -218,13 +218,20 @@ export default function UsagePage() {
         ) : null}
 
         {!subscription ? (
-          <s-banner heading="No active subscription" tone="info">
+          <s-banner heading="No Shopify usage subscription" tone="warning">
             <s-stack direction="block" gap="small">
               <s-text>
-                {shop} does not have an active Shopify app subscription yet.
+                {shop} has no approved Shopify app subscription, so Usage cannot
+                show cap, usage fee, or charges
+                {local.extraSeats > 0
+                  ? ` (${local.extraSeats} extra seat${
+                      local.extraSeats === 1 ? "" : "s"
+                    } are saved locally only).`
+                  : "."}{" "}
+                Subscribe again on Pricing to approve usage billing.
               </s-text>
               <s-button href="/app/pricing" variant="primary">
-                Choose a plan
+                Approve usage billing
               </s-button>
             </s-stack>
           </s-banner>
@@ -246,18 +253,28 @@ export default function UsagePage() {
               <s-box padding="small">
                 <s-stack direction="block" gap="small-200">
                   <s-text color="subdued">Usage fee</s-text>
-                  <s-heading>{formatMoney(usageFee)}</s-heading>
+                  <s-heading>
+                    {subscription
+                      ? formatMoney(usageFee)
+                      : formatUsd(local.extraCharge)}
+                  </s-heading>
                   <s-text color="subdued">Used this period</s-text>
                 </s-stack>
               </s-box>
               <s-box padding="small">
                 <s-stack direction="block" gap="small-200">
                   <s-text color="subdued">Usage cap</s-text>
-                  <s-heading>{formatMoney(usageCapAmount)}</s-heading>
+                  <s-heading>
+                    {subscription
+                      ? formatMoney(usageCapAmount)
+                      : formatUsd(local.usageCap)}
+                  </s-heading>
                   <s-text color="subdued">
-                    {usageRemaining == null
-                      ? "No Shopify cap on file"
-                      : `${formatUsd(usageRemaining)} remaining`}
+                    {subscription
+                      ? usageRemaining == null
+                        ? "No Shopify cap on file"
+                        : `${formatUsd(usageRemaining)} remaining`
+                      : "Configured plan cap"}
                   </s-text>
                 </s-stack>
               </s-box>
@@ -265,9 +282,11 @@ export default function UsagePage() {
                 <s-stack direction="block" gap="small-200">
                   <s-text color="subdued">Extra seats</s-text>
                   <s-heading>
-                    {Number.isInteger(usageQuantity)
-                      ? String(usageQuantity)
-                      : usageQuantity.toFixed(1)}
+                    {subscription
+                      ? Number.isInteger(usageQuantity)
+                        ? String(usageQuantity)
+                        : usageQuantity.toFixed(1)
+                      : String(local.extraSeats)}
                   </s-heading>
                   <s-text color="subdued">
                     {formatUsd(local.extraStaffRate)} each

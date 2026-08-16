@@ -2424,6 +2424,27 @@
         "app/services/billing/checkout.test.ts"
       ],
       "lastUpdated": "2026-08-16T15:52:00.000Z"
+    },
+    {
+      "id": "ST129",
+      "taskId": "T018",
+      "title": "Require Shopify approval for first extra seats",
+      "description": "Selecting Free locally no longer lets extra-seat subscribe skip billing.request(); Usage explains missing Shopify subscription.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST122"],
+      "acceptanceCriteria": [
+        "Same-plan extras skip checkout only when Shopify has an ACTIVE usage line",
+        "Free + extras calls billing.request for approval",
+        "Usage page warns when Shopify has no active subscription"
+      ],
+      "files": [
+        "app/routes/app.pricing.tsx",
+        "app/services/billing/checkout.ts",
+        "app/services/billing/checkout.test.ts",
+        "app/routes/app.usage.tsx"
+      ],
+      "lastUpdated": "2026-08-16T16:00:00.000Z"
     }
   ]
 }

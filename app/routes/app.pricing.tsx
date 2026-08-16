@@ -13,6 +13,8 @@ import { formatUsd, FREE_PLAN_HANDLE } from "../services/billing/plans";
 import {
   billingErrorMessage,
   billingReturnUrl,
+  canRecordUsageWithoutCheckout,
+  hasActiveShopifyUsageSubscription,
   isShopifyBillingTest,
   nextSubscribedExtraSeats,
   parseCheckoutPlanHandle,
@@ -42,7 +44,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { billing, redirect: shopifyRedirect, session } =
+  const { admin, billing, redirect: shopifyRedirect, session } =
     await authenticate.admin(request);
   const formData = await request.formData();
   const planHandle = parseCheckoutPlanHandle(formData.get("plan"));
@@ -71,8 +73,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     !currentBilling.needsPlanSelection &&
     currentBilling.subscriptionStatus !== "none";
 
-  if (alreadyOnThisPlan && seatsToAdd > 0) {
-    await saveSubscribedExtraSeats(session.shop, extraSeats);
+  const hasShopifyUsage = await hasActiveShopifyUsageSubscription(admin);
+  if (
+    canRecordUsageWithoutCheckout({
+      alreadyOnThisPlan,
+      seatsToAdd,
+      hasShopifyUsageSubscription: hasShopifyUsage,
+    })
+  ) {
     try {
       await billing.createUsageRecord({
         description: `${seatsToAdd} extra staff seat${seatsToAdd === 1 ? "" : "s"}`,
@@ -82,13 +90,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
         isTest: isShopifyBillingTest(session.shop),
       });
+      await saveSubscribedExtraSeats(session.shop, extraSeats);
+      return shopifyRedirect("/app/staff?billing=updated");
     } catch (error) {
       if (error instanceof Response) {
         throw error;
       }
-      // Capacity is saved even if Shopify usage recording is unavailable.
+      // No usable Shopify usage line — fall through to billing.request().
     }
-    return shopifyRedirect("/app/staff?billing=updated");
   }
 
   try {

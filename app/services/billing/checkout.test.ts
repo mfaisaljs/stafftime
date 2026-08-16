@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   billingErrorMessage,
   billingReturnUrl,
+  canRecordUsageWithoutCheckout,
   MAX_BILLING_RETURN_URL_LENGTH,
   isShopifyBillingTest,
   nextSubscribedExtraSeats,
@@ -68,6 +69,23 @@ describe("billing checkout helpers", () => {
     } else {
       process.env.SHOPIFY_BILLING_TEST = previous;
     }
+  });
+
+  it("only skips Shopify checkout when a usage subscription already exists", () => {
+    expect(
+      canRecordUsageWithoutCheckout({
+        alreadyOnThisPlan: true,
+        seatsToAdd: 2,
+        hasShopifyUsageSubscription: false,
+      }),
+    ).toBe(false);
+    expect(
+      canRecordUsageWithoutCheckout({
+        alreadyOnThisPlan: true,
+        seatsToAdd: 2,
+        hasShopifyUsageSubscription: true,
+      }),
+    ).toBe(true);
   });
 
   it("sends session-token bounces for any /app route back into Admin", () => {
