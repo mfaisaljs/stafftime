@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { shopFromDest } from "../utils/http.server";
 
 /** Max stored data-URL length (~300KB binary after base64 overhead). */
 const MAX_PHOTO_CHARS = 450_000;
@@ -123,7 +124,7 @@ function signClockPhotoAccess(input: {
   expiresAt: number;
 }) {
   const payload = [
-    input.shopDomain.toLowerCase(),
+    shopFromDest(input.shopDomain).toLowerCase(),
     input.employeeId,
     input.timeEntryId,
     input.kind,
