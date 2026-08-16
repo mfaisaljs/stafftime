@@ -2307,6 +2307,25 @@
         "app/services/billing.server.test.ts"
       ],
       "lastUpdated": "2026-08-16T14:45:00.000Z"
+    },
+    {
+      "id": "ST123",
+      "taskId": "T018",
+      "title": "Billing debug route for live Shopify subscription",
+      "description": "Test page listing active Shopify subscription recurring charge, usage cap, usage fee, and quantity.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST120"],
+      "acceptanceCriteria": [
+        "/app/billing-debug loads with Admin auth",
+        "Shows recurring charge, usage cappedAmount, balanceUsed, and usage records",
+        "Shows local extra quantity and extra charge for comparison"
+      ],
+      "files": [
+        "app/routes/app.billing-debug.tsx",
+        "app/routes/app.tsx"
+      ],
+      "lastUpdated": "2026-08-16T15:20:00.000Z"
     }
   ]
 }
