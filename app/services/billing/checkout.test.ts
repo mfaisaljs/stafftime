@@ -3,6 +3,7 @@ import {
   billingErrorMessage,
   billingReturnUrl,
   MAX_BILLING_RETURN_URL_LENGTH,
+  nextSubscribedExtraSeats,
   parseCheckoutPlanHandle,
 } from "./checkout";
 
@@ -45,6 +46,12 @@ describe("billing checkout helpers", () => {
       "https://admin.shopify.com/store/spaceraceplayground/apps/94ec09cf3eaee34d49da7c9a2e1b91cd/app/billing",
     );
     expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
+  });
+
+  it("adds slider extras on top of already subscribed extras", () => {
+    expect(nextSubscribedExtraSeats(1, 1)).toBe(2);
+    expect(nextSubscribedExtraSeats(0, 1)).toBe(1);
+    expect(nextSubscribedExtraSeats(49, 5)).toBe(50);
   });
 
   it("formats billing API errors", () => {

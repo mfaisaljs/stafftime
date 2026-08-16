@@ -101,13 +101,13 @@ export function PricingPlans({
   const sliderPlan = onFreeTrack ? freePlan : currentPlan;
   const isFreeCurrent =
     currentPlanHandle === FREE_PLAN_HANDLE && !needsPlanSelection;
-  const [extraStaff, setExtraStaff] = useState(() => {
-    const derived = Math.max(
-      currentExtraStaffCount,
-      initialStaffCount - sliderPlan.includedStaff,
-    );
-    return clampStaff(derived > 0 ? derived : 1, 0, EXTRA_SEAT_SLIDER_MAX);
-  });
+  const remainingExtraSeats = Math.max(
+    0,
+    EXTRA_SEAT_SLIDER_MAX - currentExtraStaffCount,
+  );
+  const [extraStaff, setExtraStaff] = useState(() =>
+    clampStaff(remainingExtraSeats > 0 ? 1 : 0, 0, remainingExtraSeats),
+  );
   const [estimateByPlan, setEstimateByPlan] = useState<Record<string, number>>({
     workforce: 10,
     enterprise: 100,
@@ -227,7 +227,10 @@ export function PricingPlans({
             <span className="pricing-extra-usage">
               {showPlanSelected && currentExtraStaffCount > 0
                 ? `${currentExtraStaffCount} extra seat${currentExtraStaffCount === 1 ? "" : "s"} subscribed (${formatUsd(currentExtraPrice)}/mo)`
-                : "No extra seats in use"}
+                : "No extra seats subscribed"}
+              {!noExtras
+                ? ` · adding ${extraStaff} makes ${currentExtraStaffCount + extraStaff} extra`
+                : ""}
             </span>
             <span>
               {noExtras
@@ -239,27 +242,27 @@ export function PricingPlans({
             <input
               type="range"
               min={0}
-              max={EXTRA_SEAT_SLIDER_MAX}
+              max={remainingExtraSeats}
               value={extraStaff}
               onChange={(event) =>
                 setExtraStaff(Number(event.currentTarget.value))
               }
-              aria-label="Extra staff beyond included seats"
+              aria-label="Extra seats to add"
             />
           </label>
           <input
             className="pricing-extra-count"
             type="number"
             min={0}
-            max={EXTRA_SEAT_SLIDER_MAX}
+            max={remainingExtraSeats}
             step={1}
             value={extraStaff}
             onChange={(event) =>
               setExtraStaff(
-                clampStaff(Number(event.currentTarget.value), 0, EXTRA_SEAT_SLIDER_MAX),
+                clampStaff(Number(event.currentTarget.value), 0, remainingExtraSeats),
               )
             }
-            aria-label="Extra staff count"
+            aria-label="Extra seats to add"
           />
           {noExtras ? (
             onFreeTrack ? (
@@ -308,7 +311,7 @@ export function PricingPlans({
             >
               {onFreeTrack && needsPlanSelection
                 ? `Select Free plan + ${formatUsd(extraPrice)}/mo extras`
-                : `Subscribe for ${formatUsd(extraPrice)}`}
+                : `Add ${extraStaff} extra seat${extraStaff === 1 ? "" : "s"} for ${formatUsd(extraPrice)}`}
             </PlanCheckoutForm>
           )}
         </div>

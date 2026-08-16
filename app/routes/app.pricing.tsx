@@ -13,6 +13,7 @@ import { formatUsd, FREE_PLAN_HANDLE } from "../services/billing/plans";
 import {
   billingErrorMessage,
   billingReturnUrl,
+  nextSubscribedExtraSeats,
   parseCheckoutPlanHandle,
   savePendingBillingCheckout,
 } from "../services/billing/checkout";
@@ -50,7 +51,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   await ensureShop(session.shop);
 
-  const extraSeats = Math.max(0, Number(formData.get("extra_seats") ?? 0));
+  const seatsToAdd = Math.max(0, Number(formData.get("extra_seats") ?? 0));
+  const currentBilling = await getShopBilling(session.shop);
+  const extraSeats = nextSubscribedExtraSeats(
+    currentBilling.reportedStaffUsage,
+    seatsToAdd,
+  );
 
   if (planHandle === FREE_PLAN_HANDLE && extraSeats === 0) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);

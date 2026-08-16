@@ -5,6 +5,17 @@ import { shopFromDest } from "../../utils/http.server";
 import { redirect } from "react-router";
 
 export const MAX_BILLING_RETURN_URL_LENGTH = 255;
+export const MAX_EXTRA_SEATS = 50;
+
+export function nextSubscribedExtraSeats(
+  existingExtraSeats: number,
+  seatsToAdd: number,
+  maxExtraSeats = MAX_EXTRA_SEATS,
+) {
+  const existing = Math.max(0, Math.floor(existingExtraSeats));
+  const add = Math.max(0, Math.floor(seatsToAdd));
+  return Math.min(maxExtraSeats, existing + add);
+}
 
 export function parseCheckoutPlanHandle(
   value: FormDataEntryValue | null,

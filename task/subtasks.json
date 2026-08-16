@@ -2233,6 +2233,25 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-16T14:25:00.000Z"
+    },
+    {
+      "id": "ST117",
+      "taskId": "T018",
+      "title": "Add extra seats on top of existing extras",
+      "description": "Pricing slider is seats to add; pending checkout stores existing reportedStaffUsage + slider, capped at 50.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST115"],
+      "acceptanceCriteria": [
+        "1 existing extra + slider 1 saves 2 extras after approval",
+        "Slider defaults to 1 additional seat, not the current total"
+      ],
+      "files": [
+        "app/services/billing/checkout.ts",
+        "app/routes/app.pricing.tsx",
+        "app/components/billing/PricingModal.tsx"
+      ],
+      "lastUpdated": "2026-08-16T14:30:00.000Z"
     }
   ]
 }
