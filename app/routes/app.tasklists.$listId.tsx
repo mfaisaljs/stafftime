@@ -7,9 +7,9 @@ import { useEffect, useState } from "react";
 import {
   useFetcher,
   useLoaderData,
-  useNavigate,
   useSearchParams,
 } from "react-router";
+import { useAppNavigate } from "../hooks/useAppNavigate";
 import { AppPage } from "../components/AppPage";
 import {
   Check,
@@ -199,7 +199,7 @@ export default function TaskListDetailPage() {
     tasks,
   } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [range, setRange] = useState<DateRangeValue>(dateRange);
 

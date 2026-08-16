@@ -1,8 +1,9 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate } from "react-router";
+import { useLoaderData } from "react-router";
 import { AppPage } from "../components/AppPage";
 import { useState } from "react";
 import { useQueryParamToast } from "../hooks/useQueryParamToast";
+import { useAppNavigate } from "../hooks/useAppNavigate";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getAdminShop } from "../services/admin.server";
@@ -30,7 +31,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function TimeOffPolicyIndexPage() {
   const { policies } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const [selected, setSelected] = useState<string[]>([]);
   const allSelected = policies.length > 0 && selected.length === policies.length;
 

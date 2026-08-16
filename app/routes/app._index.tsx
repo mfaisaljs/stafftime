@@ -1,7 +1,9 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Link, useLoaderData } from "react-router";
+import { useLoaderData } from "react-router";
+import { AppLink } from "../components/AppLink";
+import { useAppPath } from "../hooks/useAppPath";
 import { AppPage } from "../components/AppPage";
 import {
   CalendarDays,
@@ -111,6 +113,7 @@ export default function DashboardPage() {
 }
 
 function SetupGuide() {
+  const appPath = useAppPath();
   const storageKey = "stafftime.setupGuide.v1";
   const [ready, setReady] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -258,7 +261,7 @@ function SetupGuide() {
                         ) : (
                           <s-button
                             key={action.label}
-                            href={action.href}
+                            href={appPath(action.href)}
                             variant="secondary"
                           >
                             {action.label}
@@ -361,7 +364,7 @@ function RecentActivity({
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <Link
+                    <AppLink
                       className="recent-staff"
                       to={`/app/staff/${row.employeeId}`}
                     >
@@ -369,7 +372,7 @@ function RecentActivity({
                         {row.initials}
                       </span>
                       <span>{row.staffName}</span>
-                    </Link>
+                    </AppLink>
                   </td>
                   <td>{row.location}</td>
                   <td>

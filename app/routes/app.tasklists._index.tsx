@@ -3,8 +3,9 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useFetcher, useLoaderData, useNavigate } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { useQueryParamToast } from "../hooks/useQueryParamToast";
+import { useAppNavigate } from "../hooks/useAppNavigate";
 import { AppPage } from "../components/AppPage";
 import {
   Check,
@@ -88,7 +89,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function TaskListsIndexPage() {
   const { taskLists } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const isEmpty = taskLists.length === 0;
 
   useQueryParamToast({

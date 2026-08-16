@@ -1,8 +1,10 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { AppPage } from "../components/AppPage";
-import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router";
+import { useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
+import { AppLink } from "../components/AppLink";
+import { useAppPath } from "../hooks/useAppPath";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
@@ -65,6 +67,7 @@ export default function StaffManagementPage() {
     nextPlan,
   } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
+  const appPath = useAppPath();
   const fetcher = useFetcher<BulkActionResult>();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -159,7 +162,7 @@ export default function StaffManagementPage() {
     for (const employeeId of selectedIds) {
       formData.append("employeeIds", employeeId);
     }
-    fetcher.submit(formData, { method: "post", action: "/app/staff" });
+    fetcher.submit(formData, { method: "post", action: appPath("/app/staff") });
   };
 
   const openRemoveStaffModal = (employee: {
@@ -183,7 +186,7 @@ export default function StaffManagementPage() {
     const formData = new FormData();
     formData.set("intent", removeMode);
     formData.append("employeeIds", removeStaff.id);
-    fetcher.submit(formData, { method: "post", action: "/app/staff" });
+    fetcher.submit(formData, { method: "post", action: appPath("/app/staff") });
   };
 
   const toggleSelectAll = () => {
@@ -276,7 +279,7 @@ export default function StaffManagementPage() {
                     : "Upgrade to add more staff"}
             </span>
             {atSubscribedCap && !atCap ? (
-              <s-button variant="primary" href="/app/pricing">
+              <s-button variant="primary" href={appPath("/app/pricing")}>
                 Add extra seats
               </s-button>
             ) : (
@@ -308,7 +311,7 @@ export default function StaffManagementPage() {
 
         <div className="staff-actions">
           {atSubscribedCap && !atCap ? (
-            <s-button variant="primary" href="/app/pricing">
+            <s-button variant="primary" href={appPath("/app/pricing")}>
               Subscribe for more seats
             </s-button>
           ) : atCap ? (
@@ -320,7 +323,7 @@ export default function StaffManagementPage() {
               {nextPlan ? `Upgrade to ${nextPlan.name}` : "Staff limit reached"}
             </s-button>
           ) : (
-            <s-button variant="primary" href="/app/staff/new">
+            <s-button variant="primary" href={appPath("/app/staff/new")}>
               Add Shopify Staff
             </s-button>
           )}
@@ -561,7 +564,7 @@ export default function StaffManagementPage() {
                       />
                     </td>
                     <td>
-                      <Link
+                      <AppLink
                         className="staff-person-link"
                         to={`/app/staff/${employee.id}`}
                       >
@@ -576,7 +579,7 @@ export default function StaffManagementPage() {
                             <small>{employee.email ?? "No email"}</small>
                           </span>
                         </div>
-                      </Link>
+                      </AppLink>
                     </td>
                     <td>{employee.position ?? "Staff"}</td>
                     <td>{employee.location?.name ?? "Shop location"}</td>
@@ -600,12 +603,12 @@ export default function StaffManagementPage() {
                     <td>{payrollTypeLabel(employee.payrollType)}</td>
                     <td>
                       <div className="row-actions">
-                        <Link
+                        <AppLink
                           to={`/app/staff/${employee.id}/edit`}
                           aria-label="Edit staff"
                         >
                           <Pencil aria-hidden="true" size={15} />
-                        </Link>
+                        </AppLink>
                         <button
                           type="button"
                           aria-label="Archive staff"
@@ -615,7 +618,7 @@ export default function StaffManagementPage() {
                             formData.append("employeeIds", employee.id);
                             fetcher.submit(formData, {
                               method: "post",
-                              action: "/app/staff",
+                              action: appPath("/app/staff"),
                             });
                           }}
                         >

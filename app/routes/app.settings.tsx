@@ -8,11 +8,11 @@ import { AppPage } from "../components/AppPage";
 import { useEffect, useRef, useState } from "react";
 import {
   Form,
-  Link,
   useActionData,
   useLoaderData,
   useNavigation,
 } from "react-router";
+import { AppLink } from "../components/AppLink";
 import { CircleHelp, Copy, Info } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -478,7 +478,7 @@ export default function SettingsPage() {
       </Form>
 
       <p className="knowledge-link">
-        For more assistance, visit our <Link to="/app">Knowledge Base</Link>
+        For more assistance, visit our <AppLink to="/app">Knowledge Base</AppLink>
       </p>
 
       <style>{SETTINGS_STYLES}</style>

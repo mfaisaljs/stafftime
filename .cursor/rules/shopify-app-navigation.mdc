@@ -1,0 +1,14 @@
+---
+description: Preserve embedded Shopify params on in-app navigation
+globs: app/**/*.tsx
+alwaysApply: false
+---
+
+# Embedded App Navigation
+
+Client-side navigation in the embedded admin must keep `shop`, `host`, and `embedded` query params or routes can return a blank HTTP 200.
+
+- Use `AppLink` instead of React Router `Link` for `/app/*` destinations.
+- Use `useAppNavigate()` instead of `useNavigate()` for programmatic `/app/*` navigation.
+- Use `useAppPath()` for `s-button href`, `fetcher.submit({ action })`, and other string paths.
+- `AppNavLink` in `app/routes/app.tsx` already handles main nav the same way.

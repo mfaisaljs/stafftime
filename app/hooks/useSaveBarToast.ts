@@ -7,24 +7,26 @@ export type SaveBarFeedback = {
   error?: string;
 } | null | undefined;
 
-export function useSaveBarToast(feedback: SaveBarFeedback) {
+type SaveBarToastState = "idle" | "submitting" | "loading";
+
+export function useSaveBarToast(
+  feedback: SaveBarFeedback,
+  options?: { state?: SaveBarToastState },
+) {
   const navigation = useNavigation();
-  const previousNavigationState = useRef(navigation.state);
-  const lastToastedRef = useRef<string | null>(null);
+  const state = options?.state ?? navigation.state;
+  const previousState = useRef<SaveBarToastState>(state);
   const success = feedback?.success;
   const error = feedback?.error;
 
   useEffect(() => {
-    if (navigation.state === "submitting") {
-      lastToastedRef.current = null;
-    }
-  }, [navigation.state]);
+    const wasInFlight =
+      previousState.current === "submitting" ||
+      previousState.current === "loading";
+    const isIdle = state === "idle";
+    previousState.current = state;
 
-  useEffect(() => {
-    const wasSubmitting = previousNavigationState.current === "submitting";
-    previousNavigationState.current = navigation.state;
-
-    if (!wasSubmitting || navigation.state !== "idle") {
+    if (!wasInFlight || !isIdle) {
       return;
     }
 
@@ -33,12 +35,6 @@ export function useSaveBarToast(feedback: SaveBarFeedback) {
       return;
     }
 
-    const toastKey = `${success ? "success" : "error"}:${message}`;
-    if (lastToastedRef.current === toastKey) {
-      return;
-    }
-
-    lastToastedRef.current = toastKey;
     showAdminToast(message, { isError: Boolean(error) });
-  }, [success, error, navigation.state]);
+  }, [state, success, error]);
 }

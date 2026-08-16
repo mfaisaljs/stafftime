@@ -2,7 +2,8 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { AppPage } from "../components/AppPage";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Link, useLoaderData, useSearchParams } from "react-router";
+import { useLoaderData, useSearchParams } from "react-router";
+import { AppLink } from "../components/AppLink";
 import {
   Briefcase,
   CalendarDays,
@@ -598,7 +599,7 @@ function OverviewReport({
         </div>
       </section>
       <p className="knowledge-link">
-        For more guidance, visit our <a href="/app">Knowledge Base</a>
+        For more guidance, visit our <AppLink to="/app">Knowledge Base</AppLink>
       </p>
     </>
   );
@@ -904,9 +905,9 @@ function ReportTabLink({
   const query = next.toString();
   const href = query ? `/app/reports?${query}` : "/app/reports";
   return (
-    <Link className={`report-tab${tab === activeTab ? " active" : ""}`} to={href}>
+    <AppLink className={`report-tab${tab === activeTab ? " active" : ""}`} to={href}>
       {children}
-    </Link>
+    </AppLink>
   );
 }
 

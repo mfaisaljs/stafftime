@@ -5,7 +5,7 @@ import type {
 } from "react-router";
 import type { InputHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
-import { Form, useActionData, useLoaderData } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -98,8 +98,8 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
 export default function EditStaffPage() {
   const { employee, locations } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
-  useSaveBarToast(actionData);
+  const fetcher = useFetcher<typeof action>();
+  useSaveBarToast(fetcher.data, { state: fetcher.state });
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState(employee.payrollType);
   const [paymentMethod, setPaymentMethod] = useState(
@@ -172,7 +172,7 @@ export default function EditStaffPage() {
   return (
     <AppPage heading="Edit Shopify Staff" inlineSize="large">
       <s-section heading={`${employee.firstName} ${employee.lastName}`}>
-        <Form method="post" data-save-bar>
+        <fetcher.Form method="post" data-save-bar>
           <s-stack direction="block" gap="large">
             <FormSection title="Basic Information" description="Update contact information.">
               <div className="staff-grid two">
@@ -554,7 +554,7 @@ export default function EditStaffPage() {
             </FormSection>
 
           </s-stack>
-        </Form>
+        </fetcher.Form>
       </s-section>
       <style>{STAFF_EDIT_STYLES}</style>
     </AppPage>

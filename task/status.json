@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
-  "lastUpdated": "2026-08-16T16:45:00.000Z",
+  "lastUpdated": "2026-08-16T17:00:00.000Z",
   "notes": [
+    "ST136 complete: AppLink/useAppPath/useAppNavigate applied across admin routes to preserve embedded params.",
+    "ST135 complete: Staff links preserve embedded params; session-token redirects all /app routes; staff save uses fetcher for toasts.",
     "ST134 complete: save-bar forms show Shopify admin toasts on save; redirect flows toast via query params.",
     "ST133 complete: Dashboard footer hides Documentation and Live Support cards; Book Consultation remains.",
     "ST132 complete: Usage remaining cap derived from usage records ($265 = $275 - $10), not Shopify balanceUsed.",

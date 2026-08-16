@@ -213,11 +213,9 @@ export function redirectSessionTokenToAdmin(request: Request) {
     return;
   }
 
-  const isBillingReturn =
-    reloadUrl.pathname.startsWith("/app/billing") ||
-    reloadUrl.searchParams.has("charge_id") ||
-    reloadUrl.searchParams.has("plan_handle");
-  if (!isBillingReturn) {
+  const isAppReload =
+    reloadUrl.pathname === "/app" || reloadUrl.pathname.startsWith("/app/");
+  if (!isAppReload) {
     return;
   }
 

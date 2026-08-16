@@ -5,9 +5,12 @@ import type {
 } from "react-router";
 import type { ReactNode } from "react";
 import { AppPage } from "../components/AppPage";
-import { Link, useActionData, useFetcher, useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { AppLink } from "../components/AppLink";
+import { useActionData, useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { useEffect, useState } from "react";
 import { useQueryParamToast } from "../hooks/useQueryParamToast";
+import { useAppNavigate } from "../hooks/useAppNavigate";
+import { useAppPath } from "../hooks/useAppPath";
 import { ArrowUpDown, Search } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -149,7 +152,8 @@ export default function TimeOffIndexPage() {
   const fetcher = useFetcher<typeof action>();
   const reviewFeedback = fetcher.data ?? actionData;
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const appPath = useAppPath();
+  const navigate = useAppNavigate();
   const tab = statusTab(searchParams.get("status") ?? status);
   const isEmpty = timeOffs.length === 0;
   const [approveTarget, setApproveTarget] = useState<
@@ -168,7 +172,7 @@ export default function TimeOffIndexPage() {
     formData.set("requestId", requestId);
     formData.set("status", reviewStatus);
     // Index route action requires ?index so the post does not hit the parent layout.
-    fetcher.submit(formData, { method: "post", action: "/app/time-off?index" });
+    fetcher.submit(formData, { method: "post", action: appPath("/app/time-off?index") });
   };
 
   const reviewingRequestId =
@@ -373,7 +377,7 @@ export default function TimeOffIndexPage() {
       </section>
 
       <p className="knowledge-link">
-        For more guidance, visit our <Link to="/app">Knowledge Base</Link>
+        For more guidance, visit our <AppLink to="/app">Knowledge Base</AppLink>
       </p>
 
       <s-modal id="approve-time-off-modal" heading="Approve time off?">
@@ -501,12 +505,12 @@ function StatusTabLink({
   const href = query ? `/app/time-off?${query}` : "/app/time-off";
 
   return (
-    <Link
+    <AppLink
       className={`timeoff-tab${status === active ? " active" : ""}`}
       to={href}
     >
       {children}
-    </Link>
+    </AppLink>
   );
 }
 

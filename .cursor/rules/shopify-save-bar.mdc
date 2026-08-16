@@ -9,8 +9,9 @@ alwaysApply: false
 For Shopify Admin route forms, use the Polaris/App Bridge save bar pattern when the page edits merchant data.
 
 - Prefer automatic save bar integration: add `data-save-bar` to the React Router `<Form>`.
-- After a successful save or validation error from the save bar, show feedback with `useSaveBarToast(actionData)` (Shopify admin toast). Do not use success `s-banner` for save-bar saves.
+- After a successful save or validation error from the save bar, show feedback with `useSaveBarToast(actionData)` (Shopify admin toast). Prefer `useFetcher` + `fetcher.Form` when the save bar does not surface `useNavigation().state`.
 - For redirects after save (e.g. create flows), redirect with a query param and call `useQueryParamToast` on the destination page.
+- For in-app links and navigation, preserve embedded query params with `AppLink`, `useAppPath()`, or `useAppNavigate()`.
 - Do not add custom bottom `Save`, `Discard`, or duplicated submit buttons when the save bar applies.
 - Keep non-form navigation separate from save/discard behavior.
 - Use a custom submit button only when the route is not an edit/create form or the save bar is not applicable.

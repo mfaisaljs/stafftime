@@ -11,9 +11,9 @@ import {
   redirect,
   useActionData,
   useLoaderData,
-  useNavigate,
   useNavigation,
 } from "react-router";
+import { useAppNavigate } from "../hooks/useAppNavigate";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
@@ -124,7 +124,7 @@ export default function CreateTimeOffPage() {
   const actionData = useActionData<typeof action>();
   useSaveBarToast(actionData);
   const navigation = useNavigation();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const isSubmitting = navigation.state === "submitting";
   const today = toDateKey(new Date());
   const [employeeId, setEmployeeId] = useState("");

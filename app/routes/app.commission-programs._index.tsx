@@ -1,17 +1,17 @@
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
 import {
-  Link,
   useFetcher,
   useLoaderData,
-  useNavigate,
   useRouteError,
   useSearchParams,
 } from "react-router";
 import { AppPage } from "../components/AppPage";
+import { AppLink } from "../components/AppLink";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { FileText, Plus, Tag, ToggleRight, Type, User, Users } from "lucide-react";
 import { authenticate } from "../shopify.server";
 import { useQueryParamToast } from "../hooks/useQueryParamToast";
+import { useAppNavigate } from "../hooks/useAppNavigate";
 import prisma from "../db.server";
 
 type ProgramRow = {
@@ -84,7 +84,7 @@ export default function CommissionProgramsIndex() {
   const { programs } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const fetcher = useFetcher();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   useQueryParamToast({
     created: "Commission program created.",
@@ -95,14 +95,14 @@ export default function CommissionProgramsIndex() {
     <AppPage heading="Commission Programs" inlineSize="large">
       <div className="commission-page">
         <div className="commission-header">
-          <Link className="button-link" to="/app/commission-programs/new">
+          <AppLink className="button-link" to="/app/commission-programs/new">
             <s-button variant="primary">
               <span className="button-content">
                 <Plus aria-hidden="true" size={14} />
                 Create Program
               </span>
             </s-button>
-          </Link>
+          </AppLink>
         </div>
 
         <div className="commission-banner">
@@ -130,14 +130,14 @@ export default function CommissionProgramsIndex() {
             </div>
             <strong>Create your first commission program</strong>
             <p>Start managing commission programs for your staff members.</p>
-            <Link className="button-link" to="/app/commission-programs/new">
+            <AppLink className="button-link" to="/app/commission-programs/new">
               <s-button variant="primary">
                 <span className="button-content">
                   <Plus aria-hidden="true" size={13} />
                   Create Program
                 </span>
               </s-button>
-            </Link>
+            </AppLink>
           </section>
         ) : (
           <section className="programs-card">

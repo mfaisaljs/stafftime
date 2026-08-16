@@ -1,6 +1,7 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 import { useQueryParamToast } from "../hooks/useQueryParamToast";
+import { useAppPath } from "../hooks/useAppPath";
 import { AppPage } from "../components/AppPage";
 import { Plus } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -169,6 +170,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function PayrollIndexPage() {
   const { rows } = useLoaderData<typeof loader>();
+  const appPath = useAppPath();
 
   useQueryParamToast({
     saved: "Payroll payment saved.",
@@ -216,7 +218,7 @@ export default function PayrollIndexPage() {
                   <td>
                     <s-button
                       variant="primary"
-                      href={`/app/payroll/${row.id}/create`}
+                      href={appPath(`/app/payroll/${row.id}/create`)}
                     >
                       <span className="create-payroll-label">
                         <Plus aria-hidden="true" size={14} />

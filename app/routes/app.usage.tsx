@@ -5,6 +5,7 @@ import { authenticate } from "../shopify.server";
 import { AppPage } from "../components/AppPage";
 import { getShopBilling } from "../services/billing.server";
 import { formatUsd } from "../services/billing/plans";
+import { useAppPath } from "../hooks/useAppPath";
 
 const USAGE_BILLING_QUERY = `#graphql
   query UsageBilling {
@@ -202,10 +203,11 @@ export default function UsagePage() {
     usageRecords,
     errors,
   } = useLoaderData<typeof loader>();
+  const appPath = useAppPath();
 
   return (
     <AppPage heading="Usage" inlineSize="large">
-      <s-button slot="primary-action" variant="primary" href="/app/pricing">
+      <s-button slot="primary-action" variant="primary" href={appPath("/app/pricing")}>
         Change plan
       </s-button>
 
@@ -229,7 +231,7 @@ export default function UsagePage() {
                   : "."}{" "}
                 Subscribe again on Pricing to approve usage billing.
               </s-text>
-              <s-button href="/app/pricing" variant="primary">
+              <s-button href={appPath("/app/pricing")} variant="primary">
                 Approve usage billing
               </s-button>
             </s-stack>

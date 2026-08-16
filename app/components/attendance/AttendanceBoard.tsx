@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
-import { Link, useRevalidator, useSearchParams } from "react-router";
+import { useRevalidator, useSearchParams } from "react-router";
+import { AppLink } from "../AppLink";
 import { Clock, Coffee, UserMinus, UserX } from "lucide-react";
 import {
   DateRangeSelector,
@@ -362,13 +363,13 @@ function StatusTabLink({
   const query = next.toString();
   const href = query ? `${basePath}?${query}` : basePath;
   return (
-    <Link
+    <AppLink
       className={`attendance-tab${status === active ? " active" : ""}`}
       to={href}
     >
       {children}
       <span className="tab-count">{count}</span>
-    </Link>
+    </AppLink>
   );
 }
 

@@ -2,7 +2,9 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { AppPage } from "../components/AppPage";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { Link, useLoaderData, useSearchParams } from "react-router";
+import { useLoaderData, useSearchParams } from "react-router";
+import { AppLink } from "../components/AppLink";
+import { AppLink } from "../components/AppLink";
 import {
   AlertCircle,
   ArrowLeft,
@@ -393,9 +395,9 @@ export default function StaffDetailPage() {
       <div className="staff-detail">
         <div className="detail-header">
           <div className="detail-title-row">
-            <Link className="back-link" to="/app/staff" aria-label="Back to staff">
+            <AppLink className="back-link" to="/app/staff" aria-label="Back to staff">
               <ArrowLeft aria-hidden="true" size={18} />
-            </Link>
+            </AppLink>
             <h1 className="detail-name">{fullName}</h1>
             {employee.status === "ACTIVE" ? (
               <span className="status-badge active">Active</span>
@@ -624,13 +626,13 @@ function OverviewTab({
         <aside className="staff-info-card">
           <div className="staff-info-header">
             <strong>Staff Info</strong>
-            <Link
+            <AppLink
               to={`/app/staff/${employee.id}/edit`}
               aria-label="Edit staff"
               className="edit-link"
             >
               <Pencil aria-hidden="true" size={16} />
-            </Link>
+            </AppLink>
           </div>
           <dl className="staff-info-list">
             <InfoRow label="Name" value={fullName} />
@@ -1125,12 +1127,12 @@ function TabLink({
     : `/app/staff/${employeeId}`;
 
   return (
-    <Link
+    <AppLink
       className={`detail-tab${activeTab === tab ? " active" : ""}`}
       to={href}
     >
       {children}
-    </Link>
+    </AppLink>
   );
 }
 

@@ -9,6 +9,7 @@ import { getShopBilling } from "../services/billing.server";
 import { ensureShop } from "../services/workforce.server";
 import ChatraWidget from "../components/ChatraWidget";
 import { shopFromDest } from "../utils/http.server";
+import { mergeAppSearchParams } from "../utils/app-path";
 
 const SHOP_NAME_QUERY = `#graphql
   query ChatraShopName {
@@ -21,7 +22,11 @@ const SHOP_NAME_QUERY = `#graphql
 
 function AppNavLink({ href, children }: { href: string; children: ReactNode }) {
   const { search } = useLocation();
-  return <s-link href={`${href}${search}`}>{children}</s-link>;
+  return (
+    <s-link href={mergeAppSearchParams(href, new URLSearchParams(search))}>
+      {children}
+    </s-link>
+  );
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {

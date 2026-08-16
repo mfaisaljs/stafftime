@@ -35,6 +35,7 @@ import {
 } from "../services/settings.server";
 import { SHIFT_STATUS } from "../services/time-off-shifts.server";
 import { useSaveBarToast } from "../hooks/useSaveBarToast";
+import { useAppPath } from "../hooks/useAppPath";
 import {
   DateRangeSelector,
   defaultDateRangeValue,
@@ -431,6 +432,7 @@ export default function CreatePayrollPage() {
   const { employee, overview, commission } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   useSaveBarToast(actionData);
+  const appPath = useAppPath();
   const navigation = useNavigation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [proofName, setProofName] = useState("");
@@ -882,7 +884,7 @@ export default function CreatePayrollPage() {
             >
               Create Payroll
             </s-button>
-            <s-button href="/app/payroll" variant="secondary">
+            <s-button href={appPath("/app/payroll")} variant="secondary">
               Cancel
             </s-button>
           </div>
@@ -1003,7 +1005,7 @@ function StaffPaymentDetailsCard({
             </p>
           </div>
           <s-button
-            href={`/app/staff/${employee.id}/edit`}
+            href={appPath(`/app/staff/${employee.id}/edit`)}
             variant="secondary"
           >
             Update staff profile

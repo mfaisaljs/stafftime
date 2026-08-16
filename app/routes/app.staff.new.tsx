@@ -5,7 +5,7 @@ import type {
 } from "react-router";
 import type { ForwardedRef, InputHTMLAttributes, ReactNode } from "react";
 import { forwardRef, useRef, useState } from "react";
-import { Form, useActionData, useLoaderData } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -22,6 +22,7 @@ import {
 import { subscribedSeatsFullMessage } from "../services/billing/plans";
 import { createEmployee } from "../services/workforce.server";
 import { useSaveBarToast } from "../hooks/useSaveBarToast";
+import { useAppPath } from "../hooks/useAppPath";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -125,12 +126,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function StaffPage() {
   const { locations, atCap, atSubscribedCap, subscribedSeats, staffLimit, planName, nextPlanName, nextPlanMax } =
     useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+  const fetcher = useFetcher<typeof action>();
+  const appPath = useAppPath();
   useSaveBarToast(
-    actionData?.atCap || actionData?.atSubscribedCap ? null : actionData,
+    fetcher.data?.atCap || fetcher.data?.atSubscribedCap ? null : fetcher.data,
+    { state: fetcher.state },
   );
-  const showCapError = atCap || actionData?.atCap;
-  const showSubscribedCapError = atSubscribedCap || actionData?.atSubscribedCap;
+  const showCapError = atCap || fetcher.data?.atCap;
+  const showSubscribedCapError = atSubscribedCap || fetcher.data?.atSubscribedCap;
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState("HOURLY");
   const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
@@ -175,7 +178,7 @@ export default function StaffPage() {
       {showSubscribedCapError && (
         <s-banner heading="Subscribed seats full" tone="warning">
           <s-text>{subscribedSeatsFullMessage(subscribedSeats)}</s-text>
-          <s-button variant="primary" href="/app/pricing">
+          <s-button variant="primary" href={appPath("/app/pricing")}>
             View pricing
           </s-button>
         </s-banner>
@@ -188,12 +191,12 @@ export default function StaffPage() {
               ? ` Upgrade to ${nextPlanName} (up to ${nextPlanMax}) to add more.`
               : ""}
           </s-text>
-          <s-button variant="primary" href="/app/pricing">
+          <s-button variant="primary" href={appPath("/app/pricing")}>
             {nextPlanName ? `Upgrade to ${nextPlanName}` : "View plans"}
           </s-button>
         </s-banner>
       )}
-      <Form
+      <fetcher.Form
         method="post"
         data-save-bar
         data-discard-confirmation
@@ -544,7 +547,7 @@ export default function StaffPage() {
 
           </s-stack>
         </s-section>
-      </Form>
+      </fetcher.Form>
 
       <style>{EMPLOYEE_FORM_STYLES}</style>
     </AppPage>

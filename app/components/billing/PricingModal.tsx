@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useFetcher, useSearchParams, type FetcherWithComponents } from "react-router";
+import { useAppPath } from "../../hooks/useAppPath";
 import "./PricingModal.css";
 import {
   estimatedMonthlyTotal,
@@ -88,6 +89,7 @@ export function PricingPlans({
   variant?: "page" | "modal";
 }) {
   const [searchParams] = useSearchParams();
+  const appPath = useAppPath();
   const checkoutFetcher = useFetcher();
   const actionParams = new URLSearchParams(searchParams);
   actionParams.delete("subscribe_error");
@@ -289,7 +291,7 @@ export function PricingPlans({
                   Continue with {freePlan.name}
                 </s-button>
               ) : (
-                <s-button variant="secondary" href="/app/staff">
+                <s-button variant="secondary" href={appPath("/app/staff")}>
                   Continue with {freePlan.name}
                 </s-button>
               )
@@ -302,7 +304,7 @@ export function PricingPlans({
                 Continue with {currentPlan.name}
               </s-button>
             ) : (
-              <s-button variant="secondary" href="/app/staff">
+              <s-button variant="secondary" href={appPath("/app/staff")}>
                 Continue with {currentPlan.name}
               </s-button>
             )

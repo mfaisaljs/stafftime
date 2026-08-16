@@ -91,11 +91,34 @@ describe("billing checkout helpers", () => {
     }
   });
 
-  it("does not redirect session-token bounces for normal app navigation", () => {
+  it("redirects session-token bounces for embedded app routes into Admin", () => {
+    const request = new Request(
+      "https://example.test/auth/session-token?shop=spaceraceplayground.myshopify.com&shopify-reload=https%3A%2F%2Fexample.test%2Fapp%2Fstaff%2Fabc123%3Fembedded%3D1",
+    );
+    try {
+      redirectSessionTokenToAdmin(request);
+      throw new Error("expected redirect");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Response);
+      expect((error as Response).headers.get("Location")).toBe(
+        "https://admin.shopify.com/store/spaceraceplayground/apps/trubuild-staff-management/app/staff/abc123?embedded=1",
+      );
+    }
+  });
+
+  it("redirects usage session-token bounces into Admin", () => {
     const request = new Request(
       "https://example.test/auth/session-token?shop=spaceraceplayground.myshopify.com&shopify-reload=https%3A%2F%2Fexample.test%2Fapp%2Fusage%3Fembedded%3D1",
     );
-    expect(() => redirectSessionTokenToAdmin(request)).not.toThrow();
+    try {
+      redirectSessionTokenToAdmin(request);
+      throw new Error("expected redirect");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Response);
+      expect((error as Response).headers.get("Location")).toBe(
+        "https://admin.shopify.com/store/spaceraceplayground/apps/trubuild-staff-management/app/usage?embedded=1",
+      );
+    }
   });
 
   it("formats billing API errors", () => {
