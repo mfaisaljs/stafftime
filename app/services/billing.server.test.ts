@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import prisma from "../db.server";
 import {
   extraStaffPrice,
+  extrasTriggerNextPlan,
   getPlan,
   includedStaffFromHandle,
   nextPlan,
@@ -67,6 +68,12 @@ describe("billing plan catalog", () => {
     expect(nextPlan("small-business")?.handle).toBe("workforce");
     expect(nextPlan("workforce")?.handle).toBe("enterprise");
     expect(nextPlan("enterprise")).toBeNull();
+  });
+
+  it("suggests Small Business once Free extras cost as much as that plan", () => {
+    const free = getPlan("free");
+    expect(extrasTriggerNextPlan(free, 4)).toBe(false);
+    expect(extrasTriggerNextPlan(free, 5)).toBe(true);
   });
 
   it("prices extra staff as (n - included) * rate", () => {

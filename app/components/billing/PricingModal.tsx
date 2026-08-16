@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   estimatedMonthlyTotal,
   extraSeatMax,
+  extrasTriggerNextPlan,
   formatUsd,
   getPlan,
   nextPlan,
@@ -55,10 +56,12 @@ export function PricingPlans({
 
   const extraPrice = extraStaff * currentPlan.extraStaffRate;
   const noExtras = extraStaff === 0;
+  const offerNextPlan =
+    Boolean(recommendedPlan) && extrasTriggerNextPlan(currentPlan, extraStaff);
 
   return (
     <>
-      <div className="pricing-modal">
+      <div className={`pricing-modal pricing-modal--${variant}`}>
         <s-paragraph tone="neutral" color="subdued">
           {atCap && recommendedPlan
             ? `${currentPlan.name} is at its ${currentPlan.maxStaff} staff max. Upgrade to ${recommendedPlan.name} (up to ${recommendedPlan.maxStaff}) to add more.`
@@ -154,9 +157,11 @@ export function PricingPlans({
           <div className="pricing-free-copy">
             <strong>Up to {currentPlan.includedStaff} Staff Members included</strong>
             <span>
-              {noExtras
-                ? `No extra-seat charge within ${currentPlan.includedStaff} included seats.`
-                : `${formatUsd(currentPlan.extraStaffRate)} per extra staff / month`}
+              {offerNextPlan && recommendedPlan
+                ? `${formatUsd(extraPrice)}/mo in extras. Upgrade to ${recommendedPlan.name} (${formatUsd(recommendedPlan.monthlyPrice)}/mo, ${recommendedPlan.includedStaff} included).`
+                : noExtras
+                  ? `No extra-seat charge within ${currentPlan.includedStaff} included seats.`
+                  : `${formatUsd(currentPlan.extraStaffRate)} per extra staff / month`}
             </span>
           </div>
           <label className="pricing-slider">
@@ -170,18 +175,19 @@ export function PricingPlans({
               }
               aria-label="Extra staff beyond included seats"
             />
-            <input
-              type="number"
-              min={0}
-              max={extraMax}
-              step={1}
-              value={extraStaff}
-              onChange={(event) =>
-                setExtraStaff(clampStaff(Number(event.currentTarget.value), 0, extraMax))
-              }
-              aria-label="Extra staff count"
-            />
           </label>
+          <input
+            className="pricing-extra-count"
+            type="number"
+            min={0}
+            max={extraMax}
+            step={1}
+            value={extraStaff}
+            onChange={(event) =>
+              setExtraStaff(clampStaff(Number(event.currentTarget.value), 0, extraMax))
+            }
+            aria-label="Extra staff count"
+          />
           {noExtras ? (
             variant === "modal" ? (
               <s-button
@@ -196,6 +202,14 @@ export function PricingPlans({
                 Continue with {currentPlan.name}
               </s-button>
             )
+          ) : offerNextPlan && recommendedPlan ? (
+            <button
+              type="button"
+              className="pricing-cta primary"
+              onClick={() => openShopifyPricing(pricingPlansUrl)}
+            >
+              Upgrade to {recommendedPlan.name}
+            </button>
           ) : (
             <button
               type="button"
@@ -259,8 +273,13 @@ function staffOptionsForPlan(handle: "workforce" | "enterprise") {
 
 const PRICING_MODAL_STYLES = `
   .pricing-modal {
+    align-content: start;
     display: grid;
     gap: 20px;
+  }
+
+  .pricing-modal--page {
+    padding-bottom: 132px;
   }
 
   .pricing-cards {
@@ -382,21 +401,45 @@ const PRICING_MODAL_STYLES = `
     border: 1px solid #f3d2b3;
     border-radius: 14px;
     display: grid;
-    gap: 12px;
-    grid-template-columns: auto 1fr minmax(180px, 1.2fr) auto;
+    gap: 16px;
+    grid-template-columns: auto minmax(0, 1fr) minmax(140px, 1fr) 72px auto;
     padding: 16px;
+  }
+
+  .pricing-modal--page .pricing-free-bar {
+    bottom: 16px;
+    box-shadow: 0 10px 28px rgba(31, 31, 31, 0.12);
+    left: 20px;
+    margin: 0;
+    position: fixed;
+    right: 20px;
+    z-index: 20;
+  }
+
+  .pricing-modal--modal .pricing-free-bar {
+    bottom: 0;
+    position: sticky;
+    z-index: 5;
+  }
+
+  .pricing-free-bar .pricing-cta,
+  .pricing-free-bar s-button {
+    margin-top: 0;
+    min-width: 168px;
+    width: auto;
+    white-space: nowrap;
   }
 
   .pricing-free-copy {
     display: grid;
     gap: 2px;
+    min-width: 0;
   }
 
   .pricing-slider {
     align-items: center;
     display: grid;
-    gap: 10px;
-    grid-template-columns: 1fr 88px;
+    min-width: 0;
   }
 
   .pricing-slider input[type="range"] {
@@ -404,19 +447,30 @@ const PRICING_MODAL_STYLES = `
     width: 100%;
   }
 
-  .pricing-slider input[type="number"] {
+  .pricing-extra-count {
     background: #fff;
     border: 1px solid #8a8a8a;
     border-radius: 8px;
-    min-height: 32px;
+    box-sizing: border-box;
+    min-height: 40px;
     padding: 4px 8px;
-    width: 88px;
+    width: 72px;
   }
 
   @media (max-width: 900px) {
+    .pricing-modal--page {
+      padding-bottom: 280px;
+    }
+
     .pricing-cards,
     .pricing-free-bar {
       grid-template-columns: 1fr;
+    }
+
+    .pricing-extra-count,
+    .pricing-free-bar .pricing-cta,
+    .pricing-free-bar s-button {
+      width: 100%;
     }
   }
 `;

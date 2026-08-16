@@ -140,6 +140,15 @@ export function nextPlan(handle: string | null | undefined): Plan | null {
   return getPlan(PLAN_ORDER[index + 1]);
 }
 
+/** True when extra-seat cost meets or beats the next plan's monthly price. */
+export function extrasTriggerNextPlan(plan: Plan, extraStaff: number) {
+  const next = nextPlan(plan.handle);
+  if (!next || extraStaff <= 0) {
+    return false;
+  }
+  return extraStaff * plan.extraStaffRate >= next.monthlyPrice;
+}
+
 export function extraStaffCount(staffCount: number, includedStaff: number) {
   return Math.max(0, Math.floor(staffCount) - includedStaff);
 }
