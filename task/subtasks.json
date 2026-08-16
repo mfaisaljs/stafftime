@@ -2609,6 +2609,29 @@
         "app/components/portal/portal-styles.ts"
       ],
       "lastUpdated": "2026-08-16T22:45:00.000Z"
+    },
+    {
+      "id": "ST139",
+      "taskId": "T019",
+      "title": "Portal Manager View staff Overview, Shifts, and Payroll",
+      "description": "Match POS Manager View and Staff Profile tiles: staff detail with clock actions, date range, and Overview / Shifts / Payroll tabs.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST137"],
+      "acceptanceCriteria": [
+        "Manager View lists staff with All / Working / On break / On leave / Absent / Late filters",
+        "Selecting a staff member opens Overview, Shifts, and Payroll with 7/30/90 date range",
+        "My Profile & Shifts uses the same Overview / Shifts / Payroll tabs"
+      ],
+      "files": [
+        "app/routes/portal.manager.tsx",
+        "app/routes/portal.profile.tsx",
+        "app/components/portal/PortalStaffProfile.tsx",
+        "app/components/portal/portal-styles.ts",
+        "app/components/portal/captureSelfie.ts",
+        "app/routes/portal.clock.tsx"
+      ],
+      "lastUpdated": "2026-08-16T23:00:00.000Z"
     }
   ]
 }
