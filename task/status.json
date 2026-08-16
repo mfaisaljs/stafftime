@@ -8,6 +8,7 @@
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
   "lastUpdated": "2026-08-16T15:26:00.000Z",
   "notes": [
+    "ST125 complete: spaceraceplayground always uses Shopify test billing; other shops read SHOPIFY_BILLING_TEST.",
     "ST124 complete: Chatra live chat uses the same Trubuild widget ID and loads from root.",
     "ST123 complete: /app/usage is a production Usage page with charge metrics, subscription details, and usage table.",
     "ST122 complete: adding extras on the current plan no longer re-requests the $24.99 subscription; usage record + local seat count only.",

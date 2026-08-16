@@ -17,6 +17,19 @@ export function nextSubscribedExtraSeats(
   return Math.min(maxExtraSeats, existing + add);
 }
 
+const DEV_BILLING_TEST_SHOP = "spaceraceplayground";
+
+export function isShopifyBillingTest(shop: string) {
+  const domain = shopFromDest(shop).toLowerCase();
+  if (
+    domain === DEV_BILLING_TEST_SHOP ||
+    domain.startsWith(`${DEV_BILLING_TEST_SHOP}.`)
+  ) {
+    return true;
+  }
+  return process.env.SHOPIFY_BILLING_TEST !== "false";
+}
+
 export function parseCheckoutPlanHandle(
   value: FormDataEntryValue | null,
 ): PlanHandle | null {

@@ -13,6 +13,7 @@ import { formatUsd, FREE_PLAN_HANDLE } from "../services/billing/plans";
 import {
   billingErrorMessage,
   billingReturnUrl,
+  isShopifyBillingTest,
   nextSubscribedExtraSeats,
   parseCheckoutPlanHandle,
   savePendingBillingCheckout,
@@ -79,7 +80,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           amount: seatsToAdd * currentBilling.extraStaffRate,
           currencyCode: "USD",
         },
-        isTest: process.env.SHOPIFY_BILLING_TEST !== "false",
+        isTest: isShopifyBillingTest(session.shop),
       });
     } catch (error) {
       if (error instanceof Response) {
@@ -100,7 +101,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
     await billing.request({
       plan: planHandle,
-      isTest: process.env.SHOPIFY_BILLING_TEST !== "false",
+      isTest: isShopifyBillingTest(session.shop),
       returnUrl: billingReturnUrl(request, session.shop),
     });
   } catch (error) {

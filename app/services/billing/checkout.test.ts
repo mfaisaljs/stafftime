@@ -3,6 +3,7 @@ import {
   billingErrorMessage,
   billingReturnUrl,
   MAX_BILLING_RETURN_URL_LENGTH,
+  isShopifyBillingTest,
   nextSubscribedExtraSeats,
   parseCheckoutPlanHandle,
 } from "./checkout";
@@ -52,6 +53,20 @@ describe("billing checkout helpers", () => {
     expect(nextSubscribedExtraSeats(1, 1)).toBe(2);
     expect(nextSubscribedExtraSeats(0, 1)).toBe(1);
     expect(nextSubscribedExtraSeats(49, 5)).toBe(50);
+  });
+
+  it("forces test billing on spaceraceplayground and otherwise uses SHOPIFY_BILLING_TEST", () => {
+    const previous = process.env.SHOPIFY_BILLING_TEST;
+    process.env.SHOPIFY_BILLING_TEST = "false";
+    expect(isShopifyBillingTest("spaceraceplayground.myshopify.com")).toBe(true);
+    expect(isShopifyBillingTest("other-store.myshopify.com")).toBe(false);
+    process.env.SHOPIFY_BILLING_TEST = "true";
+    expect(isShopifyBillingTest("other-store.myshopify.com")).toBe(true);
+    if (previous === undefined) {
+      delete process.env.SHOPIFY_BILLING_TEST;
+    } else {
+      process.env.SHOPIFY_BILLING_TEST = previous;
+    }
   });
 
   it("formats billing API errors", () => {
