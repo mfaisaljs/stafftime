@@ -64,22 +64,17 @@ export async function takePendingBillingCheckout(shop: string) {
   return pending;
 }
 
-export function billingReturnUrl(request: Request, shop: string) {
-  const origin = (process.env.SHOPIFY_APP_URL || new URL(request.url).origin).replace(
-    /\/$/,
-    "",
-  );
-  const requestUrl = new URL(request.url);
-  const host = requestUrl.searchParams.get("host");
+export function shopifyAdminAppUrl(shop: string, appPath = "/app/billing") {
+  const store = shopFromDest(shop)
+    .replace(/\.myshopify\.com$/i, "")
+    .toLowerCase();
+  const apiKey = process.env.SHOPIFY_API_KEY ?? "";
+  const path = appPath.startsWith("/") ? appPath : `/${appPath}`;
+  return `https://admin.shopify.com/store/${store}/apps/${apiKey}${path}`;
+}
 
-  const billingUrl = new URL(`${origin}/app/billing`);
-  billingUrl.searchParams.set("shop", shop);
-  if (host) {
-    billingUrl.searchParams.set("host", host);
-  }
-  billingUrl.searchParams.set("embedded", "1");
-
-  return billingUrl.toString();
+export function billingReturnUrl(_request: Request, shop: string) {
+  return shopifyAdminAppUrl(shop, "/app/billing");
 }
 
 /** Shopify often drops host on billing return; restore from pending checkout. */
@@ -100,11 +95,40 @@ export async function restoreEmbeddedBillingParams(request: Request) {
   }
 
   url.searchParams.set("host", host);
-  if (!url.searchParams.get("embedded")) {
-    url.searchParams.set("embedded", "1");
+  throw redirect(`${url.pathname}?${url.searchParams.toString()}`);
+}
+
+/** Top-level session-token bounce after billing: send the merchant back into Admin. */
+export function redirectSessionTokenToAdmin(request: Request) {
+  const url = new URL(request.url);
+  if (!url.pathname.endsWith("/auth/session-token")) {
+    return;
   }
 
-  throw redirect(`${url.pathname}?${url.searchParams.toString()}`);
+  const shop = url.searchParams.get("shop");
+  if (!shop) {
+    return;
+  }
+
+  const reload = url.searchParams.get("shopify-reload");
+  if (!reload) {
+    return;
+  }
+
+  let reloadUrl: URL;
+  try {
+    reloadUrl = new URL(reload);
+  } catch {
+    return;
+  }
+
+  if (!reloadUrl.pathname.startsWith("/app/billing")) {
+    return;
+  }
+
+  throw redirect(
+    shopifyAdminAppUrl(shop, `${reloadUrl.pathname}${reloadUrl.search}`),
+  );
 }
 
 /** Legacy exit-iframe returns: redirect straight to /app/billing with embedded params. */
@@ -121,19 +145,17 @@ export async function redirectBillingExitIframe(request: Request) {
 
   const host =
     url.searchParams.get("host") ?? (await getPendingBillingHost(shop));
-  const billingUrl = new URL("/app/billing", url.origin);
-  billingUrl.searchParams.set("shop", shop);
-  if (host) {
-    billingUrl.searchParams.set("host", host);
-  }
-  billingUrl.searchParams.set("embedded", "1");
-
   const chargeId = url.searchParams.get("charge_id");
+  const search = new URLSearchParams();
+  search.set("shop", shop);
+  if (host) {
+    search.set("host", host);
+  }
   if (chargeId) {
-    billingUrl.searchParams.set("charge_id", chargeId);
+    search.set("charge_id", chargeId);
   }
 
-  throw redirect(billingUrl.toString());
+  throw redirect(shopifyAdminAppUrl(shop, `/app/billing?${search.toString()}`));
 }
 
 export function billingErrorMessage(error: unknown) {

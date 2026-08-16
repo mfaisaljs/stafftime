@@ -4,6 +4,7 @@ import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
   redirectBillingExitIframe,
+  redirectSessionTokenToAdmin,
   restoreEmbeddedBillingParams,
 } from "../services/billing/checkout";
 
@@ -47,6 +48,7 @@ function ensureAuthSearchParams(request: Request) {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await redirectBillingExitIframe(request);
+  redirectSessionTokenToAdmin(request);
   ensureAuthSearchParams(request);
   await restoreEmbeddedBillingParams(request);
   await authenticate.admin(request);

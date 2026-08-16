@@ -13,33 +13,38 @@ describe("billing checkout helpers", () => {
     expect(parseCheckoutPlanHandle("")).toBeNull();
   });
 
-  it("builds a direct /app/billing return URL with embedded context", () => {
-    const previousAppUrl = process.env.SHOPIFY_APP_URL;
-    delete process.env.SHOPIFY_APP_URL;
+  it("returns the merchant to Admin after charge approval", () => {
+    const previousKey = process.env.SHOPIFY_API_KEY;
+    process.env.SHOPIFY_API_KEY = "test-api-key";
     const request = new Request(
       "https://example.test/app/pricing?embedded=1&host=abc123",
     );
     const url = billingReturnUrl(request, "test.myshopify.com");
-    if (previousAppUrl) {
-      process.env.SHOPIFY_APP_URL = previousAppUrl;
+    if (previousKey) {
+      process.env.SHOPIFY_API_KEY = previousKey;
+    } else {
+      delete process.env.SHOPIFY_API_KEY;
     }
     expect(url).toBe(
-      "https://example.test/app/billing?shop=test.myshopify.com&host=abc123&embedded=1",
+      "https://admin.shopify.com/store/test/apps/test-api-key/app/billing",
     );
     expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
   });
 
-  it("keeps return URL under Shopify limit on Render with long host", () => {
-    const request = new Request(
-      "https://staff-time.onrender.com/app/pricing?embedded=1&host=YWRtaW4uc2hvcGlmeS5jb20vc3RvcmUvc3BhY2VyYWNlcGxheWdyb3VuZA",
-    );
+  it("keeps the Admin return URL under Shopify's 255-character limit", () => {
+    const previousKey = process.env.SHOPIFY_API_KEY;
+    process.env.SHOPIFY_API_KEY = "94ec09cf3eaee34d49da7c9a2e1b91cd";
     const url = billingReturnUrl(
-      request,
+      new Request("https://staff-time.onrender.com/app/pricing"),
       "spaceraceplayground.myshopify.com",
     );
+    if (previousKey) {
+      process.env.SHOPIFY_API_KEY = previousKey;
+    }
+    expect(url).toBe(
+      "https://admin.shopify.com/store/spaceraceplayground/apps/94ec09cf3eaee34d49da7c9a2e1b91cd/app/billing",
+    );
     expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
-    expect(url).toContain("/app/billing?");
-    expect(url).toContain("embedded=1");
   });
 
   it("formats billing API errors", () => {

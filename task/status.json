@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
-  "lastUpdated": "2026-08-16T14:15:00.000Z",
+  "lastUpdated": "2026-08-16T14:20:00.000Z",
   "notes": [
+    "ST115 complete: billing return URL is admin.shopify.com; session-token after charge approval redirects into Admin instead of a blank 200 page.",
     "ST114 complete: billing return uses direct /app/billing URL; pending host restored when Shopify strips host; exit-iframe redirects to billing.",
     "ST113 complete: Prisma switched to PostgreSQL; baseline migration deployed to Render; docker-compose for local dev.",
     "ST112 complete: pricing subscribe uses fetcher (no reloadDocument) so App Bridge auth opens Shopify charge approval.",

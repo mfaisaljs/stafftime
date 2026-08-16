@@ -2194,6 +2194,26 @@
         "prisma/migrations/20260816141000_shop_pending_billing_host/migration.sql"
       ],
       "lastUpdated": "2026-08-16T14:15:00.000Z"
+    },
+    {
+      "id": "ST115",
+      "taskId": "T018",
+      "title": "Return billing approval into Shopify Admin",
+      "description": "Charge returnUrl is admin.shopify.com/store/.../apps/{apiKey}/app/billing. Session-token after billing 302s into Admin instead of a blank App Bridge page.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST114"],
+      "acceptanceCriteria": [
+        "billingReturnUrl is an admin.shopify.com app URL under 255 chars",
+        "/auth/session-token with shopify-reload=/app/billing redirects into Admin",
+        "Approving a charge lands on Staff with billing=updated"
+      ],
+      "files": [
+        "app/services/billing/checkout.ts",
+        "app/services/billing/checkout.test.ts",
+        "app/routes/auth.$.tsx"
+      ],
+      "lastUpdated": "2026-08-16T14:20:00.000Z"
     }
   ]
 }
