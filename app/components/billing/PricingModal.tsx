@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Form, useSearchParams } from "react-router";
+import { useFetcher, useSearchParams, type FetcherWithComponents } from "react-router";
 import "./PricingModal.css";
 import {
   estimatedMonthlyTotal,
   formatUsd,
-  effectiveMaxStaff,
   FREE_PLAN,
   FREE_PLAN_HANDLE,
   getPlan,
@@ -17,37 +16,42 @@ export const PRICING_MODAL_ID = "stafftime-pricing-modal";
 const EXTRA_SEAT_SLIDER_MAX = 50;
 
 function PlanCheckoutForm({
+  checkoutFetcher,
+  checkoutAction,
   planHandle,
   className,
   disabled,
   extraSeats,
   children,
 }: {
+  checkoutFetcher: FetcherWithComponents<unknown>;
+  checkoutAction: string;
   planHandle: string;
   className?: string;
   disabled?: boolean;
   extraSeats?: number;
   children: ReactNode;
 }) {
-  const [searchParams] = useSearchParams();
-  const actionParams = new URLSearchParams(searchParams);
-  actionParams.delete("subscribe_error");
+  const isSubmitting = checkoutFetcher.state !== "idle";
 
   return (
-    <Form
+    <checkoutFetcher.Form
       method="post"
-      reloadDocument
       className="pricing-checkout-form"
-      action={`/app/pricing${actionParams.toString() ? `?${actionParams.toString()}` : ""}`}
+      action={checkoutAction}
     >
       <input type="hidden" name="plan" value={planHandle} />
       {extraSeats != null && extraSeats > 0 ? (
         <input type="hidden" name="extra_seats" value={extraSeats} />
       ) : null}
-      <button type="submit" className={className} disabled={disabled}>
+      <button
+        type="submit"
+        className={className}
+        disabled={disabled || isSubmitting}
+      >
         {children}
       </button>
-    </Form>
+    </checkoutFetcher.Form>
   );
 }
 
@@ -82,6 +86,14 @@ export function PricingPlans({
   needsPlanSelection?: boolean;
   variant?: "page" | "modal";
 }) {
+  const [searchParams] = useSearchParams();
+  const checkoutFetcher = useFetcher();
+  const actionParams = new URLSearchParams(searchParams);
+  actionParams.delete("subscribe_error");
+  const checkoutAction = `/app/pricing${
+    actionParams.toString() ? `?${actionParams.toString()}` : ""
+  }`;
+
   const currentPlan = getPlan(currentPlanHandle);
   const freePlan = FREE_PLAN;
   const onFreeTrack =
@@ -113,8 +125,8 @@ export function PricingPlans({
           {needsPlanSelection
             ? `${freePlan.name} includes ${freePlan.includedStaff} staff with no monthly fee. Paid plans add more included seats and features.`
             : atCap
-              ? `${currentPlan.name} is at its ${effectiveMaxStaff(currentPlan)} staff max.`
-              : `${currentPlan.name} includes ${currentPlan.includedStaff} staff and allows up to ${effectiveMaxStaff(currentPlan)}. Extra seats are ${formatUsd(currentPlan.extraStaffRate)} each.`}
+              ? `${currentPlan.name} is at its ${currentPlan.includedStaff + EXTRA_SEAT_SLIDER_MAX} staff max.`
+              : `${currentPlan.name} includes ${currentPlan.includedStaff} staff and allows up to ${EXTRA_SEAT_SLIDER_MAX} extra seats. Extra seats are ${formatUsd(currentPlan.extraStaffRate)} each.`}
         </s-paragraph>
 
         <div className="pricing-cards">
@@ -187,6 +199,8 @@ export function PricingPlans({
                   ))}
                 </ul>
                 <PlanCheckoutForm
+                  checkoutFetcher={checkoutFetcher}
+                  checkoutAction={checkoutAction}
                   planHandle={plan.handle}
                   className={`pricing-cta${plan.featured ? " primary" : ""}`}
                   disabled={isCurrent}
@@ -251,6 +265,8 @@ export function PricingPlans({
             onFreeTrack ? (
               needsPlanSelection || !isFreeCurrent ? (
                 <PlanCheckoutForm
+                  checkoutFetcher={checkoutFetcher}
+                  checkoutAction={checkoutAction}
                   planHandle={FREE_PLAN_HANDLE}
                   className="pricing-cta primary"
                 >
@@ -284,6 +300,8 @@ export function PricingPlans({
             )
           ) : (
             <PlanCheckoutForm
+              checkoutFetcher={checkoutFetcher}
+              checkoutAction={checkoutAction}
               planHandle={sliderPlan.handle}
               extraSeats={extraStaff}
               className="pricing-cta primary"

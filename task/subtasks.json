@@ -2128,6 +2128,25 @@
         "prisma/migrations/20260816060000_shop_pending_billing/migration.sql"
       ],
       "lastUpdated": "2026-08-16T13:40:00.000Z"
+    },
+    {
+      "id": "ST112",
+      "taskId": "T018",
+      "title": "Fix subscribe checkout stuck on pricing (HTTP 200)",
+      "description": "Remove reloadDocument from pricing checkout forms; use useFetcher so App Bridge session token is sent and billing.request can redirect to Shopify charge approval.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST111"],
+      "acceptanceCriteria": [
+        "Subscribe uses fetcher.Form without reloadDocument",
+        "Embedded POST includes session token and opens Shopify charge approval",
+        "No session-token bounce / blank 200 on pricing after subscribe"
+      ],
+      "files": [
+        "app/components/billing/PricingModal.tsx",
+        "app/services/billing/checkout.ts"
+      ],
+      "lastUpdated": "2026-08-16T13:45:00.000Z"
     }
   ]
 }

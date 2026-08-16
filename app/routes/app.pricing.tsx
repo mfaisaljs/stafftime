@@ -25,7 +25,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return {
     planHandle: billing.planHandle,
     planName: billing.plan.name,
-    staffLimit: billing.staffLimit,
     includedStaff: billing.includedStaff,
     extraStaffCount: billing.extraStaffCount,
     extraStaffRate: billing.extraStaffRate,
@@ -78,7 +77,6 @@ export default function PricingPage() {
   const {
     planHandle,
     planName,
-    staffLimit,
     includedStaff,
     extraStaffCount,
     extraStaffRate,
@@ -118,8 +116,7 @@ export default function PricingPage() {
               extra seat{extraStaffCount === 1 ? "" : "s"}
               {extraStaffCount > 0
                 ? ` (${formatUsd(extraStaffCount * extraStaffRate)}/mo)`
-                : ""}{" "}
-              · {staffLimit} max.
+                : ""}
               {atCap && nextPlanName
                 ? ` Upgrade to ${nextPlanName} (up to ${nextPlanMax}) to add more.`
                 : ""}

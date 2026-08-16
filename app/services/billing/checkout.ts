@@ -74,7 +74,7 @@ export function billingErrorMessage(error: unknown) {
   if (error && typeof error === "object" && "errorData" in error) {
     const data = (error as { errorData?: unknown }).errorData;
     if (Array.isArray(data) && data.length) {
-      return data
+      const message = data
         .map((item) => {
           if (typeof item === "string") return item;
           if (item && typeof item === "object" && "message" in item) {
@@ -84,6 +84,9 @@ export function billingErrorMessage(error: unknown) {
         })
         .filter(Boolean)
         .join(" ");
+      if (message) {
+        return message;
+      }
     }
   }
   if (error instanceof Error && error.message) {
