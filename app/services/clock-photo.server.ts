@@ -33,3 +33,46 @@ export function requireClockPhoto(
     throw new Error(`A selfie photo is required before ${actionLabel}.`);
   }
 }
+
+export function decodeClockPhotoDataUrl(
+  value: string,
+): { mime: string; bytes: Uint8Array } | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const dataMatch = trimmed.match(
+    /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i,
+  );
+  if (dataMatch) {
+    try {
+      return {
+        mime: dataMatch[1],
+        bytes: Uint8Array.from(Buffer.from(dataMatch[2], "base64")),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    return {
+      mime: "image/jpeg",
+      bytes: Uint8Array.from(Buffer.from(trimmed, "base64")),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function clockPhotoResponse(dataUrl: string) {
+  const decoded = decodeClockPhotoDataUrl(dataUrl);
+  if (!decoded) {
+    throw new Response("Invalid photo", { status: 500 });
+  }
+  return new Response(decoded.bytes, {
+    headers: {
+      "Content-Type": decoded.mime,
+      "Cache-Control": "private, max-age=86400",
+    },
+  });
+}
