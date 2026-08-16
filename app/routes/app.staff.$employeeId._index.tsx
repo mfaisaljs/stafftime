@@ -8,6 +8,7 @@ import {
   BadgePercent,
   BarChart2,
   Briefcase,
+  Camera,
   CheckCircle,
   Clock,
   Coins,
@@ -320,6 +321,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       firstIn: formatClockTime(entry.clockInAt, timeFormat),
       lastOut: entry.clockOutAt ? formatClockTime(entry.clockOutAt, timeFormat) : "—",
       totalHours: formatDurationHms(summary.totalWorkedSeconds, hourFormat),
+      photoUrl: entry.photoUrl ?? null,
+      clockOutPhotoUrl: entry.clockOutPhotoUrl ?? null,
     };
   });
 
@@ -502,9 +505,14 @@ function OverviewTab({
     firstIn: string;
     lastOut: string;
     totalHours: string;
+    photoUrl: string | null;
+    clockOutPhotoUrl: string | null;
   }>;
 }) {
   const fullName = `${employee.firstName} ${employee.lastName}`;
+  const [photoRow, setPhotoRow] = useState<(typeof attendanceRows)[number] | null>(
+    null,
+  );
 
   return (
     <>
@@ -667,22 +675,40 @@ function OverviewTab({
                 <th>First In</th>
                 <th>Last Out</th>
                 <th>Total Hours</th>
-                <th>Action</th>
+                <th>Photos</th>
               </tr>
             </thead>
             <tbody>
-              {attendanceRows.map((row) => (
-                <tr key={row.id}>
-                  <td>{formatTableDate(row.date)}</td>
-                  <td>{formatEntryStatus(row.status)}</td>
-                  <td>{row.location}</td>
-                  <td>{row.breakTime}</td>
-                  <td>{row.firstIn}</td>
-                  <td>{row.lastOut}</td>
-                  <td>{row.totalHours}</td>
-                  <td>—</td>
-                </tr>
-              ))}
+              {attendanceRows.map((row) => {
+                const hasPhotos = Boolean(row.photoUrl || row.clockOutPhotoUrl);
+                return (
+                  <tr key={row.id}>
+                    <td>{formatTableDate(row.date)}</td>
+                    <td>{formatEntryStatus(row.status)}</td>
+                    <td>{row.location}</td>
+                    <td>{row.breakTime}</td>
+                    <td>{row.firstIn}</td>
+                    <td>{row.lastOut}</td>
+                    <td>{row.totalHours}</td>
+                    <td>
+                      {hasPhotos ? (
+                        <s-button
+                          variant="tertiary"
+                          commandFor="attendance-photos-modal"
+                          onClick={() => setPhotoRow(row)}
+                        >
+                          <span className="button-with-icon">
+                            <Camera aria-hidden="true" size={14} />
+                            View
+                          </span>
+                        </s-button>
+                      ) : (
+                        <span className="muted-cell">No photos</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {attendanceRows.length === 0 && (
                 <tr>
                   <td colSpan={8} className="empty-cell">No attendance records</td>
@@ -692,6 +718,51 @@ function OverviewTab({
           </table>
         </div>
       </section>
+
+      <s-modal id="attendance-photos-modal" heading="Clock photos" size="large">
+        {photoRow ? (
+          <div className="photo-modal-body">
+            <p className="photo-modal-meta">
+              {formatTableDate(photoRow.date)} · In {photoRow.firstIn}
+              {photoRow.lastOut !== "—" ? ` · Out ${photoRow.lastOut}` : ""}
+            </p>
+            <div className="photo-modal-grid">
+              <figure className="photo-card">
+                <figcaption>Clock in</figcaption>
+                {photoRow.photoUrl ? (
+                  <img
+                    src={photoRow.photoUrl}
+                    alt={`Clock-in selfie for ${formatTableDate(photoRow.date)}`}
+                  />
+                ) : (
+                  <div className="photo-empty">No clock-in photo</div>
+                )}
+              </figure>
+              <figure className="photo-card">
+                <figcaption>Clock out</figcaption>
+                {photoRow.clockOutPhotoUrl ? (
+                  <img
+                    src={photoRow.clockOutPhotoUrl}
+                    alt={`Clock-out selfie for ${formatTableDate(photoRow.date)}`}
+                  />
+                ) : (
+                  <div className="photo-empty">No clock-out photo</div>
+                )}
+              </figure>
+            </div>
+          </div>
+        ) : (
+          <p>Select a row to view photos.</p>
+        )}
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor="attendance-photos-modal"
+          command="--hide"
+        >
+          Close
+        </s-button>
+      </s-modal>
     </>
   );
 }
@@ -1402,6 +1473,64 @@ const STAFF_DETAIL_STYLES = `
     text-align: center;
   }
 
+  .muted-cell {
+    color: #8c8c8c;
+    font-size: 12px;
+  }
+
+  .photo-modal-body {
+    display: grid;
+    gap: 14px;
+  }
+
+  .photo-modal-meta {
+    color: #616161;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .photo-modal-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .photo-card {
+    background: #f6f6f7;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    padding: 12px;
+  }
+
+  .photo-card figcaption {
+    color: #303030;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .photo-card img {
+    background: #111;
+    border-radius: 8px;
+    display: block;
+    max-height: 420px;
+    object-fit: contain;
+    width: 100%;
+  }
+
+  .photo-empty {
+    align-items: center;
+    color: #8c8c8c;
+    display: flex;
+    font-size: 13px;
+    justify-content: center;
+    min-height: 180px;
+  }
+
   .payroll-metrics {
     display: grid;
     gap: 14px;
@@ -1548,6 +1677,10 @@ const STAFF_DETAIL_STYLES = `
     }
 
     .commission-filters {
+      grid-template-columns: 1fr;
+    }
+
+    .photo-modal-grid {
       grid-template-columns: 1fr;
     }
   }
