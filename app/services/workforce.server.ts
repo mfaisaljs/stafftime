@@ -98,6 +98,8 @@ export async function createEmployee(input: {
   accountHolderName?: string;
   accountNumber?: string;
   routingNumber?: string;
+  swiftBic?: string;
+  iban?: string;
 }) {
   await assertPinAvailable(input.shopId, input.pin);
 
@@ -130,6 +132,8 @@ export async function createEmployee(input: {
       accountHolderName: input.accountHolderName,
       accountNumber: input.accountNumber,
       routingNumber: input.routingNumber,
+      swiftBic: input.swiftBic,
+      iban: input.iban,
     },
   });
 }
@@ -158,8 +162,10 @@ export async function updateEmployee(input: {
   bankAccountType?: string;
   bankName?: string;
   accountHolderName?: string;
-  accountNumber?: string;
-  routingNumber?: string;
+  accountNumber?: string | null;
+  routingNumber?: string | null;
+  swiftBic?: string | null;
+  iban?: string | null;
 }) {
   const employee = await prisma.employee.findFirst({
     where: { id: input.employeeId, shopId: input.shopId },
@@ -192,6 +198,8 @@ export async function updateEmployee(input: {
     accountHolderName: input.accountHolderName,
     accountNumber: input.accountNumber,
     routingNumber: input.routingNumber,
+    swiftBic: input.swiftBic,
+    iban: input.iban,
     pinHash: undefined as string | undefined,
   };
 

@@ -59,7 +59,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       accountHolderName:
         String(formData.get("accountHolderName") ?? "") || undefined,
       accountNumber: String(formData.get("accountNumber") ?? "") || undefined,
-      routingNumber: String(formData.get("routingNumber") ?? "") || undefined,
+      routingNumber:
+        String(formData.get("bankAccountType") ?? "") === "INTERNATIONAL"
+          ? undefined
+          : String(formData.get("routingNumber") ?? "") || undefined,
+      swiftBic:
+        String(formData.get("bankAccountType") ?? "") === "INTERNATIONAL"
+          ? String(formData.get("swiftBic") ?? "") || undefined
+          : undefined,
+      iban:
+        String(formData.get("bankAccountType") ?? "") === "INTERNATIONAL"
+          ? String(formData.get("iban") ?? "") || undefined
+          : undefined,
     });
   } catch (error) {
     return {
@@ -77,6 +88,7 @@ export default function StaffPage() {
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState("HOURLY");
   const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
+  const [bankAccountType, setBankAccountType] = useState("DOMESTIC");
   const pinInputRef = useRef<HTMLInputElement>(null);
   const rateFieldName = payrollType === "HOURLY" ? "hourlyRate" : "salaryAmount";
   const rateFieldLabel =
@@ -87,6 +99,9 @@ export default function StaffPage() {
         : "Monthly Salary";
   const selectedPaymentLabel = paymentMethodLabel(paymentMethod);
   const showPayPalFields = paymentMethod === "PAYPAL";
+  const showStripeFields = paymentMethod === "STRIPE";
+  const showWiseFields = paymentMethod === "WISE";
+  const showPayoneerFields = paymentMethod === "PAYONEER";
   const showBankFields = BANK_PAYMENT_METHODS.includes(paymentMethod);
   const showProviderFields = PROVIDER_PAYMENT_METHODS.includes(paymentMethod);
   const showNoPaymentFields = NO_DETAIL_PAYMENT_METHODS.includes(paymentMethod);
@@ -104,6 +119,7 @@ export default function StaffPage() {
     setPin("");
     setPayrollType("HOURLY");
     setPaymentMethod("PAYPAL");
+    setBankAccountType("DOMESTIC");
   };
 
   return (
@@ -202,16 +218,18 @@ export default function StaffPage() {
               description="Configure payment methods and salary details."
             >
               <div className="staff-grid three">
-                <label className="staff-label">
-                  Currency
-                  <select name="currency" defaultValue="USD">
-                    {CURRENCY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {paymentMethod !== "WISE" ? (
+                  <label className="staff-label">
+                    Currency
+                    <select name="currency" defaultValue="USD">
+                      {CURRENCY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 <label className="staff-label">
                   Payroll Type
                   <select
@@ -298,6 +316,66 @@ export default function StaffPage() {
                   />
                 </div>
               )}
+              {showStripeFields && (
+                <div className="staff-grid one">
+                  <Field
+                    label="Stripe Account Email"
+                    name="paypalEmail"
+                    type="email"
+                    placeholder="Stripe account email address"
+                  />
+                  <label className="staff-label">
+                    Stripe Account ID
+                    <input
+                      name="paypalAccountName"
+                      placeholder="acct_xxxxxxxxxxxxxx"
+                    />
+                    <span className="staff-help">
+                      Stripe Connect account ID (if applicable)
+                    </span>
+                  </label>
+                </div>
+              )}
+              {showWiseFields && (
+                <div className="staff-grid one">
+                  <Field
+                    label="Wise Email"
+                    name="paypalEmail"
+                    type="email"
+                    placeholder="Wise account email"
+                  />
+                  <Field
+                    label="Wise Account Holder Name"
+                    name="paypalAccountName"
+                    placeholder="Name on Wise account"
+                  />
+                  <label className="staff-label">
+                    Wise Account Currency
+                    <select name="currency" defaultValue="USD">
+                      {CURRENCY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
+              {showPayoneerFields && (
+                <div className="staff-grid one">
+                  <Field
+                    label="Payoneer Email"
+                    name="paypalEmail"
+                    type="email"
+                    placeholder="Payoneer account email"
+                  />
+                  <Field
+                    label="Payoneer Account Name"
+                    name="paypalAccountName"
+                    placeholder="Name on Payoneer account"
+                  />
+                </div>
+              )}
               {showProviderFields && (
                 <div className="staff-grid two">
                   <Field
@@ -314,18 +392,57 @@ export default function StaffPage() {
                 </div>
               )}
               {showBankFields && (
-                <div className="staff-grid two">
+                <div className="staff-grid one">
                   <label className="staff-label">
                     Bank Account Type
-                    <select name="bankAccountType" defaultValue="DOMESTIC">
+                    <select
+                      name="bankAccountType"
+                      value={bankAccountType}
+                      onChange={(event) =>
+                        setBankAccountType(event.currentTarget.value)
+                      }
+                    >
                       <option value="DOMESTIC">Domestic</option>
-                      <option value="INTERNATIONAL">International</option>
+                      <option value="INTERNATIONAL">
+                        International (SWIFT)
+                      </option>
                     </select>
                   </label>
-                  <Field label="Bank Name" name="bankName" />
-                  <Field label="Account Holder Name" name="accountHolderName" />
-                  <Field label="Account Number" name="accountNumber" />
-                  <Field label="Routing Number" name="routingNumber" />
+                  <Field
+                    label="Bank Name"
+                    name="bankName"
+                    placeholder="Enter bank name"
+                  />
+                  <Field
+                    label="Account Holder Name"
+                    name="accountHolderName"
+                    placeholder="Enter account holder name"
+                  />
+                  <Field
+                    label="Account Number"
+                    name="accountNumber"
+                    placeholder="Enter account number"
+                  />
+                  {bankAccountType === "INTERNATIONAL" ? (
+                    <>
+                      <Field
+                        label="SWIFT/BIC Code"
+                        name="swiftBic"
+                        placeholder="Enter SWIFT/BIC code"
+                      />
+                      <Field
+                        label="IBAN"
+                        name="iban"
+                        placeholder="Enter IBAN"
+                      />
+                    </>
+                  ) : (
+                    <Field
+                      label="Routing Number"
+                      name="routingNumber"
+                      placeholder="Enter routing number"
+                    />
+                  )}
                 </div>
               )}
               {showNoPaymentFields && (
@@ -438,9 +555,6 @@ const BANK_PAYMENT_METHODS = [
 ];
 
 const PROVIDER_PAYMENT_METHODS = [
-  "STRIPE",
-  "WISE",
-  "PAYONEER",
   "PAYSTACK",
   "VENMO",
   "SQUARE",
@@ -505,6 +619,10 @@ const EMPLOYEE_FORM_STYLES = `
 
   .staff-grid.two {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .staff-grid.one {
+    grid-template-columns: 1fr;
   }
 
   .staff-grid.three {

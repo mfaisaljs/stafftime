@@ -1733,7 +1733,29 @@
         "app/services/manager-view.server.ts",
         "app/routes/api.pos.manager-view.tsx"
       ],
-      "lastUpdated": "2026-08-16T01:10:00.000Z"
+      "lastUpdated": "2026-08-16T02:10:00.000Z"
+    },
+    {
+      "id": "ST094",
+      "taskId": "T017",
+      "title": "Direct Deposit domestic vs SWIFT fields",
+      "description": "Bank payment methods (Direct Deposit / Bank Transfer) switch between Domestic (routing number) and International (SWIFT) fields (SWIFT/BIC + IBAN), with persistence.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST032"],
+      "acceptanceCriteria": [
+        "Bank Account Type option label is International (SWIFT)",
+        "Domestic shows Routing Number; International shows SWIFT/BIC Code and IBAN",
+        "swiftBic and iban persist on Employee; unused fields clear on type switch when editing"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "prisma/migrations/20260816020000_employee_swift_iban/migration.sql",
+        "app/services/workforce.server.ts",
+        "app/routes/app.staff.$employeeId.edit.tsx",
+        "app/routes/app.staff.new.tsx"
+      ],
+      "lastUpdated": "2026-08-16T02:10:00.000Z"
     }
   ]
 }
