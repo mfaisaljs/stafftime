@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-16T01:35:00.000Z",
+  "lastUpdated": "2026-08-16T01:50:00.000Z",
   "notes": [
+    "Fixed: live Dashboard/Manager View marks staff Absent when today's scheduled shift(s) have ended with no clock-in (payroll still ignores unfinished today).",
     "Updated: app nav hides Attendance and Approvals; order Staff → Reports → Schedule → Commission Program → Sales Target → Payroll → Tasklist → Time Off → Settings.",
     "Updated: attendance/Manager View use punch-first status — Working = clocked in now; clocked out shows Clocked out + Worked today.",
     "ST093 complete: POS Manager View tile — manager PIN, staff list with live attendance filters, staff detail (profile/payroll/shifts), and clock in/out on behalf of staff.",

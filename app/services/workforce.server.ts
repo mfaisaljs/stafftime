@@ -1159,7 +1159,7 @@ export async function getAttendanceSummary(shopDomain: string) {
   start.setHours(0, 0, 0, 0);
   const todayKey = toDateKeyLocal(new Date());
 
-  const [employees, openEntries, shifts, pendingRequests, timeOffRequests] =
+  const [employees, openEntries, dayEntries, shifts, pendingRequests, timeOffRequests] =
     await Promise.all([
     prisma.employee.findMany({
       where: { shopId: shop.id, status: "ACTIVE" },
@@ -1174,6 +1174,13 @@ export async function getAttendanceSummary(shopDomain: string) {
         employee: true,
         breaks: { where: { endedAt: null } },
       },
+    }),
+    prisma.timeEntry.findMany({
+      where: {
+        shopId: shop.id,
+        clockInAt: { gte: start },
+      },
+      select: { employeeId: true },
     }),
     prisma.shift.findMany({
       where: {
@@ -1191,8 +1198,10 @@ export async function getAttendanceSummary(shopDomain: string) {
   ]);
 
   const clockedInIds = new Set(openEntries.map((entry) => entry.employeeId));
+  const punchedTodayIds = new Set(dayEntries.map((entry) => entry.employeeId));
   const onBreak = openEntries.filter((entry) => entry.breaks.length > 0);
   const working = openEntries.filter((entry) => entry.breaks.length === 0);
+  const now = Date.now();
 
   const onLeave = employees.filter(
     (employee) =>
@@ -1203,22 +1212,23 @@ export async function getAttendanceSummary(shopDomain: string) {
 
   const absent = employees.filter((employee) => {
     if (onLeaveIds.has(employee.id)) return false;
-    const hasShift = shifts.some((shift) => shift.employeeId === employee.id);
-    const isClockedIn = clockedInIds.has(employee.id);
-    return classifyAbsentDay(
-      {
-        dateKey: todayKey,
-        hasShift,
-        hasClockIn: isClockedIn,
-        isHoliday: isHolidayDateKey(todayKey, settings),
-        leaveCompensation: leaveCompensationForEmployeeDate(
-          timeOffRequests,
-          employee.id,
-          todayKey,
-        ),
-      },
-      settings,
+    if (punchedTodayIds.has(employee.id)) return false;
+    if (isHolidayDateKey(todayKey, settings)) return false;
+    if (
+      leaveCompensationForEmployeeDate(timeOffRequests, employee.id, todayKey)
+    ) {
+      return false;
+    }
+    const todayEndMs = endOfDayFromKey(todayKey).getTime();
+    const employeeShifts = shifts.filter(
+      (shift) =>
+        shift.employeeId === employee.id &&
+        shift.startsAt.getTime() >= start.getTime() &&
+        shift.startsAt.getTime() <= todayEndMs,
     );
+    if (employeeShifts.length === 0) return false;
+    // Live absent: every scheduled shift for today has already ended.
+    return employeeShifts.every((shift) => shift.endsAt.getTime() < now);
   });
 
   const late = openEntries.filter((entry) => {
@@ -1356,6 +1366,17 @@ export async function getAttendanceBoard(
             shiftForLate.startsAt.getTime() + LATE_GRACE_MS,
       );
 
+    const hasClockInToday = refEntries.length > 0 || Boolean(openEntry);
+    const leaveCompensation = leaveCompensationForEmployeeDate(
+      timeOffRequests,
+      employee.id,
+      refKey,
+    );
+    const now = new Date();
+    const allTodayShiftsEnded =
+      refShifts.length > 0 &&
+      refShifts.every((shift) => shift.endsAt.getTime() < now.getTime());
+
     let status: AttendanceStatus = "off";
     if (openEntry) {
       const onBreak = openEntry.breaks.some((item) => item.endedAt == null);
@@ -1364,21 +1385,22 @@ export async function getAttendanceBoard(
       status = "on_leave";
     } else if (
       refShifts.length > 0 &&
-      refEntries.length === 0 &&
-      classifyAbsentDay(
-        {
-          dateKey: refKey,
-          hasShift: true,
-          hasClockIn: false,
-          isHoliday: isHolidayDateKey(refKey, settings),
-          leaveCompensation: leaveCompensationForEmployeeDate(
-            timeOffRequests,
-            employee.id,
-            refKey,
-          ),
-        },
-        settings,
-      )
+      !hasClockInToday &&
+      !isHolidayDateKey(refKey, settings) &&
+      leaveCompensation === null &&
+      // Past days: payroll-style absent. Live today: only after shift(s) ended.
+      (isLive
+        ? allTodayShiftsEnded
+        : classifyAbsentDay(
+            {
+              dateKey: refKey,
+              hasShift: true,
+              hasClockIn: false,
+              isHoliday: false,
+              leaveCompensation: null,
+            },
+            settings,
+          ))
     ) {
       status = "absent";
     } else if (!isLive && refEntries.length > 0) {
@@ -1387,7 +1409,7 @@ export async function getAttendanceBoard(
     } else if (isLate && !isLive) {
       status = "late";
     }
-    // Live + clocked out (or never punched, no shift): stay "off".
+    // Live + clocked out (or never punched while shift still ongoing): stay "off".
 
     let punchStatus: "CLOCKED_IN" | "ON_BREAK" | "CLOCKED_OUT" | "NOT_STARTED" =
       "NOT_STARTED";
