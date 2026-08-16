@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import { useSaveBarToast } from "../../hooks/useSaveBarToast";
-import { useSaveBarToast } from "../../hooks/useSaveBarToast";
 import { Form } from "react-router";
 import { AppPage } from "../AppPage";
 import { User } from "lucide-react";
