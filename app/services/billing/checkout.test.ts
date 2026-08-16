@@ -30,7 +30,7 @@ describe("billing checkout helpers", () => {
 
   it("keeps the Admin return URL under Shopify's 255-character limit", () => {
     const url = billingReturnUrl(
-      new Request("https://staff-time.onrender.com/app/pricing"),
+      new Request("https://staff.cloudcommerceus.com/app/pricing"),
       "spaceraceplayground.myshopify.com",
     );
     expect(url).toBe(

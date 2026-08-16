@@ -3,7 +3,7 @@
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
 name = "Trubuild: POS Staff Clock In"
 handle = "trubuild-staff-management"
-application_url = "https://staff-time.onrender.com"
+application_url = "https://staff.cloudcommerceus.com"
 embedded = true
 
 [build]
@@ -24,9 +24,9 @@ scopes = "read_locations,read_orders,read_products"
 
 [auth]
 redirect_urls = [
-  "https://staff-time.onrender.com/auth/callback",
-  "https://staff-time.onrender.com/auth/shopify/callback",
-  "https://staff-time.onrender.com/api/auth/callback"
+  "https://staff.cloudcommerceus.com/auth/callback",
+  "https://staff.cloudcommerceus.com/auth/shopify/callback",
+  "https://staff.cloudcommerceus.com/api/auth/callback"
 ]
 
 [pos]

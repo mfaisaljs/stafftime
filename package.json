@@ -4,7 +4,7 @@
   "scripts": {
     "build": "react-router build",
     "dev": "shopify app dev --config local --use-localhost --localhost-port=3458",
-    "dev:pos": "shopify app dev --config local --tunnel-url=https://staff-time.onrender.com",
+    "dev:pos": "shopify app dev --config local --tunnel-url=https://staff.cloudcommerceus.com",
     "qa:pos": "vitest run app/services/pos-workflow.test.ts",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
