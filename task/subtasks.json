@@ -2504,6 +2504,23 @@
         "app/routes/app.usage.tsx"
       ],
       "lastUpdated": "2026-08-16T16:30:00.000Z"
+    },
+    {
+      "id": "ST133",
+      "taskId": "T015",
+      "title": "Hide dashboard Documentation and Live Support cards",
+      "description": "Temporarily remove Documentation and Live Support footer cards from the dashboard; keep Book Consultation only.",
+      "status": "completed",
+      "priority": "low",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "Dashboard support footer shows only Book Consultation",
+        "Documentation and Live Support cards are not rendered"
+      ],
+      "files": [
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-16T16:35:00.000Z"
     }
   ]
 }

@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 import { Link, useLoaderData } from "react-router";
 import { AppPage } from "../components/AppPage";
 import {
-  BookOpen,
   CalendarDays,
   Check,
   ChevronDown,
   ChevronUp,
   CircleAlert,
-  Headphones,
   MessageCircle,
   X,
 } from "lucide-react";
@@ -98,25 +96,11 @@ export default function DashboardPage() {
 
         <div className="support-cards">
           <SupportCard
-            icon={<BookOpen size={22} />}
-            title="Documentation"
-            description="Guides for staff, scheduling, payroll, and POS clock workflows."
-            href="https://shopify.dev/docs/apps"
-            actionLabel="Read More"
-          />
-          <SupportCard
             icon={<CalendarDays size={22} />}
             title="Book Consultation"
             description="Talk with our team about rollout, payroll, and workforce setup."
             href="mailto:support@example.com?subject=StaffTime%20consultation"
             actionLabel="Book Now"
-          />
-          <SupportCard
-            icon={<Headphones size={22} />}
-            title="Live Support"
-            description="Get help with clock-in issues, settings, and day-to-day questions."
-            href="mailto:support@example.com?subject=StaffTime%20support"
-            actionLabel="Chat Now"
           />
         </div>
       </div>
@@ -739,7 +723,8 @@ const DASHBOARD_STYLES = `
   .support-cards {
     display: grid;
     gap: 14px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 420px;
   }
 
   .support-card {
@@ -779,7 +764,7 @@ const DASHBOARD_STYLES = `
 
   @media (max-width: 900px) {
     .support-cards {
-      grid-template-columns: 1fr;
+      max-width: none;
     }
   }
 `;
