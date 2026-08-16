@@ -595,7 +595,9 @@ function StaffRequestsTab(props: {
             <s-box key={request.id} padding="small none">
               <s-stack direction="block" gap="base">
                 <RequestCard request={request} />
-                {request.status === "PENDING" ? (
+                {!request.canReview ? (
+                  <s-text>Past dates — approve/decline unavailable</s-text>
+                ) : request.status === "PENDING" ? (
                   <s-stack direction="inline" gap="small">
                     <s-button
                       variant="primary"
@@ -698,29 +700,33 @@ function ApprovalsTab(props: {
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
                   <RequestCard request={request} />
-                  <s-stack direction="inline" gap="small">
-                    <s-button
-                      variant="primary"
-                      loading={reviewingId === request.id}
-                      disabled={reviewingId !== null}
-                      onClick={() => {
-                        void onReview(request.id, "APPROVED");
-                      }}
-                    >
-                      Approve
-                    </s-button>
-                    <s-button
-                      variant="primary"
-                      tone="critical"
-                      loading={reviewingId === request.id}
-                      disabled={reviewingId !== null}
-                      onClick={() => {
-                        void onReview(request.id, "DECLINED");
-                      }}
-                    >
-                      Decline
-                    </s-button>
-                  </s-stack>
+                  {!request.canReview ? (
+                    <s-text>Past dates — approve/decline unavailable</s-text>
+                  ) : (
+                    <s-stack direction="inline" gap="small">
+                      <s-button
+                        variant="primary"
+                        loading={reviewingId === request.id}
+                        disabled={reviewingId !== null}
+                        onClick={() => {
+                          void onReview(request.id, "APPROVED");
+                        }}
+                      >
+                        Approve
+                      </s-button>
+                      <s-button
+                        variant="primary"
+                        tone="critical"
+                        loading={reviewingId === request.id}
+                        disabled={reviewingId !== null}
+                        onClick={() => {
+                          void onReview(request.id, "DECLINED");
+                        }}
+                      >
+                        Decline
+                      </s-button>
+                    </s-stack>
+                  )}
                 </s-stack>
               </s-box>
             </s-section>
@@ -750,17 +756,21 @@ function ApprovalsTab(props: {
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
                   <RequestCard request={request} />
-                  <s-button
-                    variant="primary"
-                    tone="critical"
-                    loading={reviewingId === request.id}
-                    disabled={reviewingId !== null}
-                    onClick={() => {
-                      void onReview(request.id, "DECLINED");
-                    }}
-                  >
-                    Decline
-                  </s-button>
+                  {!request.canReview ? (
+                    <s-text>Past dates — approve/decline unavailable</s-text>
+                  ) : (
+                    <s-button
+                      variant="primary"
+                      tone="critical"
+                      loading={reviewingId === request.id}
+                      disabled={reviewingId !== null}
+                      onClick={() => {
+                        void onReview(request.id, "DECLINED");
+                      }}
+                    >
+                      Decline
+                    </s-button>
+                  )}
                 </s-stack>
               </s-box>
             </s-section>
@@ -790,16 +800,20 @@ function ApprovalsTab(props: {
               <s-box padding="small none">
                 <s-stack direction="block" gap="base">
                   <RequestCard request={request} />
-                  <s-button
-                    variant="primary"
-                    loading={reviewingId === request.id}
-                    disabled={reviewingId !== null}
-                    onClick={() => {
-                      void onReview(request.id, "APPROVED");
-                    }}
-                  >
-                    Approve
-                  </s-button>
+                  {!request.canReview ? (
+                    <s-text>Past dates — approve/decline unavailable</s-text>
+                  ) : (
+                    <s-button
+                      variant="primary"
+                      loading={reviewingId === request.id}
+                      disabled={reviewingId !== null}
+                      onClick={() => {
+                        void onReview(request.id, "APPROVED");
+                      }}
+                    >
+                      Approve
+                    </s-button>
+                  )}
                 </s-stack>
               </s-box>
             </s-section>

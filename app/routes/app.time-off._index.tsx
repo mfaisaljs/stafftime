@@ -14,6 +14,7 @@ import {
   approveTimeOffRequestForShop,
   findOverlappingScheduledShifts,
   summarizeOverlappingShifts,
+  timeOffRequestIsReviewable,
 } from "../services/time-off-shifts.server";
 import prisma from "../db.server";
 
@@ -75,6 +76,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       endDate: request.endDate,
       status: request.status.toLowerCase() as StatusTab,
       reason: request.reason ?? "",
+      canReview: timeOffRequestIsReviewable(request.startDate),
       overlappingShifts: overlapByRequestId.get(request.id) ?? [],
     })),
   };
@@ -313,7 +315,9 @@ export default function TimeOffIndexPage() {
                     </td>
                     <td>{item.reason || "—"}</td>
                     <td>
-                      {item.status === "pending" ? (
+                      {!item.canReview ? (
+                        <span className="muted-action">Past dates</span>
+                      ) : item.status === "pending" ? (
                         <div className="timeoff-actions-inline">
                           <s-button
                             type="button"
@@ -588,6 +592,11 @@ const TIME_OFF_STYLES = `
     display: inline-flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .muted-action {
+    color: #616161;
+    font-size: 13px;
   }
 
   .icon-button {

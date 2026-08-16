@@ -39,6 +39,26 @@ function toDateKeyLocal(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
+/** True when leave has not started yet (start date is today or later). */
+export function timeOffRequestIsReviewable(
+  startDate: string,
+  todayKey = toDateKeyLocal(new Date()),
+) {
+  return Boolean(startDate) && startDate >= todayKey;
+}
+
+export function assertTimeOffCanBeReviewed(startDate: string, endDate: string) {
+  const todayKey = toDateKeyLocal(new Date());
+  if (!timeOffRequestIsReviewable(startDate, todayKey)) {
+    throw new Error(
+      "Cannot approve or decline time off for past dates (or leave that has already started).",
+    );
+  }
+  if (endDate < startDate) {
+    throw new Error("Time off end date is before the start date.");
+  }
+}
+
 function timeValue(value: Date) {
   const hours = String(value.getHours()).padStart(2, "0");
   const minutes = String(value.getMinutes()).padStart(2, "0");
@@ -162,6 +182,7 @@ export async function approveTimeOffRequestForShop(params: {
   if (!existing) {
     throw new Error("Time off request not found");
   }
+  assertTimeOffCanBeReviewed(existing.startDate, existing.endDate);
   if (params.status !== "APPROVED" && params.status !== "DECLINED") {
     throw new Error("Select a valid review action");
   }

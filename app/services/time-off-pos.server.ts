@@ -7,6 +7,7 @@ import {
   assertNoOverlappingTimeOffRequest,
   findOverlappingScheduledShifts,
   summarizeOverlappingShifts,
+  timeOffRequestIsReviewable,
 } from "./time-off-shifts.server";
 
 function parseIds(raw: string): string[] {
@@ -103,6 +104,7 @@ function mapRequest(
     createdAt: request.createdAt.toISOString(),
     overlappingShiftCount,
     overlappingShifts,
+    canReview: timeOffRequestIsReviewable(request.startDate),
   };
 }
 

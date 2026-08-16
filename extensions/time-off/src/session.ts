@@ -37,6 +37,7 @@ export type TimeOffRequestRow = {
     endTime: string;
     locationName: string;
   }>;
+  canReview?: boolean;
 };
 
 export type StaffOption = {
