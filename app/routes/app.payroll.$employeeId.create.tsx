@@ -92,7 +92,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     settings,
   );
 
-  const [timeEntries, payments, timeOffRequests, shifts] = await Promise.all([
+  const [timeEntries, payments, timeOffRequests, shifts, pendingCommissions] =
+    await Promise.all([
     getEmployeeTimeEntries(session, employeeId, effectiveStart, endDate),
     prisma.payrollPayment.findMany({
       where: { shopId: shop.id, employeeId },
@@ -112,6 +113,14 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
         },
         startsAt: { gte: effectiveStart, lte: endDate },
       },
+    }),
+    prisma.commissionAttribution.findMany({
+      where: {
+        shopId: shop.id,
+        employeeId,
+        payoutStatus: "PENDING",
+      },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -152,6 +161,47 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const remaining = Math.max(0, totalEarnings - totalPaid);
 
+  const commissionOrders = pendingCommissions.map((row) => {
+    let programNames: string[] = [];
+    try {
+      const parsed = JSON.parse(row.lineItemsJson) as unknown;
+      if (Array.isArray(parsed)) {
+        const names = new Set<string>();
+        for (const line of parsed) {
+          if (
+            line &&
+            typeof line === "object" &&
+            typeof (line as { programName?: unknown }).programName === "string"
+          ) {
+            const name = (line as { programName: string }).programName.trim();
+            if (name) names.add(name);
+          }
+        }
+        programNames = [...names];
+      }
+    } catch {
+      programNames = [];
+    }
+
+    return {
+      id: row.id,
+      orderId: row.orderId,
+      orderName: row.orderName?.trim() || `Order ${row.orderId}`,
+      amount: Number(row.commissionTotal.toFixed(2)),
+      currency: row.currency || employee.currency || "USD",
+      programNames,
+      createdAt: row.createdAt.toISOString(),
+      createdAtLabel: row.createdAt.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    };
+  });
+  const commissionAvailable = Number(
+    commissionOrders.reduce((sum, order) => sum + order.amount, 0).toFixed(2),
+  );
+
   return {
     employee: {
       id: employee.id,
@@ -172,6 +222,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       totalPaid,
       remaining,
       pendingPayments: remaining,
+    },
+    commission: {
+      available: commissionAvailable,
+      orders: commissionOrders,
     },
   };
 };
@@ -198,6 +252,10 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const amountRaw = String(formData.get("amount") ?? "").replace(/[^0-9.]/g, "");
   const amount = Number.parseFloat(amountRaw);
   const proof = formData.get("proof");
+  const selectedCommissionIds = formData
+    .getAll("commissionOrderIds")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
   const allowedPaymentTypes = new Set(
     PAYMENT_TYPE_OPTIONS.map((option) => option.value),
   );
@@ -213,6 +271,48 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   if (paymentType === "SALARY") {
     if (!isDateKey(periodStart) || !isDateKey(periodEnd) || periodStart > periodEnd) {
       return { error: "Select a valid payment period." };
+    }
+  }
+
+  let commissionRows: Array<{
+    id: string;
+    orderName: string | null;
+    orderId: string;
+    commissionTotal: number;
+  }> = [];
+  if (paymentType === "COMMISSION") {
+    if (selectedCommissionIds.length === 0) {
+      return { error: "Select at least one commission order to pay." };
+    }
+    commissionRows = await prisma.commissionAttribution.findMany({
+      where: {
+        shopId: shop.id,
+        employeeId,
+        payoutStatus: "PENDING",
+        id: { in: selectedCommissionIds },
+      },
+      select: {
+        id: true,
+        orderName: true,
+        orderId: true,
+        commissionTotal: true,
+      },
+    });
+    if (commissionRows.length !== selectedCommissionIds.length) {
+      return {
+        error:
+          "One or more selected commission orders are unavailable or already paid.",
+      };
+    }
+    const expected = Number(
+      commissionRows
+        .reduce((sum, row) => sum + row.commissionTotal, 0)
+        .toFixed(2),
+    );
+    if (Math.abs(expected - amount) > 0.009) {
+      return {
+        error: `Commission amount must match the selected orders (${expected.toFixed(2)}).`,
+      };
     }
   }
 
@@ -234,37 +334,60 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     proofFileName = proof.name.slice(0, 180);
   }
 
+  const commissionNote =
+    paymentType === "COMMISSION"
+      ? `Commission orders: ${commissionRows
+          .map((row) => row.orderName?.trim() || row.orderId)
+          .join(", ")}`
+      : null;
+
   const notes =
     paymentType === "BONUS"
       ? [bonusReason && `Bonus reason: ${bonusReason}`, notesRaw]
           .filter(Boolean)
           .join("\n\n") || null
-      : notesRaw || null;
+      : paymentType === "COMMISSION"
+        ? [commissionNote, notesRaw].filter(Boolean).join("\n\n") || null
+        : notesRaw || null;
 
-  await prisma.payrollPayment.create({
-    data: {
-      shopId: shop.id,
-      employeeId,
-      paymentType,
-      amount,
-      currency: employee.currency || "USD",
-      paymentMethod,
-      notes,
-      proofFileName,
-      periodLabel:
-        paymentType === "SALARY"
-          ? periodLabel || `${periodStart} - ${periodEnd}`
-          : null,
-      periodStart: paymentType === "SALARY" ? periodStart : null,
-      periodEnd: paymentType === "SALARY" ? periodEnd : null,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.payrollPayment.create({
+      data: {
+        shopId: shop.id,
+        employeeId,
+        paymentType,
+        amount,
+        currency: employee.currency || "USD",
+        paymentMethod,
+        notes,
+        proofFileName,
+        periodLabel:
+          paymentType === "SALARY"
+            ? periodLabel || `${periodStart} - ${periodEnd}`
+            : null,
+        periodStart: paymentType === "SALARY" ? periodStart : null,
+        periodEnd: paymentType === "SALARY" ? periodEnd : null,
+      },
+    });
+
+    if (paymentType === "COMMISSION" && commissionRows.length > 0) {
+      await tx.commissionAttribution.updateMany({
+        where: {
+          shopId: shop.id,
+          employeeId,
+          id: { in: commissionRows.map((row) => row.id) },
+          payoutStatus: "PENDING",
+        },
+        data: { payoutStatus: "PAID" },
+      });
+    }
   });
 
   return redirect("/app/payroll");
 };
 
 export default function CreatePayrollPage() {
-  const { employee, overview } = useLoaderData<typeof loader>();
+  const { employee, overview, commission } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -274,13 +397,30 @@ export default function CreatePayrollPage() {
   const [period, setPeriod] = useState<DateRangeValue>(() =>
     defaultDateRangeValue(2),
   );
+  const [selectedCommissionIds, setSelectedCommissionIds] = useState<string[]>(
+    () => commission.orders.map((order) => order.id),
+  );
   const isSubmitting = navigation.state === "submitting";
 
-  // Commission order ledger is not persisted yet — keep zeros until orders exist.
-  const commissionAvailable = 0;
-  const commissionOrderTotal = 0;
-  const selectedOrderCount = 0;
-  const selectedAmount = Number.parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
+  const selectedCommissionOrders = useMemo(
+    () =>
+      commission.orders.filter((order) =>
+        selectedCommissionIds.includes(order.id),
+      ),
+    [commission.orders, selectedCommissionIds],
+  );
+  const commissionAvailable = commission.available;
+  const commissionOrderTotal = commission.orders.length;
+  const selectedOrderCount = selectedCommissionOrders.length;
+  const selectedCommissionTotal = Number(
+    selectedCommissionOrders
+      .reduce((sum, order) => sum + order.amount, 0)
+      .toFixed(2),
+  );
+  const selectedAmount =
+    paymentType === "COMMISSION"
+      ? selectedCommissionTotal
+      : Number.parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
 
   const amountHelp = useMemo(
     () => ({
@@ -296,7 +436,45 @@ export default function CreatePayrollPage() {
       setAmount(overview.remaining.toFixed(2));
       return;
     }
+    if (value === "COMMISSION") {
+      const ids = commission.orders.map((order) => order.id);
+      setSelectedCommissionIds(ids);
+      const total = Number(
+        commission.orders
+          .reduce((sum, order) => sum + order.amount, 0)
+          .toFixed(2),
+      );
+      setAmount(total.toFixed(2));
+      return;
+    }
     setAmount("0.00");
+  };
+
+  const toggleCommissionOrder = (orderId: string) => {
+    setSelectedCommissionIds((prev) => {
+      const next = prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId];
+      const total = Number(
+        commission.orders
+          .filter((order) => next.includes(order.id))
+          .reduce((sum, order) => sum + order.amount, 0)
+          .toFixed(2),
+      );
+      setAmount(total.toFixed(2));
+      return next;
+    });
+  };
+
+  const toggleAllCommissionOrders = (checked: boolean) => {
+    if (!checked) {
+      setSelectedCommissionIds([]);
+      setAmount("0.00");
+      return;
+    }
+    const ids = commission.orders.map((order) => order.id);
+    setSelectedCommissionIds(ids);
+    setAmount(commissionAvailable.toFixed(2));
   };
 
   const onProofChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -433,6 +611,52 @@ export default function CreatePayrollPage() {
                   </div>
                 </div>
 
+                {commission.orders.length === 0 ? (
+                  <p className="commission-empty">
+                    No pending commission orders for this staff member.
+                  </p>
+                ) : (
+                  <div className="commission-orders">
+                    <label className="commission-order-row select-all">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedCommissionIds.length ===
+                            commission.orders.length &&
+                          commission.orders.length > 0
+                        }
+                        onChange={(event) =>
+                          toggleAllCommissionOrders(event.currentTarget.checked)
+                        }
+                      />
+                      <span>Select all pending orders</span>
+                    </label>
+                    {commission.orders.map((order) => (
+                      <label key={order.id} className="commission-order-row">
+                        <input
+                          type="checkbox"
+                          name="commissionOrderIds"
+                          value={order.id}
+                          checked={selectedCommissionIds.includes(order.id)}
+                          onChange={() => toggleCommissionOrder(order.id)}
+                        />
+                        <span className="commission-order-meta">
+                          <strong>{order.orderName}</strong>
+                          <small>
+                            {order.createdAtLabel}
+                            {order.programNames.length > 0
+                              ? ` · ${order.programNames.join(", ")}`
+                              : ""}
+                          </small>
+                        </span>
+                        <strong className="commission-order-amount">
+                          {formatMoney(order.amount)}
+                        </strong>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
                 <label className="field-label">
                   Total commission amount
                   <span className="amount-input">
@@ -441,13 +665,14 @@ export default function CreatePayrollPage() {
                       name="amount"
                       type="text"
                       inputMode="decimal"
-                      value={amount}
-                      onChange={(event) => setAmount(event.currentTarget.value)}
+                      value={selectedCommissionTotal.toFixed(2)}
+                      readOnly
                       required
                     />
                   </span>
                   <small>
-                    {selectedOrderCount} Orders selected for payment
+                    {selectedOrderCount} order
+                    {selectedOrderCount === 1 ? "" : "s"} selected for payment
                   </small>
                 </label>
               </div>
@@ -866,6 +1091,63 @@ const CREATE_PAYROLL_STYLES = `
   .commission-metric strong {
     color: #202223;
     font-size: 18px;
+  }
+
+  .commission-empty {
+    color: #616161;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .commission-orders {
+    border: 1px solid #e3e3e3;
+    border-radius: 10px;
+    display: grid;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .commission-order-row {
+    align-items: center;
+    border-bottom: 1px solid #ececec;
+    cursor: pointer;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: auto 1fr auto;
+    margin: 0;
+    padding: 12px 14px;
+  }
+
+  .commission-order-row:last-child {
+    border-bottom: 0;
+  }
+
+  .commission-order-row.select-all {
+    background: #f6f6f7;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .commission-order-meta {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .commission-order-meta strong {
+    color: #202223;
+    font-size: 13px;
+  }
+
+  .commission-order-meta small {
+    color: #616161;
+    font-size: 12px;
+  }
+
+  .commission-order-amount {
+    color: #202223;
+    font-size: 13px;
+    white-space: nowrap;
   }
 
   .amount-input {
