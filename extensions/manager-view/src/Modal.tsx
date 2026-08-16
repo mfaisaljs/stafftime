@@ -583,7 +583,10 @@ function ManagerViewModal() {
 function filterStaff(staff: ManagerStaffRow[], filter: StaffListFilter) {
   if (filter === "all") return staff;
   if (filter === "working") {
-    return staff.filter((row) => row.punchStatus === "CLOCKED_IN");
+    // Anyone Working for the day (clocked in, on break, or clocked out after punching).
+    return staff.filter(
+      (row) => row.status === "working" || row.status === "on_break",
+    );
   }
   if (filter === "on_break") {
     return staff.filter((row) => row.punchStatus === "ON_BREAK");

@@ -1436,13 +1436,9 @@ export async function getAttendanceBoard(
   });
 
   const onLeaveCount = rows.filter((row) => row.status === "on_leave").length;
-  // Live presence counts use punch state so clocked-out staff stay "Working" for the day
-  // without inflating currently-working metrics.
-  const workingCount = rows.filter(
-    (row) => row.punchStatus === "CLOCKED_IN",
-  ).length;
+  const workingCount = rows.filter((row) => row.status === "working").length;
   const onBreakCount = rows.filter(
-    (row) => row.punchStatus === "ON_BREAK",
+    (row) => row.status === "on_break" || row.punchStatus === "ON_BREAK",
   ).length;
   const absentCount = rows.filter((row) => row.status === "absent").length;
   const lateCount = rows.filter(
