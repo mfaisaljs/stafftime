@@ -583,13 +583,14 @@ function ManagerViewModal() {
 function filterStaff(staff: ManagerStaffRow[], filter: StaffListFilter) {
   if (filter === "all") return staff;
   if (filter === "working") {
-    // Anyone Working for the day (clocked in, on break, or clocked out after punching).
-    return staff.filter(
-      (row) => row.status === "working" || row.status === "on_break",
-    );
+    // Currently on the floor only.
+    return staff.filter((row) => row.punchStatus === "CLOCKED_IN");
   }
   if (filter === "on_break") {
     return staff.filter((row) => row.punchStatus === "ON_BREAK");
+  }
+  if (filter === "late") {
+    return staff.filter((row) => Boolean(row.isLate));
   }
   return staff.filter((row) => row.status === filter);
 }
@@ -611,14 +612,23 @@ function MetricRow(props: { label: string; value: string }) {
 
 function StaffRow(props: { row: ManagerStaffRow; onSelect: () => void }) {
   const { row, onSelect } = props;
-  const dayLabel =
-    row.status === "on_break" || row.status === "working"
-      ? "Working"
-      : row.statusLabel;
-  const dayTone =
-    row.status === "on_break" || row.status === "working"
-      ? "success"
-      : row.statusTone;
+
+  // Exception statuses win; otherwise punch is the primary signal.
+  const primary =
+    row.status === "on_leave" ||
+    row.status === "absent" ||
+    row.status === "late"
+      ? {
+          label: row.statusLabel,
+          tone: row.statusTone,
+        }
+      : {
+          label: row.punchStatusLabel,
+          tone: row.punchStatusTone,
+        };
+
+  const showWorkedToday =
+    row.workedToday && row.punchStatus === "CLOCKED_OUT";
 
   return (
     <s-box padding="small none">
@@ -638,8 +648,13 @@ function StaffRow(props: { row: ManagerStaffRow; onSelect: () => void }) {
             </s-text>
           </s-stack>
           <s-stack direction="inline" gap="small" alignItems="center">
-            <s-badge tone={dayTone}>{dayLabel}</s-badge>
-            <s-badge tone={row.punchStatusTone}>{row.punchStatusLabel}</s-badge>
+            <s-badge tone={primary.tone}>{primary.label}</s-badge>
+            {showWorkedToday ? (
+              <s-badge tone="info">Worked today</s-badge>
+            ) : null}
+            {row.isLate && row.status !== "late" ? (
+              <s-badge tone="critical">Late</s-badge>
+            ) : null}
           </s-stack>
         </s-stack>
         {row.clockInLabel || row.clockOutLabel ? (

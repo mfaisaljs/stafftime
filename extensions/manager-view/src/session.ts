@@ -40,9 +40,11 @@ export type ManagerStaffRow = {
   punchStatus: PunchStatus;
   punchStatusLabel: string;
   punchStatusTone: "success" | "warning" | "critical" | "info" | "neutral";
+  workedToday: boolean;
   clockInLabel: string | null;
   clockOutLabel: string | null;
   isSelf: boolean;
+  isLate?: boolean;
 };
 
 export type ManagerMetrics = {

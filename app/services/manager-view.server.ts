@@ -159,9 +159,11 @@ export async function bootstrapManagerViewForPos(params: {
       punchStatus: row.punchStatus,
       punchStatusLabel: row.punchStatusLabel,
       punchStatusTone: punchTone(row.punchStatus),
+      workedToday: Boolean(row.workedToday),
       clockInLabel,
       clockOutLabel,
       isSelf: row.id === manager.id,
+      isLate: Boolean(row.isLate),
     };
   });
 

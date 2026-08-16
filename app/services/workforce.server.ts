@@ -1381,12 +1381,13 @@ export async function getAttendanceBoard(
       )
     ) {
       status = "absent";
-    } else if (refEntries.length > 0) {
-      // Present / worked this day (includes currently clocked out after punching).
+    } else if (!isLive && refEntries.length > 0) {
+      // Historical day: had activity that day (not currently live).
       status = "working";
-    } else if (isLate) {
+    } else if (isLate && !isLive) {
       status = "late";
     }
+    // Live + clocked out (or never punched, no shift): stay "off".
 
     let punchStatus: "CLOCKED_IN" | "ON_BREAK" | "CLOCKED_OUT" | "NOT_STARTED" =
       "NOT_STARTED";
@@ -1404,6 +1405,10 @@ export async function getAttendanceBoard(
       punchStatus = "CLOCKED_OUT";
       punchStatusLabel = "Clocked out";
     }
+
+    const workedToday =
+      Boolean(openEntry) ||
+      refEntries.some((entry) => entry.status === "CLOSED" || entry.status === "OPEN");
 
     const locationName =
       openEntry?.location.name ??
@@ -1427,7 +1432,8 @@ export async function getAttendanceBoard(
       status,
       punchStatus,
       punchStatusLabel,
-      isLate: isLate && status !== "absent" && status !== "off",
+      workedToday,
+      isLate: Boolean(isLate && status !== "absent" && status !== "on_leave"),
       clockInAt: primaryEntry?.clockInAt?.toISOString() ?? null,
       clockOutAt,
       shiftStartsAt: (refShifts[0] ?? shiftForLate)?.startsAt?.toISOString() ?? null,
@@ -1436,14 +1442,15 @@ export async function getAttendanceBoard(
   });
 
   const onLeaveCount = rows.filter((row) => row.status === "on_leave").length;
-  const workingCount = rows.filter((row) => row.status === "working").length;
+  // Working / On break metrics = currently on the floor only.
+  const workingCount = rows.filter(
+    (row) => row.punchStatus === "CLOCKED_IN",
+  ).length;
   const onBreakCount = rows.filter(
-    (row) => row.status === "on_break" || row.punchStatus === "ON_BREAK",
+    (row) => row.punchStatus === "ON_BREAK",
   ).length;
   const absentCount = rows.filter((row) => row.status === "absent").length;
-  const lateCount = rows.filter(
-    (row) => row.status === "late" || row.isLate,
-  ).length;
+  const lateCount = rows.filter((row) => row.isLate).length;
 
   return {
     refDate: refKey,

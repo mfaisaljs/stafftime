@@ -27,6 +27,7 @@ export type AttendanceBoardRow = {
   status: AttendanceStatus;
   punchStatus?: "CLOCKED_IN" | "ON_BREAK" | "CLOCKED_OUT" | "NOT_STARTED";
   punchStatusLabel?: string;
+  workedToday?: boolean;
   isLate: boolean;
   clockInAt: string | null;
   clockOutAt?: string | null;
@@ -79,6 +80,20 @@ export function AttendanceBoard({
     if (statusFilter === "all") return rows;
     if (statusFilter === "late") {
       return rows.filter((row) => row.status === "late" || row.isLate);
+    }
+    if (statusFilter === "working") {
+      return rows.filter(
+        (row) =>
+          row.punchStatus === "CLOCKED_IN" ||
+          (!row.punchStatus && row.status === "working"),
+      );
+    }
+    if (statusFilter === "on_break") {
+      return rows.filter(
+        (row) =>
+          row.punchStatus === "ON_BREAK" ||
+          (!row.punchStatus && row.status === "on_break"),
+      );
     }
     return rows.filter((row) => row.status === statusFilter);
   }, [rows, statusFilter]);
@@ -223,23 +238,34 @@ export function AttendanceBoard({
                   <td>{row.location}</td>
                   <td>
                     <span className="status-cell">
-                      <span className={`status-pill ${row.status}`}>
-                        {statusLabel(row.status)}
-                      </span>
-                      {row.punchStatusLabel &&
-                      row.punchStatus &&
-                      row.punchStatus !== "NOT_STARTED" ? (
+                      {row.status === "on_leave" ||
+                      row.status === "absent" ||
+                      row.status === "late" ? (
+                        <span className={`status-pill ${row.status}`}>
+                          {statusLabel(row.status)}
+                        </span>
+                      ) : (
                         <span
                           className={`status-pill ${
                             row.punchStatus === "CLOCKED_IN"
                               ? "working"
                               : row.punchStatus === "ON_BREAK"
                                 ? "on_break"
-                                : "off"
+                                : row.punchStatus === "CLOCKED_OUT"
+                                  ? "off"
+                                  : row.status
                           }`}
+                        >
+                          {row.punchStatusLabel ?? statusLabel(row.status)}
+                        </span>
+                      )}
+                      {row.workedToday &&
+                      row.punchStatus === "CLOCKED_OUT" ? (
+                        <span
+                          className="status-pill info"
                           style={{ marginLeft: 6 }}
                         >
-                          {row.punchStatusLabel}
+                          Worked today
                         </span>
                       ) : null}
                       {row.isLate && row.status !== "late" && (
@@ -619,6 +645,11 @@ const ATTENDANCE_STYLES = `
   .status-pill.off {
     background: #f1f1f1;
     color: #616161;
+  }
+
+  .status-pill.info {
+    background: #e8f0ff;
+    color: #1d4ed8;
   }
 
   .empty-cell {
