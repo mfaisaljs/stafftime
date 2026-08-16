@@ -2147,6 +2147,30 @@
         "app/services/billing/checkout.ts"
       ],
       "lastUpdated": "2026-08-16T13:45:00.000Z"
+    },
+    {
+      "id": "ST113",
+      "taskId": "T029",
+      "title": "Migrate Prisma from SQLite to PostgreSQL",
+      "description": "Switch datasource to postgresql, replace SQLite migrations with single Postgres baseline, add docker-compose for local dev.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "prisma/schema.prisma provider is postgresql",
+        "Single init_postgres migration applies on Render Postgres",
+        "docker-compose.yml provides local Postgres; README updated"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "prisma/migrations/migration_lock.toml",
+        "prisma/migrations/20260816140000_init_postgres/migration.sql",
+        "docker-compose.yml",
+        ".env.example",
+        "package.json",
+        "README.md"
+      ],
+      "lastUpdated": "2026-08-16T14:05:00.000Z"
     }
   ]
 }
