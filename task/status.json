@@ -6,8 +6,11 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-16T02:10:00.000Z",
+  "lastUpdated": "2026-08-16T02:25:00.000Z",
   "notes": [
+    "Updated: Square payment fields use Cash App $Cashtag and Phone/Email.",
+    "Updated: Venmo payment fields are Username (@username) and Phone Number.",
+    "Updated: payment method Paystack replaced with Revolut (Email/Phone + Username fields).",
     "ST094 complete: Direct Deposit/Bank Transfer Domestic vs International (SWIFT) — routing number or SWIFT/BIC + IBAN; Employee.swiftBic/iban columns.",
     "Updated: time off approve/decline blocked when leave start date is in the past (Admin + POS); actions hidden as Past dates.",
     "Fixed: Create Payroll Commission type loads pending CommissionAttribution orders, lets you select them, and marks paid on save.",

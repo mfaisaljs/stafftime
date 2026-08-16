@@ -63,7 +63,7 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "DIRECT_DEPOSIT", label: "Direct Deposit" },
   { value: "CASH", label: "Cash" },
   { value: "CHECK", label: "Check" },
-  { value: "PAYSTACK", label: "Paystack" },
+  { value: "REVOLUT", label: "Revolut" },
   { value: "VENMO", label: "Venmo" },
   { value: "SQUARE", label: "Square" },
 ];

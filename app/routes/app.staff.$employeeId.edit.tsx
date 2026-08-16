@@ -99,7 +99,9 @@ export default function EditStaffPage() {
   const actionData = useActionData<typeof action>();
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState(employee.payrollType);
-  const [paymentMethod, setPaymentMethod] = useState(employee.paymentMethod);
+  const [paymentMethod, setPaymentMethod] = useState(
+    employee.paymentMethod === "PAYSTACK" ? "REVOLUT" : employee.paymentMethod,
+  );
   const [bankAccountType, setBankAccountType] = useState(
     employee.bankAccountType ?? "DOMESTIC",
   );
@@ -120,8 +122,10 @@ export default function EditStaffPage() {
   const showStripeFields = paymentMethod === "STRIPE";
   const showWiseFields = paymentMethod === "WISE";
   const showPayoneerFields = paymentMethod === "PAYONEER";
+  const showRevolutFields = paymentMethod === "REVOLUT";
+  const showVenmoFields = paymentMethod === "VENMO";
+  const showSquareFields = paymentMethod === "SQUARE";
   const showBankFields = BANK_PAYMENT_METHODS.includes(paymentMethod);
-  const showProviderFields = PROVIDER_PAYMENT_METHODS.includes(paymentMethod);
   const showNoPaymentFields = NO_DETAIL_PAYMENT_METHODS.includes(paymentMethod);
 
   const generatePin = () => {
@@ -390,18 +394,51 @@ export default function EditStaffPage() {
                   />
                 </div>
               )}
-              {showProviderFields && (
-                <div className="staff-grid two">
+              {showRevolutFields && (
+                <div className="staff-grid one">
                   <Field
-                    label={`${selectedPaymentLabel} Account Email`}
+                    label="Revolut Email/Phone"
                     name="paypalEmail"
-                    type="email"
+                    placeholder="Email or phone linked to Revolut"
                     defaultValue={employee.paypalEmail ?? ""}
                   />
                   <Field
-                    label={`${selectedPaymentLabel} Account Name`}
+                    label="Revolut Username"
                     name="paypalAccountName"
+                    placeholder="@username (if applicable)"
                     defaultValue={employee.paypalAccountName ?? ""}
+                  />
+                </div>
+              )}
+              {showVenmoFields && (
+                <div className="staff-grid one">
+                  <Field
+                    label="Venmo Username"
+                    name="paypalAccountName"
+                    placeholder="@username"
+                    defaultValue={employee.paypalAccountName ?? ""}
+                  />
+                  <Field
+                    label="Venmo Phone Number"
+                    name="paypalEmail"
+                    placeholder="Phone number linked to Venmo"
+                    defaultValue={employee.paypalEmail ?? ""}
+                  />
+                </div>
+              )}
+              {showSquareFields && (
+                <div className="staff-grid one">
+                  <Field
+                    label="Cash App $Cashtag"
+                    name="paypalAccountName"
+                    placeholder="$cashtag"
+                    defaultValue={employee.paypalAccountName ?? ""}
+                  />
+                  <Field
+                    label="Cash App Phone/Email"
+                    name="paypalEmail"
+                    placeholder="Phone or email linked to Cash App"
+                    defaultValue={employee.paypalEmail ?? ""}
                   />
                 </div>
               )}
@@ -564,18 +601,12 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "DIRECT_DEPOSIT", label: "Direct Deposit" },
   { value: "CASH", label: "Cash" },
   { value: "CHECK", label: "Check" },
-  { value: "PAYSTACK", label: "Paystack" },
+  { value: "REVOLUT", label: "Revolut" },
   { value: "VENMO", label: "Venmo" },
   { value: "SQUARE", label: "Square" },
 ];
 
 const BANK_PAYMENT_METHODS = ["BANK_TRANSFER", "DIRECT_DEPOSIT"];
-
-const PROVIDER_PAYMENT_METHODS = [
-  "PAYSTACK",
-  "VENMO",
-  "SQUARE",
-];
 
 const NO_DETAIL_PAYMENT_METHODS = ["CASH", "CHECK"];
 

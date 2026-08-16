@@ -611,7 +611,8 @@ function paymentMethodLabel(value: string) {
     DIRECT_DEPOSIT: "Direct Deposit",
     CASH: "Cash",
     CHECK: "Check",
-    PAYSTACK: "Paystack",
+    REVOLUT: "Revolut",
+    PAYSTACK: "Revolut",
     VENMO: "Venmo",
     SQUARE: "Square",
   };

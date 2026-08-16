@@ -102,8 +102,10 @@ export default function StaffPage() {
   const showStripeFields = paymentMethod === "STRIPE";
   const showWiseFields = paymentMethod === "WISE";
   const showPayoneerFields = paymentMethod === "PAYONEER";
+  const showRevolutFields = paymentMethod === "REVOLUT";
+  const showVenmoFields = paymentMethod === "VENMO";
+  const showSquareFields = paymentMethod === "SQUARE";
   const showBankFields = BANK_PAYMENT_METHODS.includes(paymentMethod);
-  const showProviderFields = PROVIDER_PAYMENT_METHODS.includes(paymentMethod);
   const showNoPaymentFields = NO_DETAIL_PAYMENT_METHODS.includes(paymentMethod);
 
   const generatePin = () => {
@@ -376,18 +378,45 @@ export default function StaffPage() {
                   />
                 </div>
               )}
-              {showProviderFields && (
-                <div className="staff-grid two">
+              {showRevolutFields && (
+                <div className="staff-grid one">
                   <Field
-                    label={`${selectedPaymentLabel} Account Email`}
+                    label="Revolut Email/Phone"
                     name="paypalEmail"
-                    type="email"
-                    placeholder={`Enter ${selectedPaymentLabel} email address`}
+                    placeholder="Email or phone linked to Revolut"
                   />
                   <Field
-                    label={`${selectedPaymentLabel} Account Name`}
+                    label="Revolut Username"
                     name="paypalAccountName"
-                    placeholder={`Account holder name in ${selectedPaymentLabel}`}
+                    placeholder="@username (if applicable)"
+                  />
+                </div>
+              )}
+              {showVenmoFields && (
+                <div className="staff-grid one">
+                  <Field
+                    label="Venmo Username"
+                    name="paypalAccountName"
+                    placeholder="@username"
+                  />
+                  <Field
+                    label="Venmo Phone Number"
+                    name="paypalEmail"
+                    placeholder="Phone number linked to Venmo"
+                  />
+                </div>
+              )}
+              {showSquareFields && (
+                <div className="staff-grid one">
+                  <Field
+                    label="Cash App $Cashtag"
+                    name="paypalAccountName"
+                    placeholder="$cashtag"
+                  />
+                  <Field
+                    label="Cash App Phone/Email"
+                    name="paypalEmail"
+                    placeholder="Phone or email linked to Cash App"
                   />
                 </div>
               )}
@@ -544,7 +573,7 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "DIRECT_DEPOSIT", label: "Direct Deposit" },
   { value: "CASH", label: "Cash" },
   { value: "CHECK", label: "Check" },
-  { value: "PAYSTACK", label: "Paystack" },
+  { value: "REVOLUT", label: "Revolut" },
   { value: "VENMO", label: "Venmo" },
   { value: "SQUARE", label: "Square" },
 ];
@@ -552,12 +581,6 @@ const PAYMENT_METHOD_OPTIONS = [
 const BANK_PAYMENT_METHODS = [
   "BANK_TRANSFER",
   "DIRECT_DEPOSIT",
-];
-
-const PROVIDER_PAYMENT_METHODS = [
-  "PAYSTACK",
-  "VENMO",
-  "SQUARE",
 ];
 
 const NO_DETAIL_PAYMENT_METHODS = ["CASH", "CHECK"];
