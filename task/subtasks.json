@@ -2171,6 +2171,29 @@
         "README.md"
       ],
       "lastUpdated": "2026-08-16T14:05:00.000Z"
+    },
+    {
+      "id": "ST114",
+      "taskId": "T018",
+      "title": "Fix production billing return blank exit-iframe",
+      "description": "Direct /app/billing return URL; persist pendingBillingHost; restore host on return; legacy exit-iframe 302 to billing.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST113"],
+      "acceptanceCriteria": [
+        "billingReturnUrl points to /app/billing with shop/host/embedded",
+        "Host saved in pending checkout and restored when Shopify omits it",
+        "/auth/exit-iframe redirects to /app/billing instead of blank App Bridge page"
+      ],
+      "files": [
+        "app/services/billing/checkout.ts",
+        "app/routes/auth.$.tsx",
+        "app/routes/app.billing.tsx",
+        "app/routes/app.pricing.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260816141000_shop_pending_billing_host/migration.sql"
+      ],
+      "lastUpdated": "2026-08-16T14:15:00.000Z"
     }
   ]
 }

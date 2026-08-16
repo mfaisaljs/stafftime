@@ -7,7 +7,7 @@ import {
   saveShopifyShopGid,
   syncSubscriptionFromPlanHandle,
 } from "../services/billing.server";
-import { takePendingBillingCheckout } from "../services/billing/checkout";
+import { takePendingBillingCheckout, restoreEmbeddedBillingParams } from "../services/billing/checkout";
 import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
 
@@ -20,6 +20,7 @@ const SHOP_GID_QUERY = `#graphql
 `;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  await restoreEmbeddedBillingParams(request);
   const { admin, session, redirect: shopifyRedirect } =
     await authenticate.admin(request);
   const url = new URL(request.url);

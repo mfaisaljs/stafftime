@@ -89,6 +89,7 @@ model Shop {
   usageCycleKey      String?
   pendingBillingPlanHandle String?
   pendingBillingExtraSeats Int?
+  pendingBillingHost     String?
 
   locations           StoreLocation[]
   employees           Employee[]

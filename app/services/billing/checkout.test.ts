@@ -13,7 +13,7 @@ describe("billing checkout helpers", () => {
     expect(parseCheckoutPlanHandle("")).toBeNull();
   });
 
-  it("builds a short exit-iframe billing return URL with embedded context", () => {
+  it("builds a direct /app/billing return URL with embedded context", () => {
     const previousAppUrl = process.env.SHOPIFY_APP_URL;
     delete process.env.SHOPIFY_APP_URL;
     const request = new Request(
@@ -24,12 +24,12 @@ describe("billing checkout helpers", () => {
       process.env.SHOPIFY_APP_URL = previousAppUrl;
     }
     expect(url).toBe(
-      "https://example.test/auth/exit-iframe?exitIframe=%2Fapp%2Fbilling&shop=test.myshopify.com&host=abc123",
+      "https://example.test/app/billing?shop=test.myshopify.com&host=abc123&embedded=1",
     );
     expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
   });
 
-  it("keeps return URL under Shopify limit with ngrok and long host", () => {
+  it("keeps return URL under Shopify limit on Render with long host", () => {
     const request = new Request(
       "https://staff-time.onrender.com/app/pricing?embedded=1&host=YWRtaW4uc2hvcGlmeS5jb20vc3RvcmUvc3BhY2VyYWNlcGxheWdyb3VuZA",
     );
@@ -38,6 +38,8 @@ describe("billing checkout helpers", () => {
       "spaceraceplayground.myshopify.com",
     );
     expect(url.length).toBeLessThanOrEqual(MAX_BILLING_RETURN_URL_LENGTH);
+    expect(url).toContain("/app/billing?");
+    expect(url).toContain("embedded=1");
   });
 
   it("formats billing API errors", () => {

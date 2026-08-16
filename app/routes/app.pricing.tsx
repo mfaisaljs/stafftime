@@ -58,7 +58,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   try {
-    await savePendingBillingCheckout(session.shop, planHandle, extraSeats);
+    const requestUrl = new URL(request.url);
+    await savePendingBillingCheckout(
+      session.shop,
+      planHandle,
+      extraSeats,
+      requestUrl.searchParams.get("host"),
+    );
     await billing.request({
       plan: planHandle,
       isTest: process.env.SHOPIFY_BILLING_TEST !== "false",

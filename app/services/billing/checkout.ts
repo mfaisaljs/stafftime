@@ -2,6 +2,7 @@ import type { PlanHandle } from "./plans";
 import { isPlanHandle } from "./plans";
 import prisma from "../../db.server";
 import { shopFromDest } from "../../utils/http.server";
+import { redirect } from "react-router";
 
 export const MAX_BILLING_RETURN_URL_LENGTH = 255;
 
@@ -19,14 +20,24 @@ export async function savePendingBillingCheckout(
   shop: string,
   planHandle: PlanHandle,
   extraSeats: number,
+  host: string | null,
 ) {
   await prisma.shop.update({
     where: { domain: shopFromDest(shop).toLowerCase() },
     data: {
       pendingBillingPlanHandle: planHandle,
       pendingBillingExtraSeats: Math.max(0, extraSeats),
+      pendingBillingHost: host,
     },
   });
+}
+
+export async function getPendingBillingHost(shop: string) {
+  const record = await prisma.shop.findUnique({
+    where: { domain: shopFromDest(shop).toLowerCase() },
+    select: { pendingBillingHost: true },
+  });
+  return record?.pendingBillingHost ?? null;
 }
 
 export async function takePendingBillingCheckout(shop: string) {
@@ -46,6 +57,7 @@ export async function takePendingBillingCheckout(shop: string) {
     data: {
       pendingBillingPlanHandle: null,
       pendingBillingExtraSeats: null,
+      pendingBillingHost: null,
     },
   });
 
@@ -60,14 +72,68 @@ export function billingReturnUrl(request: Request, shop: string) {
   const requestUrl = new URL(request.url);
   const host = requestUrl.searchParams.get("host");
 
-  const exitUrl = new URL(`${origin}/auth/exit-iframe`);
-  exitUrl.searchParams.set("exitIframe", "/app/billing");
-  exitUrl.searchParams.set("shop", shop);
+  const billingUrl = new URL(`${origin}/app/billing`);
+  billingUrl.searchParams.set("shop", shop);
   if (host) {
-    exitUrl.searchParams.set("host", host);
+    billingUrl.searchParams.set("host", host);
+  }
+  billingUrl.searchParams.set("embedded", "1");
+
+  return billingUrl.toString();
+}
+
+/** Shopify often drops host on billing return; restore from pending checkout. */
+export async function restoreEmbeddedBillingParams(request: Request) {
+  const url = new URL(request.url);
+  if (url.searchParams.get("host")) {
+    return;
   }
 
-  return exitUrl.toString();
+  const shop = url.searchParams.get("shop");
+  if (!shop) {
+    return;
+  }
+
+  const host = await getPendingBillingHost(shop);
+  if (!host) {
+    return;
+  }
+
+  url.searchParams.set("host", host);
+  if (!url.searchParams.get("embedded")) {
+    url.searchParams.set("embedded", "1");
+  }
+
+  throw redirect(`${url.pathname}?${url.searchParams.toString()}`);
+}
+
+/** Legacy exit-iframe returns: redirect straight to /app/billing with embedded params. */
+export async function redirectBillingExitIframe(request: Request) {
+  const url = new URL(request.url);
+  if (!url.pathname.endsWith("/auth/exit-iframe")) {
+    return;
+  }
+
+  const shop = url.searchParams.get("shop");
+  if (!shop) {
+    return;
+  }
+
+  const host =
+    url.searchParams.get("host") ?? (await getPendingBillingHost(shop));
+  const billingUrl = new URL("/app/billing", url.origin);
+  billingUrl.searchParams.set("shop", shop);
+  if (host) {
+    billingUrl.searchParams.set("host", host);
+  }
+  billingUrl.searchParams.set("embedded", "1");
+
+  const chargeId = url.searchParams.get("charge_id");
+  if (chargeId) {
+    billingUrl.searchParams.set("charge_id", chargeId);
+  }
+
+  throw redirect(billingUrl.toString());
 }
 
 export function billingErrorMessage(error: unknown) {
