@@ -39,7 +39,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     getPayrollEntries(session, 30),
     prisma.payrollPayment.findMany({
       where: { shopId: shop.id },
-      select: { employeeId: true, amount: true },
+      select: { employeeId: true, amount: true, paymentType: true },
     }),
     prisma.shift.findMany({
       where: {
@@ -117,11 +117,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
-  const paidByEmployee = new Map<string, number>();
+  const salaryPaidByEmployee = new Map<string, number>();
+  const totalPaidByEmployee = new Map<string, number>();
   for (const payment of payments) {
-    paidByEmployee.set(
+    totalPaidByEmployee.set(
       payment.employeeId,
-      (paidByEmployee.get(payment.employeeId) ?? 0) + payment.amount,
+      (totalPaidByEmployee.get(payment.employeeId) ?? 0) + payment.amount,
+    );
+    if (payment.paymentType === "COMMISSION" || payment.paymentType === "BONUS") {
+      continue;
+    }
+    salaryPaidByEmployee.set(
+      payment.employeeId,
+      (salaryPaidByEmployee.get(payment.employeeId) ?? 0) + payment.amount,
     );
   }
 
@@ -134,8 +142,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         breakSeconds: 0,
         earnings: 0,
       };
-      const totalPaid = paidByEmployee.get(employee.id) ?? 0;
-      const remaining = Math.max(0, summary.earnings - totalPaid);
+      const totalPaid = totalPaidByEmployee.get(employee.id) ?? 0;
+      const salaryPaid = salaryPaidByEmployee.get(employee.id) ?? 0;
+      const remaining = Math.max(0, summary.earnings - salaryPaid);
 
       return {
         id: employee.id,

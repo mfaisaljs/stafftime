@@ -97,7 +97,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     getEmployeeTimeEntries(session, employeeId, effectiveStart, endDate),
     prisma.payrollPayment.findMany({
       where: { shopId: shop.id, employeeId },
-      select: { amount: true },
+      select: { amount: true, paymentType: true },
     }),
     getApprovedTimeOffForRange(
       shop.id,
@@ -160,10 +160,23 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const baseEarnings = Number(totalEarningsBase.toFixed(2));
   const adjustment = Number(salaryAdjustment.toFixed(2));
   const totalEarnings = Number((baseEarnings + adjustment).toFixed(2));
-  const totalPaid = Number(
-    payments.reduce((sum, payment) => sum + payment.amount, 0).toFixed(2),
+  const paidByType = payments.reduce(
+    (acc, payment) => {
+      const amount = payment.amount;
+      const type = payment.paymentType || "SALARY";
+      if (type === "COMMISSION") acc.commission += amount;
+      else if (type === "BONUS") acc.bonus += amount;
+      else acc.salary += amount;
+      acc.total += amount;
+      return acc;
+    },
+    { salary: 0, commission: 0, bonus: 0, total: 0 },
   );
-  const remaining = Math.max(0, Number((totalEarnings - totalPaid).toFixed(2)));
+  const salaryPaid = Number(paidByType.salary.toFixed(2));
+  const commissionPaid = Number(paidByType.commission.toFixed(2));
+  const bonusPaid = Number(paidByType.bonus.toFixed(2));
+  const totalPaid = Number(paidByType.total.toFixed(2));
+  const remaining = Math.max(0, Number((totalEarnings - salaryPaid).toFixed(2)));
 
   const commissionOrders = pendingCommissions.map((row) => {
     let programNames: string[] = [];
@@ -237,8 +250,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       baseEarnings,
       salaryAdjustment: adjustment,
       totalEarnings,
+      salaryPaid,
+      commissionPaid,
+      bonusPaid,
       totalPaid,
       remaining,
+      commissionRemaining: commissionAvailable,
       pendingPayments: remaining,
       dailyRate: Number(
         (settings.defaultDailyWorkingHours * employee.hourlyRate).toFixed(2),
@@ -532,9 +549,13 @@ export default function CreatePayrollPage() {
               <MetricTile label="Rate" value={employee.rateLabel} />
               <MetricTile label="Hours worked" value={overview.hoursWorked} />
               <MetricTile
-                label="Remaining balance"
+                label="Salary remaining"
                 value={formatMoney(overview.remaining)}
                 highlight
+              />
+              <MetricTile
+                label="Commission remaining"
+                value={formatMoney(overview.commissionRemaining)}
               />
             </div>
 
@@ -579,15 +600,37 @@ export default function CreatePayrollPage() {
                     </strong>
                   </div>
                   <div>
-                    <span>Total Paid</span>
+                    <span>Salary paid</span>
                     <strong className="tone-blue">
-                      {formatMoney(overview.totalPaid)}
+                      {formatMoney(overview.salaryPaid)}
+                    </strong>
+                  </div>
+                </div>
+                <div className="history-row" style={{ marginTop: 12 }}>
+                  <div>
+                    <span>Commission paid</span>
+                    <strong className="tone-blue">
+                      {formatMoney(overview.commissionPaid)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Bonus paid</span>
+                    <strong className="tone-blue">
+                      {formatMoney(overview.bonusPaid)}
                     </strong>
                   </div>
                 </div>
                 <div className="schedule-row" style={{ marginTop: 12 }}>
-                  <span>Remaining (earnings − paid)</span>
+                  <span>Total paid</span>
+                  <strong>{formatMoney(overview.totalPaid)}</strong>
+                </div>
+                <div className="schedule-row" style={{ marginTop: 8 }}>
+                  <span>Salary remaining</span>
                   <strong>{formatMoney(overview.remaining)}</strong>
+                </div>
+                <div className="schedule-row" style={{ marginTop: 8 }}>
+                  <span>Commission remaining</span>
+                  <strong>{formatMoney(overview.commissionRemaining)}</strong>
                 </div>
               </div>
             </div>
@@ -1372,7 +1415,7 @@ const CREATE_PAYROLL_STYLES = `
   .overview-metrics {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .metric-tile {

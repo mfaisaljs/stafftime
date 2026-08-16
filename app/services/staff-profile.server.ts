@@ -259,15 +259,38 @@ export async function getStaffProfileForPos(params: {
   );
   const unpaidCommission = Number(
     commissionRows
-      .filter((row) => String(row.payoutStatus || "PENDING").toUpperCase() !== "PAID")
+      .filter(
+        (row) => String(row.payoutStatus || "PENDING").toUpperCase() !== "PAID",
+      )
       .reduce((sum, row) => sum + row.commissionTotal, 0)
       .toFixed(2),
   );
   const totalBonus = 0;
-  const totalEarnings = baseEarnings + salaryAdjustment + totalCommission + totalBonus;
-  const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const remainingAmount = Math.max(0, totalEarnings - totalPaid);
-  const unpaidSalary = remainingAmount;
+  const salaryEarnings = Number((baseEarnings + salaryAdjustment).toFixed(2));
+  const totalEarnings = Number(
+    (salaryEarnings + totalCommission + totalBonus).toFixed(2),
+  );
+  const paidByType = payments.reduce(
+    (acc, payment) => {
+      const type = payment.paymentType || "SALARY";
+      if (type === "COMMISSION") acc.commission += payment.amount;
+      else if (type === "BONUS") acc.bonus += payment.amount;
+      else acc.salary += payment.amount;
+      acc.total += payment.amount;
+      return acc;
+    },
+    { salary: 0, commission: 0, bonus: 0, total: 0 },
+  );
+  const salaryPaid = Number(paidByType.salary.toFixed(2));
+  const totalPaid = Number(paidByType.total.toFixed(2));
+  // Commission remaining comes from attribution payout status, not payroll math.
+  const unpaidSalary = Math.max(
+    0,
+    Number((salaryEarnings - salaryPaid).toFixed(2)),
+  );
+  const remainingAmount = Number(
+    (unpaidSalary + unpaidCommission).toFixed(2),
+  );
   const currency = employee.currency || "USD";
   const salaryAdjustmentLabel = formatMoney(salaryAdjustment, currency);
 
