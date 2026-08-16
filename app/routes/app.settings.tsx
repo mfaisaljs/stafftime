@@ -19,6 +19,7 @@ import { authenticate } from "../shopify.server";
 import { getAdminShop } from "../services/admin.server";
 import { useSaveBarToast } from "../hooks/useSaveBarToast";
 import prisma from "../db.server";
+import { publicPortalUrl } from "../utils/portal-url.server";
 
 const WEEKDAYS = [
   "MONDAY",
@@ -44,7 +45,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return {
     shopDomain: session.shop,
-    portalUrl: `https://portal.movestaff.com/?ShopDomain=${session.shop}`,
+    portalUrl: publicPortalUrl(session.shop),
     settings: {
       deductBreakTime: settings.deductBreakTime,
       salaryAfterFirstClockIn: settings.salaryAfterFirstClockIn,

@@ -1,7 +1,7 @@
 {
   "projectName": "StaffTime — Workforce OS for Shopify POS",
   "version": "0.1.1",
-  "lastUpdated": "2026-08-16T10:40:00.000Z",
+  "lastUpdated": "2026-08-16T22:10:00.000Z",
   "tasks": [
     {
       "id": "T001",
@@ -176,9 +176,9 @@
       "status": "in_progress",
       "priority": "high",
       "phase": "mvp",
-      "progressPercent": 95,
+      "progressPercent": 98,
       "dependencies": ["T003", "T016"],
-      "lastUpdated": "2026-08-16T02:10:00.000Z"
+      "lastUpdated": "2026-08-16T22:10:00.000Z"
     },
     {
       "id": "T018",
@@ -190,6 +190,17 @@
       "progressPercent": 100,
       "dependencies": ["T017"],
       "lastUpdated": "2026-08-16T15:30:00.000Z"
+    },
+    {
+      "id": "T019",
+      "title": "Staff web portal",
+      "description": "PIN-authenticated staff portal for employees without Shopify admin access, hostable on a subdomain.",
+      "status": "completed",
+      "priority": "high",
+      "phase": "mvp",
+      "progressPercent": 100,
+      "dependencies": ["T004", "T017"],
+      "lastUpdated": "2026-08-16T22:10:00.000Z"
     }
   ]
 }

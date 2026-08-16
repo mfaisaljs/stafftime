@@ -24,6 +24,17 @@ export function portalHostFromEnv() {
 export function isPortalHost(request: Request) {
   const expected = portalHostFromEnv();
   if (!expected) return false;
+
+  let appHost = "";
+  try {
+    appHost = new URL(process.env.SHOPIFY_APP_URL || "http://localhost")
+      .hostname.toLowerCase();
+  } catch {
+    appHost = "";
+  }
+  // Path-based portal on the app origin should not steal Shopify's `/` → `/app`.
+  if (appHost && expected === appHost) return false;
+
   const host = request.headers.get("host")?.split(":")[0]?.toLowerCase();
   return Boolean(host && host === expected);
 }

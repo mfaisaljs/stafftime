@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"] as const;
 
@@ -12,12 +12,16 @@ export function PinPad(props: {
 }) {
   const [pin, setPin] = useState("");
 
+  const submitted = useRef(false);
+
   useEffect(() => {
-    if (pin.length === 4 && !props.busy) {
+    if (pin.length === 4 && !props.busy && !submitted.current) {
+      submitted.current = true;
       props.onSubmit(pin);
     }
+    if (pin.length < 4) submitted.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pin]);
+  }, [pin, props.busy]);
 
   useEffect(() => {
     if (props.error) setPin("");

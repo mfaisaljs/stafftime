@@ -18,6 +18,21 @@ if (
 const host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost")
   .hostname;
 
+const extraHosts: string[] = [];
+if (process.env.PORTAL_HOST) {
+  extraHosts.push(process.env.PORTAL_HOST.split(":")[0]);
+}
+if (process.env.PORTAL_URL) {
+  try {
+    const portalUrl = process.env.PORTAL_URL.includes("://")
+      ? process.env.PORTAL_URL
+      : `https://${process.env.PORTAL_URL}`;
+    extraHosts.push(new URL(portalUrl).hostname);
+  } catch {
+    // Ignore invalid PORTAL_URL during local config.
+  }
+}
+
 let hmrConfig;
 if (host === "localhost") {
   hmrConfig = {
@@ -37,7 +52,7 @@ if (host === "localhost") {
 
 export default defineConfig({
   server: {
-    allowedHosts: [host],
+    allowedHosts: [host, ...extraHosts],
     cors: {
       preflightContinue: true,
     },

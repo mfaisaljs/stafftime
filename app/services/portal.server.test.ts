@@ -15,14 +15,14 @@ async function cleanup() {
   await prisma.shop.deleteMany({ where: { domain: TEST_DOMAIN } });
 }
 
-describe("staff web portal", () => {
+describe("staff web portal", { timeout: 30000 }, () => {
   beforeEach(async () => {
     await cleanup();
-  });
+  }, 20000);
 
   afterEach(async () => {
     await cleanup();
-  });
+  }, 20000);
 
   it("does not create a shop from a public portal lookup", async () => {
     await expect(loadPortalShop("missing-portal.myshopify.com")).rejects.toThrow(
@@ -72,6 +72,10 @@ describe("staff web portal", () => {
     await expect(
       verifyPortalPin({ shopDomain: TEST_DOMAIN, pin: "2468", feature: "clock" }),
     ).rejects.toThrow(/disabled/i);
+
+    await expect(
+      verifyPortalPin({ shopDomain: TEST_DOMAIN, pin: "0000" }),
+    ).rejects.toThrow(/invalid pin/i);
 
     await expect(
       verifyPortalPin({

@@ -5,9 +5,11 @@
   "progressPercent": 97,
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
-  "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
-  "lastUpdated": "2026-08-16T17:00:00.000Z",
+  "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
+  "lastUpdated": "2026-08-16T22:10:00.000Z",
   "notes": [
+    "ST137 complete: public /portal staff kiosk with PIN auth, ShopDomain, subdomain host routing, and clock/timesheet/time-off/profile/tasks/manager/shifts.",
+    "ST069 complete: Staff Portal feature toggles hide cards and block disabled portal routes.",
     "ST136 complete: AppLink/useAppPath/useAppNavigate applied across admin routes to preserve embedded params.",
     "ST135 complete: Staff links preserve embedded params; session-token redirects all /app routes; staff save uses fetcher for toasts.",
     "ST134 complete: save-bar forms show Shopify admin toasts on save; redirect flows toast via query params.",
@@ -300,11 +302,6 @@
     {
       "id": "ST068",
       "title": "Enforce selfie and GPS verification on POS clock",
-      "priority": "medium"
-    },
-    {
-      "id": "ST069",
-      "title": "Enforce Staff Portal feature toggles",
       "priority": "medium"
     },
     {

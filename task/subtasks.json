@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-10T19:34:53.000Z",
+  "lastUpdated": "2026-08-16T22:10:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -1200,7 +1200,7 @@
       "taskId": "T017",
       "title": "Enforce Staff Portal feature toggles",
       "description": "Gate Staff Portal routes and POS-as-portal features using portal settings persisted on Setting.",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "dependencies": ["ST066"],
       "acceptanceCriteria": [
@@ -1208,9 +1208,12 @@
         "Settings remain persisted when portal enforcement is deferred"
       ],
       "files": [
-        "app/routes/app.settings.tsx"
+        "app/routes/app.settings.tsx",
+        "app/services/portal.server.ts",
+        "app/routes/portal._index.tsx",
+        "app/utils/portal-auth.server.ts"
       ],
-      "lastUpdated": "2026-08-10T16:10:00.000Z"
+      "lastUpdated": "2026-08-16T22:10:00.000Z"
     },
     {
       "id": "ST070",
@@ -2550,6 +2553,42 @@
         ".cursor/rules/shopify-save-bar.mdc"
       ],
       "lastUpdated": "2026-08-16T16:45:00.000Z"
+    },
+    {
+      "id": "ST137",
+      "taskId": "T019",
+      "title": "Staff web portal for PIN access without Shopify login",
+      "description": "Public /portal kiosk matching the staff action grid: PIN auth, shop via ShopDomain, subdomain-ready host routing, and clock/timesheet/time-off/profile/tasks/manager/shifts pages.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST066", "ST069"],
+      "acceptanceCriteria": [
+        "Staff can open /portal?ShopDomain=shop.myshopify.com without Shopify admin login",
+        "PIN pad unlocks enabled portal features and sets an httpOnly session cookie",
+        "Disabled Staff Portal toggles hide cards and block feature routes",
+        "Dedicated PORTAL_URL/PORTAL_HOST serves the portal from a subdomain",
+        "Settings copies the live portal URL instead of the competitor placeholder"
+      ],
+      "files": [
+        "app/routes/portal.tsx",
+        "app/routes/portal._index.tsx",
+        "app/routes/portal.clock.tsx",
+        "app/routes/portal.timesheet.tsx",
+        "app/routes/portal.time-off.tsx",
+        "app/routes/portal.profile.tsx",
+        "app/routes/portal.tasklists.tsx",
+        "app/routes/portal.manager.tsx",
+        "app/routes/portal.shifts.tsx",
+        "app/services/portal.server.ts",
+        "app/services/portal.server.test.ts",
+        "app/utils/portal-url.server.ts",
+        "app/utils/portal-session.server.ts",
+        "app/utils/portal-auth.server.ts",
+        "app/components/portal/PortalShell.tsx",
+        "app/routes/app.settings.tsx",
+        "app/routes/_index/route.tsx"
+      ],
+      "lastUpdated": "2026-08-16T22:10:00.000Z"
     }
   ]
 }

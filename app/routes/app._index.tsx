@@ -24,6 +24,7 @@ import {
   ensureShop,
   getAttendanceBoard,
 } from "../services/workforce.server";
+import { publicPortalUrl } from "../utils/portal-url.server";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -73,17 +74,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     };
   });
 
-  return { dateRange, recentActivity, ...board };
+  return { dateRange, recentActivity, portalUrl: publicPortalUrl(session.shop), ...board };
 };
 
 export default function DashboardPage() {
-  const { dateRange, live, timeFormat, metrics, rows, recentActivity } =
+  const { dateRange, live, timeFormat, metrics, rows, recentActivity, portalUrl } =
     useLoaderData<typeof loader>();
 
   return (
     <AppPage heading="Dashboard" inlineSize="large">
       <div className="dashboard-page">
-        <SetupGuide />
+        <SetupGuide portalUrl={portalUrl} />
 
         <AttendanceBoard
           basePath="/app"
@@ -112,7 +113,7 @@ export default function DashboardPage() {
   );
 }
 
-function SetupGuide() {
+function SetupGuide({ portalUrl }: { portalUrl: string }) {
   const appPath = useAppPath();
   const storageKey = "stafftime.setupGuide.v1";
   const [ready, setReady] = useState(false);
@@ -160,7 +161,18 @@ function SetupGuide() {
     }
   }, [collapsed, dismissed, done, ready]);
 
-  const steps = SETUP_STEPS;
+  const steps = SETUP_STEPS.map((step) =>
+    step.id === "portal"
+      ? {
+          ...step,
+          actions: step.actions.map((action) =>
+            action.label === "View Portal"
+              ? { ...action, href: portalUrl, external: true }
+              : action,
+          ),
+        }
+      : step,
+  );
   const completedCount = steps.filter((step) => done[step.id]).length;
   const total = steps.length;
   const percent = Math.round((completedCount / total) * 100);
@@ -304,7 +316,7 @@ const SETUP_STEPS: Array<{
     title: "View Web Portal",
     description: "Access the staff web portal to manage your team.",
     actions: [
-      { label: "View Portal", href: "/app/staff" },
+      { label: "View Portal", href: "/portal", external: true },
       {
         label: "Help Guide",
         href: "https://shopify.dev/docs/apps",
