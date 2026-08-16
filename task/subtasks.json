@@ -2312,20 +2312,38 @@
       "id": "ST123",
       "taskId": "T018",
       "title": "Billing debug route for live Shopify subscription",
-      "description": "Test page listing active Shopify subscription recurring charge, usage cap, usage fee, and quantity.",
+      "description": "Production Billing page listing active Shopify subscription recurring charge, usage cap, usage fee, and quantity.",
       "status": "completed",
       "priority": "medium",
       "dependencies": ["ST120"],
       "acceptanceCriteria": [
-        "/app/billing-debug loads with Admin auth",
+        "/app/usage loads with Admin auth",
         "Shows recurring charge, usage cappedAmount, balanceUsed, and usage records",
-        "Shows local extra quantity and extra charge for comparison"
+        "Uses Polaris metrics, badges, and usage table"
       ],
       "files": [
-        "app/routes/app.billing-debug.tsx",
+        "app/routes/app.usage.tsx",
         "app/routes/app.tsx"
       ],
-      "lastUpdated": "2026-08-16T15:20:00.000Z"
+      "lastUpdated": "2026-08-16T15:25:00.000Z"
+    },
+    {
+      "id": "ST124",
+      "taskId": "T015",
+      "title": "Add Chatra live chat widget",
+      "description": "Reuse the Trubuild Chatra widget (same ChatraID) on StaffTime admin pages.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "ChatraWidget loads chatra.js with ChatraID otFcs4SwiWA2FJ6gq",
+        "Widget is mounted from app/root.tsx"
+      ],
+      "files": [
+        "app/components/ChatraWidget.tsx",
+        "app/root.tsx"
+      ],
+      "lastUpdated": "2026-08-16T15:26:00.000Z"
     }
   ]
 }

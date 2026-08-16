@@ -14,7 +14,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (
     !url.pathname.startsWith("/app/pricing") &&
     !url.pathname.startsWith("/app/billing") &&
-    !url.pathname.startsWith("/app/billing-debug")
+    !url.pathname.startsWith("/app/usage")
   ) {
     await ensureShop(session.shop);
     const billing = await getShopBilling(session.shop);
@@ -45,7 +45,7 @@ export default function App() {
         <s-link href="/app/tasklists">Tasklist</s-link>
         <s-link href="/app/time-off">Time Off</s-link>
         <s-link href="/app/pricing">Pricing</s-link>
-        <s-link href="/app/billing-debug">Billing test</s-link>
+        <s-link href="/app/usage">Usage</s-link>
         <s-link href="/app/settings">Settings</s-link>
       </s-app-nav>
       <Outlet />
