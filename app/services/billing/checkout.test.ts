@@ -31,7 +31,7 @@ describe("billing checkout helpers", () => {
 
   it("keeps return URL under Shopify limit with ngrok and long host", () => {
     const request = new Request(
-      "https://largely-main-ringtail.ngrok-free.app/app/pricing?embedded=1&host=YWRtaW4uc2hvcGlmeS5jb20vc3RvcmUvc3BhY2VyYWNlcGxheWdyb3VuZA",
+      "https://staff-time.onrender.com/app/pricing?embedded=1&host=YWRtaW4uc2hvcGlmeS5jb20vc3RvcmUvc3BhY2VyYWNlcGxheWdyb3VuZA",
     );
     const url = billingReturnUrl(
       request,

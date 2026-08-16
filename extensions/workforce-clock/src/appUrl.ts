@@ -3,7 +3,7 @@
  * POS relative fetch resolves against that URL; when the base is missing on device,
  * `fetch("/api/...")` throws "Failed to construct 'URL': Invalid URL".
  */
-export const APP_BASE_URL = "https://largely-main-ringtail.ngrok-free.app";
+export const APP_BASE_URL = "https://staff-time.onrender.com";
 
 export function resolveAppUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path;

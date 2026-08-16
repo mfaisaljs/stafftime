@@ -3,7 +3,7 @@
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
 name = "Trubuild: POS Staff Clock In"
 handle = "trubuild-staff-management-39"
-application_url = "https://largely-main-ringtail.ngrok-free.app"
+application_url = "https://staff-time.onrender.com"
 embedded = true
 
 [build]
@@ -24,9 +24,9 @@ scopes = "read_locations,read_orders,read_products"
 
 [auth]
 redirect_urls = [
-  "https://largely-main-ringtail.ngrok-free.app/auth/callback",
-  "https://largely-main-ringtail.ngrok-free.app/auth/shopify/callback",
-  "https://largely-main-ringtail.ngrok-free.app/api/auth/callback"
+  "https://staff-time.onrender.com/auth/callback",
+  "https://staff-time.onrender.com/auth/shopify/callback",
+  "https://staff-time.onrender.com/api/auth/callback"
 ]
 
 [pos]

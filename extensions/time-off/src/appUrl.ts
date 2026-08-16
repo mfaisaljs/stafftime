@@ -1,7 +1,7 @@
 /**
  * Must match `application_url` in shopify.app.toml / shopify.app.local.toml.
  */
-export const APP_BASE_URL = "https://largely-main-ringtail.ngrok-free.app";
+export const APP_BASE_URL = "https://staff-time.onrender.com";
 
 export function resolveAppUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path;
