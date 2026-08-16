@@ -1,5 +1,4 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
-import ChatraWidget from "./components/ChatraWidget";
 
 export default function App() {
   return (
@@ -19,7 +18,6 @@ export default function App() {
         <Outlet />
         <ScrollRestoration />
         <Scripts />
-        <ChatraWidget />
       </body>
     </html>
   );

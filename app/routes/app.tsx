@@ -6,6 +6,9 @@ import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
 import { getShopBilling } from "../services/billing.server";
 import { ensureShop } from "../services/workforce.server";
+import ChatraWidget from "../components/ChatraWidget";
+import prisma from "../db.server";
+import { shopFromDest } from "../utils/http.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -25,15 +28,30 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
+  const shopDomain = shopFromDest(session.shop).toLowerCase();
+  const shopHandle = shopDomain.replace(/\.myshopify\.com$/i, "");
+  const shopRecord = await prisma.shop.findUnique({
+    where: { domain: shopDomain },
+    select: { name: true },
+  });
+  const savedName = shopRecord?.name?.trim();
+  const shopName =
+    savedName && savedName.toLowerCase() !== shopDomain ? savedName : shopHandle;
+
   // eslint-disable-next-line no-undef
-  return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+  return {
+    apiKey: process.env.SHOPIFY_API_KEY || "",
+    shopDomain,
+    shopName,
+  };
 };
 
 export default function App() {
-  const { apiKey } = useLoaderData<typeof loader>();
+  const { apiKey, shopDomain, shopName } = useLoaderData<typeof loader>();
 
   return (
     <AppProvider embedded apiKey={apiKey}>
+      <ChatraWidget shopDomain={shopDomain} shopName={shopName} />
       <s-app-nav>
         <s-link href="/app">Dashboard</s-link>
         <s-link href="/app/staff">Staff</s-link>

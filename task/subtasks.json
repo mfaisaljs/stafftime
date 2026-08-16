@@ -2385,6 +2385,25 @@
         "app/routes/app.sales-targets._index.tsx"
       ],
       "lastUpdated": "2026-08-16T15:42:00.000Z"
+    },
+    {
+      "id": "ST127",
+      "taskId": "T015",
+      "title": "Send store name and domain to Chatra",
+      "description": "Chatra dashboard visitor info includes Shopify store name and domain.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST124"],
+      "acceptanceCriteria": [
+        "ChatraIntegration name is store name",
+        "ChatraIntegration includes Domain and Store fields"
+      ],
+      "files": [
+        "app/components/ChatraWidget.tsx",
+        "app/routes/app.tsx",
+        "app/root.tsx"
+      ],
+      "lastUpdated": "2026-08-16T15:48:00.000Z"
     }
   ]
 }
