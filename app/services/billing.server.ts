@@ -196,6 +196,8 @@ export async function syncSubscriptionFromPlanHandle(
 ) {
   const domain = shopFromDest(shopDomain).toLowerCase();
   const plan = getPlan(planHandle);
+  const current = await prisma.shop.findUnique({ where: { domain } });
+  const planChanged = current?.planHandle !== plan.handle;
   const trialEndsAt =
     plan.trialDays > 0
       ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000)
@@ -214,6 +216,7 @@ export async function syncSubscriptionFromPlanHandle(
             ? "trial"
             : "active",
       trialEndsAt,
+      ...(planChanged ? { reportedStaffUsage: 0 } : {}),
     },
   });
 }
@@ -244,6 +247,7 @@ export async function refreshSubscription(shopDomain: string) {
   }
 
   const plan = getPlan(remote.planHandle);
+  const planChanged = shop.planHandle !== plan.handle;
   return prisma.shop.update({
     where: { id: shop.id },
     data: {
@@ -252,6 +256,7 @@ export async function refreshSubscription(shopDomain: string) {
       staffLimit: effectiveMaxStaff(plan),
       subscriptionStatus: remote.status ?? (plan.handle === "free" ? "none" : "active"),
       trialEndsAt: remote.trialEndsAt ? new Date(remote.trialEndsAt) : null,
+      ...(planChanged ? { reportedStaffUsage: 0 } : {}),
     },
   });
 }

@@ -215,6 +215,31 @@ describe("billing enforcement and usage", () => {
     expect(freeShop.planHandle).toBe("free");
   });
 
+  it("resets extra seat usage when the plan changes", async () => {
+    const shop = await ensureShop(TEST_DOMAIN);
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: { reportedStaffUsage: 3, planHandle: "free" },
+    });
+
+    await syncSubscriptionFromPlanHandle(TEST_DOMAIN, "small-business");
+    const upgraded = await prisma.shop.findUniqueOrThrow({
+      where: { domain: TEST_DOMAIN },
+    });
+    expect(upgraded.planHandle).toBe("small-business");
+    expect(upgraded.reportedStaffUsage).toBe(0);
+
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: { reportedStaffUsage: 2 },
+    });
+    await syncSubscriptionFromPlanHandle(TEST_DOMAIN, "small-business");
+    expect(
+      (await prisma.shop.findUniqueOrThrow({ where: { domain: TEST_DOMAIN } }))
+        .reportedStaffUsage,
+    ).toBe(2);
+  });
+
   it("blocks adds when subscribed seats are full", async () => {
     const shop = await ensureShop(TEST_DOMAIN);
     await prisma.shop.update({

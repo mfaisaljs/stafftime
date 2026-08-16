@@ -53,10 +53,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const seatsToAdd = Math.max(0, Number(formData.get("extra_seats") ?? 0));
   const currentBilling = await getShopBilling(session.shop);
-  const extraSeats = nextSubscribedExtraSeats(
-    currentBilling.reportedStaffUsage,
-    seatsToAdd,
-  );
+  const extraSeats =
+    planHandle === currentBilling.planHandle
+      ? nextSubscribedExtraSeats(currentBilling.reportedStaffUsage, seatsToAdd)
+      : nextSubscribedExtraSeats(0, seatsToAdd);
 
   if (planHandle === FREE_PLAN_HANDLE && extraSeats === 0) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
