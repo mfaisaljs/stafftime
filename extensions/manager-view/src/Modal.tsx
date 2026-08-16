@@ -582,6 +582,12 @@ function ManagerViewModal() {
 
 function filterStaff(staff: ManagerStaffRow[], filter: StaffListFilter) {
   if (filter === "all") return staff;
+  if (filter === "working") {
+    return staff.filter((row) => row.punchStatus === "CLOCKED_IN");
+  }
+  if (filter === "on_break") {
+    return staff.filter((row) => row.punchStatus === "ON_BREAK");
+  }
   return staff.filter((row) => row.status === filter);
 }
 
@@ -602,6 +608,15 @@ function MetricRow(props: { label: string; value: string }) {
 
 function StaffRow(props: { row: ManagerStaffRow; onSelect: () => void }) {
   const { row, onSelect } = props;
+  const dayLabel =
+    row.status === "on_break" || row.status === "working"
+      ? "Working"
+      : row.statusLabel;
+  const dayTone =
+    row.status === "on_break" || row.status === "working"
+      ? "success"
+      : row.statusTone;
+
   return (
     <s-box padding="small none">
       <s-stack direction="block" gap="small">
@@ -619,10 +634,17 @@ function StaffRow(props: { row: ManagerStaffRow; onSelect: () => void }) {
               {row.location ? ` · ${row.location}` : ""}
             </s-text>
           </s-stack>
-          <s-badge tone={row.statusTone}>{row.statusLabel}</s-badge>
+          <s-stack direction="inline" gap="small" alignItems="center">
+            <s-badge tone={dayTone}>{dayLabel}</s-badge>
+            <s-badge tone={row.punchStatusTone}>{row.punchStatusLabel}</s-badge>
+          </s-stack>
         </s-stack>
-        {row.clockInLabel ? (
-          <s-text>Clocked in {row.clockInLabel}</s-text>
+        {row.clockInLabel || row.clockOutLabel ? (
+          <s-text>
+            {row.clockInLabel ? `In ${row.clockInLabel}` : null}
+            {row.clockInLabel && row.clockOutLabel ? " · " : null}
+            {row.clockOutLabel ? `Out ${row.clockOutLabel}` : null}
+          </s-text>
         ) : null}
         <s-button variant="secondary" onClick={onSelect}>
           View profile

@@ -25,8 +25,11 @@ export type AttendanceBoardRow = {
   position: string;
   location: string;
   status: AttendanceStatus;
+  punchStatus?: "CLOCKED_IN" | "ON_BREAK" | "CLOCKED_OUT" | "NOT_STARTED";
+  punchStatusLabel?: string;
   isLate: boolean;
   clockInAt: string | null;
+  clockOutAt?: string | null;
   shiftStartsAt: string | null;
   entryStatus: string | null;
 };
@@ -223,6 +226,22 @@ export function AttendanceBoard({
                       <span className={`status-pill ${row.status}`}>
                         {statusLabel(row.status)}
                       </span>
+                      {row.punchStatusLabel &&
+                      row.punchStatus &&
+                      row.punchStatus !== "NOT_STARTED" ? (
+                        <span
+                          className={`status-pill ${
+                            row.punchStatus === "CLOCKED_IN"
+                              ? "working"
+                              : row.punchStatus === "ON_BREAK"
+                                ? "on_break"
+                                : "off"
+                          }`}
+                          style={{ marginLeft: 6 }}
+                        >
+                          {row.punchStatusLabel}
+                        </span>
+                      ) : null}
                       {row.isLate && row.status !== "late" && (
                         <span className="status-pill late">Late</span>
                       )}

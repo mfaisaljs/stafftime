@@ -23,6 +23,12 @@ export type AttendanceStatus =
   | "late"
   | "off";
 
+export type PunchStatus =
+  | "CLOCKED_IN"
+  | "ON_BREAK"
+  | "CLOCKED_OUT"
+  | "NOT_STARTED";
+
 export type ManagerStaffRow = {
   id: string;
   name: string;
@@ -31,7 +37,11 @@ export type ManagerStaffRow = {
   status: AttendanceStatus;
   statusLabel: string;
   statusTone: "success" | "warning" | "critical" | "info" | "neutral";
+  punchStatus: PunchStatus;
+  punchStatusLabel: string;
+  punchStatusTone: "success" | "warning" | "critical" | "info" | "neutral";
   clockInLabel: string | null;
+  clockOutLabel: string | null;
   isSelf: boolean;
 };
 

@@ -108,6 +108,21 @@ async function requireManager(params: {
   return { shop, settings, manager };
 }
 
+function punchTone(
+  punchStatus: "CLOCKED_IN" | "ON_BREAK" | "CLOCKED_OUT" | "NOT_STARTED",
+): "success" | "warning" | "critical" | "info" | "neutral" {
+  switch (punchStatus) {
+    case "CLOCKED_IN":
+      return "success";
+    case "ON_BREAK":
+      return "warning";
+    case "CLOCKED_OUT":
+      return "neutral";
+    default:
+      return "info";
+  }
+}
+
 export async function bootstrapManagerViewForPos(params: {
   shopDomain: string;
   managerId: string;
@@ -119,22 +134,36 @@ export async function bootstrapManagerViewForPos(params: {
     end: today,
   });
 
-  const staff = board.rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    position: row.position,
-    location: row.location,
-    status: row.status,
-    statusLabel: attendanceLabel(row.status),
-    statusTone: attendanceTone(row.status),
-    clockInLabel: row.clockInAt
+  const staff = board.rows.map((row) => {
+    const clockInLabel = row.clockInAt
       ? new Date(row.clockInAt).toLocaleTimeString(undefined, {
           hour: "numeric",
           minute: "2-digit",
         })
-      : null,
-    isSelf: row.id === manager.id,
-  }));
+      : null;
+    const clockOutLabel = row.clockOutAt
+      ? new Date(row.clockOutAt).toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : null;
+
+    return {
+      id: row.id,
+      name: row.name,
+      position: row.position,
+      location: row.location,
+      status: row.status,
+      statusLabel: attendanceLabel(row.status),
+      statusTone: attendanceTone(row.status),
+      punchStatus: row.punchStatus,
+      punchStatusLabel: row.punchStatusLabel,
+      punchStatusTone: punchTone(row.punchStatus),
+      clockInLabel,
+      clockOutLabel,
+      isSelf: row.id === manager.id,
+    };
+  });
 
   return {
     manager: {

@@ -1381,10 +1381,28 @@ export async function getAttendanceBoard(
       )
     ) {
       status = "absent";
+    } else if (refEntries.length > 0) {
+      // Present / worked this day (includes currently clocked out after punching).
+      status = "working";
     } else if (isLate) {
       status = "late";
-    } else if (refEntries.length > 0) {
-      status = "working";
+    }
+
+    let punchStatus: "CLOCKED_IN" | "ON_BREAK" | "CLOCKED_OUT" | "NOT_STARTED" =
+      "NOT_STARTED";
+    let punchStatusLabel = "Not clocked in";
+    if (openEntry) {
+      const onBreak = openEntry.breaks.some((item) => item.endedAt == null);
+      if (onBreak) {
+        punchStatus = "ON_BREAK";
+        punchStatusLabel = "On break";
+      } else {
+        punchStatus = "CLOCKED_IN";
+        punchStatusLabel = "Clocked in";
+      }
+    } else if (refEntries.some((entry) => entry.status === "CLOSED")) {
+      punchStatus = "CLOCKED_OUT";
+      punchStatusLabel = "Clocked out";
     }
 
     const locationName =
@@ -1394,6 +1412,12 @@ export async function getAttendanceBoard(
       employee.location?.name ??
       "—";
 
+    const latestClosed = refEntries.find((entry) => entry.status === "CLOSED");
+    const clockOutAt =
+      punchStatus === "CLOCKED_OUT"
+        ? (latestClosed?.clockOutAt?.toISOString() ?? null)
+        : null;
+
     return {
       id: employee.id,
       name: `${employee.firstName} ${employee.lastName}`,
@@ -1401,16 +1425,25 @@ export async function getAttendanceBoard(
       position: employee.position ?? "Staff",
       location: locationName,
       status,
+      punchStatus,
+      punchStatusLabel,
       isLate: isLate && status !== "absent" && status !== "off",
       clockInAt: primaryEntry?.clockInAt?.toISOString() ?? null,
+      clockOutAt,
       shiftStartsAt: (refShifts[0] ?? shiftForLate)?.startsAt?.toISOString() ?? null,
       entryStatus: primaryEntry?.status ?? null,
     };
   });
 
   const onLeaveCount = rows.filter((row) => row.status === "on_leave").length;
-  const workingCount = rows.filter((row) => row.status === "working").length;
-  const onBreakCount = rows.filter((row) => row.status === "on_break").length;
+  // Live presence counts use punch state so clocked-out staff stay "Working" for the day
+  // without inflating currently-working metrics.
+  const workingCount = rows.filter(
+    (row) => row.punchStatus === "CLOCKED_IN",
+  ).length;
+  const onBreakCount = rows.filter(
+    (row) => row.punchStatus === "ON_BREAK",
+  ).length;
   const absentCount = rows.filter((row) => row.status === "absent").length;
   const lateCount = rows.filter(
     (row) => row.status === "late" || row.isLate,
