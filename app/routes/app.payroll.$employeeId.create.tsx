@@ -157,9 +157,13 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     requests: timeOffRequests.filter((request) => request.employeeId === employeeId),
     settings,
   });
-  const totalEarnings = totalEarningsBase + salaryAdjustment;
-  const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const remaining = Math.max(0, totalEarnings - totalPaid);
+  const baseEarnings = Number(totalEarningsBase.toFixed(2));
+  const adjustment = Number(salaryAdjustment.toFixed(2));
+  const totalEarnings = Number((baseEarnings + adjustment).toFixed(2));
+  const totalPaid = Number(
+    payments.reduce((sum, payment) => sum + payment.amount, 0).toFixed(2),
+  );
+  const remaining = Math.max(0, Number((totalEarnings - totalPaid).toFixed(2)));
 
   const commissionOrders = pendingCommissions.map((row) => {
     let programNames: string[] = [];
@@ -218,10 +222,16 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     },
     overview: {
       hoursWorked: formatDurationHms(totalWorkedSeconds, hourFormat),
+      baseEarnings,
+      salaryAdjustment: adjustment,
       totalEarnings,
       totalPaid,
       remaining,
       pendingPayments: remaining,
+      dailyRate: Number(
+        (settings.defaultDailyWorkingHours * employee.hourlyRate).toFixed(2),
+      ),
+      defaultDailyWorkingHours: settings.defaultDailyWorkingHours,
     },
     commission: {
       available: commissionAvailable,
@@ -517,6 +527,36 @@ export default function CreatePayrollPage() {
 
             <div className="overview-panels">
               <div className="overview-panel">
+                <h3>Earnings breakdown</h3>
+                <div className="history-row">
+                  <div>
+                    <span>Hours pay</span>
+                    <strong>{formatMoney(overview.baseEarnings)}</strong>
+                  </div>
+                  <div>
+                    <span>Salary adjustments</span>
+                    <strong
+                      className={
+                        overview.salaryAdjustment < 0
+                          ? "tone-red"
+                          : overview.salaryAdjustment > 0
+                            ? "tone-green"
+                            : undefined
+                      }
+                    >
+                      {overview.salaryAdjustment > 0 ? "+" : ""}
+                      {formatMoney(overview.salaryAdjustment)}
+                    </strong>
+                  </div>
+                </div>
+                <p className="overview-hint">
+                  Adjustments come from Settings (paid leave credits, unpaid leave /
+                  absence deductions at{" "}
+                  {overview.defaultDailyWorkingHours}h × rate ={" "}
+                  {formatMoney(overview.dailyRate)} per day).
+                </p>
+              </div>
+              <div className="overview-panel">
                 <h3>Payment History</h3>
                 <div className="history-row">
                   <div>
@@ -532,12 +572,9 @@ export default function CreatePayrollPage() {
                     </strong>
                   </div>
                 </div>
-              </div>
-              <div className="overview-panel">
-                <h3>Payment Schedule</h3>
-                <div className="schedule-row">
-                  <span>Total pending payments</span>
-                  <strong>{formatMoney(overview.pendingPayments)}</strong>
+                <div className="schedule-row" style={{ marginTop: 12 }}>
+                  <span>Remaining (earnings − paid)</span>
+                  <strong>{formatMoney(overview.remaining)}</strong>
                 </div>
               </div>
             </div>
@@ -1020,6 +1057,17 @@ const CREATE_PAYROLL_STYLES = `
 
   .tone-blue {
     color: #2c6ecb !important;
+  }
+
+  .tone-red {
+    color: #b91c1c !important;
+  }
+
+  .overview-hint {
+    color: #616161;
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 12px 0 0;
   }
 
   .field-label {
