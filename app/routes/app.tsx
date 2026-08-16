@@ -9,8 +9,17 @@ import { ensureShop } from "../services/workforce.server";
 import ChatraWidget from "../components/ChatraWidget";
 import { shopFromDest } from "../utils/http.server";
 
+const SHOP_NAME_QUERY = `#graphql
+  query ChatraShopName {
+    shop {
+      name
+      myshopifyDomain
+    }
+  }
+`;
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const url = new URL(request.url);
 
   if (
@@ -28,7 +37,27 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   const shopDomain = shopFromDest(session.shop).toLowerCase();
-  const shopName = shopDomain.replace(/\.myshopify\.com$/i, "");
+  let shopName = shopDomain.replace(/\.myshopify\.com$/i, "");
+  try {
+    const shopResponse = await admin.graphql(SHOP_NAME_QUERY);
+    const shopPayload = (await shopResponse.json()) as {
+      data?: { shop?: { name?: string; myshopifyDomain?: string } };
+    };
+    const liveName = shopPayload.data?.shop?.name?.trim();
+    if (liveName) {
+      shopName = liveName;
+    }
+    const liveDomain = shopPayload.data?.shop?.myshopifyDomain?.trim();
+    if (liveDomain) {
+      return {
+        apiKey: process.env.SHOPIFY_API_KEY || "",
+        shopDomain: liveDomain.toLowerCase(),
+        shopName,
+      };
+    }
+  } catch {
+    // Chatra still gets the session shop handle if Admin GraphQL is unavailable.
+  }
 
   // eslint-disable-next-line no-undef
   return {
