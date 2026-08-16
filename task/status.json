@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
-  "lastUpdated": "2026-08-16T14:30:00.000Z",
+  "lastUpdated": "2026-08-16T14:35:00.000Z",
   "notes": [
+    "ST118 complete: removed session-token client reload that dropped the App Bridge token and showed HTTP 200 on Pricing refresh.",
     "ST117 complete: extra-seat slider is seats to add; checkout saves existing subscribed extras + slider value.",
     "ST116 complete: Admin title bar is Trubuild: POS Staff Clock In - <route name> via AppPage.",
     "ST115 complete: billing return URL is admin.shopify.com; session-token after charge approval redirects into Admin instead of a blank 200 page.",

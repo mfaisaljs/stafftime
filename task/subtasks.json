@@ -2252,6 +2252,23 @@
         "app/components/billing/PricingModal.tsx"
       ],
       "lastUpdated": "2026-08-16T14:30:00.000Z"
+    },
+    {
+      "id": "ST118",
+      "taskId": "T018",
+      "title": "Stop session-token client reload dropping auth",
+      "description": "auth.$ no longer window.location.replace(shopify-reload). That skipped App Bridge id_token and caused a 200 bounce on Pricing until refresh.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST115"],
+      "acceptanceCriteria": [
+        "Session-token bounce lets App Bridge attach id_token",
+        "Pricing refresh no longer shows a blank 200 on first load"
+      ],
+      "files": [
+        "app/routes/auth.$.tsx"
+      ],
+      "lastUpdated": "2026-08-16T14:35:00.000Z"
     }
   ]
 }

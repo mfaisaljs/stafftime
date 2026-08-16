@@ -56,27 +56,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return null;
 };
 
-export default function AuthRoute() {
-  return (
-    <>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function () {
-              var params = new URLSearchParams(window.location.search);
-              var reload = params.get("shopify-reload");
-              if (reload) {
-                window.location.replace(reload);
-              }
-            })();
-          `,
-        }}
-      />
-      <p>Returning to StaffTime…</p>
-    </>
-  );
-}
-
 export const headers: HeadersFunction = (headersArgs) => {
   return boundary.headers(headersArgs);
 };
