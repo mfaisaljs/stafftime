@@ -233,7 +233,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return {
     posEditorUrl,
-    appName: "Trubuild: Staff Management",
+    appName: "Trubuild: POS Staff Clock In",
     employees: employees
       .filter((employee) => employee.status !== "ARCHIVED")
       .map((employee) => ({
