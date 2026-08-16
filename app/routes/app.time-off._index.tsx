@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import type { ReactNode } from "react";
+import { AppPage } from "../components/AppPage";
 import { Link, useActionData, useFetcher, useLoaderData, useNavigate, useSearchParams } from "react-router";
 import { useEffect, useState } from "react";
 import { ArrowUpDown, Search } from "lucide-react";
@@ -205,7 +206,7 @@ export default function TimeOffIndexPage() {
   }, [reviewFeedback]);
 
   return (
-    <s-page heading="Time Off Management" inlineSize="large">
+    <AppPage heading="Time Off Management" inlineSize="large">
       <s-button
         slot="secondary-actions"
         type="button"
@@ -473,7 +474,7 @@ export default function TimeOffIndexPage() {
       </s-modal>
 
       <style>{TIME_OFF_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

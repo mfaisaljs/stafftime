@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import { Form } from "react-router";
+import { AppPage } from "../AppPage";
 import { User } from "lucide-react";
 
 export type TimeOffPolicyEmployeeOption = {
@@ -74,7 +75,7 @@ export function TimeOffPolicyForm({
   };
 
   return (
-    <s-page heading={pageHeading} inlineSize="large">
+    <AppPage heading={pageHeading} inlineSize="large">
       {actionError && <s-banner heading={actionError} tone="critical" />}
 
       <Form
@@ -248,7 +249,7 @@ export function TimeOffPolicyForm({
       </Form>
 
       <style>{POLICY_FORM_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

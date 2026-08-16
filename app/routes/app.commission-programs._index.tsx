@@ -7,6 +7,7 @@ import {
   useRouteError,
   useSearchParams,
 } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { FileText, Plus, Tag, ToggleRight, Type, User, Users } from "lucide-react";
 import { authenticate } from "../shopify.server";
@@ -87,7 +88,7 @@ export default function CommissionProgramsIndex() {
   const navigate = useNavigate();
 
   return (
-    <s-page heading="Commission Programs" inlineSize="large">
+    <AppPage heading="Commission Programs" inlineSize="large">
       <div className="commission-page">
         {created && (
           <s-banner tone="success" heading="Commission program created." />
@@ -241,7 +242,7 @@ export default function CommissionProgramsIndex() {
       </div>
 
       <style>{COMMISSION_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

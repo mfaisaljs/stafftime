@@ -1,4 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { AppPage } from "../components/AppPage";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
@@ -306,7 +307,7 @@ export default function ReportsPage() {
   };
 
   return (
-    <s-page heading="Reports" inlineSize="large">
+    <AppPage heading="Reports" inlineSize="large">
       <div className="reports-page">
         <div className="dropdown-wrap date-dropdown-wrap">
           <button
@@ -442,7 +443,7 @@ export default function ReportsPage() {
         )}
       </div>
       <style>{REPORT_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

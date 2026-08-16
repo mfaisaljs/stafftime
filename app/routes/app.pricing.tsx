@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -98,7 +99,7 @@ export default function PricingPage() {
   const welcome = searchParams.get("welcome") === "1" || needsPlanSelection;
 
   return (
-    <s-page heading={welcome ? "Choose a plan" : "Pricing"} inlineSize="large">
+    <AppPage heading={welcome ? "Choose a plan" : "Pricing"} inlineSize="large">
       <s-stack direction="block" gap="large">
         {subscribeError ? (
           <s-banner heading="Could not start checkout" tone="critical">
@@ -139,7 +140,7 @@ export default function PricingPage() {
           variant="page"
         />
       </s-stack>
-    </s-page>
+    </AppPage>
   );
 }
 

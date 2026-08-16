@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { Form } from "react-router";
+import { AppPage } from "../AppPage";
 import { GripVertical, Plus, X } from "lucide-react";
 
 type TaskDraft = {
@@ -174,7 +175,7 @@ export default function TaskListForm({
   };
 
   return (
-    <s-page heading={pageHeading} inlineSize="large">
+    <AppPage heading={pageHeading} inlineSize="large">
       {actionError && <s-banner heading={actionError} tone="critical" />}
 
       <Form method="post" data-save-bar>
@@ -575,7 +576,7 @@ export default function TaskListForm({
       </Form>
 
       <style>{CREATE_TASKLIST_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

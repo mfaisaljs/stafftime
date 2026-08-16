@@ -6,6 +6,7 @@ import type {
 import type { ForwardedRef, InputHTMLAttributes, ReactNode } from "react";
 import { forwardRef, useRef, useState } from "react";
 import { Form, useActionData, useLoaderData } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
@@ -166,7 +167,7 @@ export default function StaffPage() {
   };
 
   return (
-    <s-page heading="Add Shopify Staff" inlineSize="large">
+    <AppPage heading="Add Shopify Staff" inlineSize="large">
       {showSubscribedCapError && (
         <s-banner heading="Subscribed seats full" tone="warning">
           <s-text>{subscribedSeatsFullMessage(subscribedSeats)}</s-text>
@@ -548,7 +549,7 @@ export default function StaffPage() {
       </Form>
 
       <style>{EMPLOYEE_FORM_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

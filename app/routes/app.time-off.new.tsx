@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import type { ReactNode } from "react";
+import { AppPage } from "../components/AppPage";
 import { useMemo, useState } from "react";
 import {
   Form,
@@ -137,7 +138,7 @@ export default function CreateTimeOffPage() {
   }, [employeeId, policies]);
 
   return (
-    <s-page heading="Create Time Off" inlineSize="large">
+    <AppPage heading="Create Time Off" inlineSize="large">
       {actionData && "error" in actionData && actionData.error && (
         <s-banner heading={actionData.error} tone="critical" />
       )}
@@ -245,7 +246,7 @@ export default function CreateTimeOffPage() {
       </Form>
 
       <style>{CREATE_TIME_OFF_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

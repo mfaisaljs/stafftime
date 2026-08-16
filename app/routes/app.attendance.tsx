@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
@@ -24,7 +25,7 @@ export default function AttendancePage() {
   const { dateRange, live, timeFormat, metrics, rows } = useLoaderData<typeof loader>();
 
   return (
-    <s-page heading="Attendance" inlineSize="large">
+    <AppPage heading="Attendance" inlineSize="large">
       <AttendanceBoard
         basePath="/app/attendance"
         dateRange={dateRange}
@@ -33,7 +34,7 @@ export default function AttendancePage() {
         metrics={metrics}
         rows={rows}
       />
-    </s-page>
+    </AppPage>
   );
 }
 

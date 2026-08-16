@@ -6,6 +6,7 @@ import type {
 import type { InputHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
 import { Form, useActionData, useLoaderData } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
@@ -167,7 +168,7 @@ export default function EditStaffPage() {
   };
 
   return (
-    <s-page heading="Edit Shopify Staff" inlineSize="large">
+    <AppPage heading="Edit Shopify Staff" inlineSize="large">
       <s-section heading={`${employee.firstName} ${employee.lastName}`}>
         {actionData?.error && (
           <s-banner heading={actionData.error} tone="critical" />
@@ -560,7 +561,7 @@ export default function EditStaffPage() {
         </Form>
       </s-section>
       <style>{STAFF_EDIT_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

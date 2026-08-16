@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { useFetcher, useLoaderData, useNavigate } from "react-router";
+import { AppPage } from "../components/AppPage";
 import {
   Check,
   Eye,
@@ -90,7 +91,7 @@ export default function TaskListsIndexPage() {
   const isEmpty = taskLists.length === 0;
 
   return (
-    <s-page heading="TaskLists" inlineSize="large">
+    <AppPage heading="TaskLists" inlineSize="large">
       <s-button
         slot="primary-action"
         type="button"
@@ -243,7 +244,7 @@ export default function TaskListsIndexPage() {
       )}
 
       <style>{TASKLISTS_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

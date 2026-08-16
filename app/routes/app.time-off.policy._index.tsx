@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { useMemo, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -58,7 +59,7 @@ export default function TimeOffPolicyIndexPage() {
   };
 
   return (
-    <s-page heading="Policy Management" inlineSize="large">
+    <AppPage heading="Policy Management" inlineSize="large">
       <s-button
         slot="primary-action"
         type="button"
@@ -146,7 +147,7 @@ export default function TimeOffPolicyIndexPage() {
       </section>
 
       <style>{POLICY_LIST_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

@@ -5,6 +5,7 @@ import type {
 } from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useFetcher, useLoaderData, useSearchParams } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
   AlertTriangle,
@@ -602,7 +603,7 @@ export default function SchedulesPage() {
   };
 
   return (
-    <s-page heading="Schedule" inlineSize="large">
+    <AppPage heading="Schedule" inlineSize="large">
       <div className="schedule-page">
         {actionFetcher.data?.error && (
           <s-banner tone="critical" heading={actionFetcher.data.error} />
@@ -897,7 +898,7 @@ export default function SchedulesPage() {
       />
 
       <style>{SCHEDULE_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

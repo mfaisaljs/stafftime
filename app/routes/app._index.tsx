@@ -2,6 +2,7 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Link, useLoaderData } from "react-router";
+import { AppPage } from "../components/AppPage";
 import {
   BookOpen,
   CalendarDays,
@@ -80,7 +81,7 @@ export default function DashboardPage() {
     useLoaderData<typeof loader>();
 
   return (
-    <s-page heading="Dashboard" inlineSize="large">
+    <AppPage heading="Dashboard" inlineSize="large">
       <div className="dashboard-page">
         <SetupGuide />
 
@@ -121,7 +122,7 @@ export default function DashboardPage() {
       </div>
 
       <style>{DASHBOARD_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

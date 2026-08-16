@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { Form, useLoaderData } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getMissedPunches } from "../services/admin.server";
@@ -36,7 +37,7 @@ export default function MissedPunchesPage() {
   const requests = useLoaderData<typeof loader>();
 
   return (
-    <s-page heading="Missed Punch Approvals" inlineSize="large">
+    <AppPage heading="Missed Punch Approvals" inlineSize="large">
       <s-section heading="Pending and recent requests">
         <s-stack direction="block" gap="base">
           {requests.length === 0 ? (
@@ -77,7 +78,7 @@ export default function MissedPunchesPage() {
           )}
         </s-stack>
       </s-section>
-    </s-page>
+    </AppPage>
   );
 }
 

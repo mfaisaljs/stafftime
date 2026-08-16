@@ -1,6 +1,7 @@
+import { AppPage } from "../components/AppPage";
 export default function AdditionalPage() {
   return (
-    <s-page heading="Additional page" inlineSize="large">
+    <AppPage heading="Additional page" inlineSize="large">
       <s-section heading="Multiple pages">
         <s-paragraph>
           The app template comes with an additional page which demonstrates how
@@ -32,6 +33,6 @@ export default function AdditionalPage() {
           </s-list-item>
         </s-unordered-list>
       </s-section>
-    </s-page>
+    </AppPage>
   );
 }

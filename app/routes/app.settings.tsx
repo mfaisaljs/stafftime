@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import type { ReactNode } from "react";
+import { AppPage } from "../components/AppPage";
 import { useEffect, useRef, useState } from "react";
 import {
   Form,
@@ -159,7 +160,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <s-page heading="Settings" inlineSize="large">
+    <AppPage heading="Settings" inlineSize="large">
       {actionData && "error" in actionData && actionData.error && (
         <s-banner heading={actionData.error} tone="critical" />
       )}
@@ -486,7 +487,7 @@ export default function SettingsPage() {
       </p>
 
       <style>{SETTINGS_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

@@ -1,5 +1,6 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { Plus } from "lucide-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -169,7 +170,7 @@ export default function PayrollIndexPage() {
   const { rows } = useLoaderData<typeof loader>();
 
   return (
-    <s-page heading="Payroll" inlineSize="large">
+    <AppPage heading="Payroll" inlineSize="large">
       <section className="payroll-card">
         <div className="payroll-table-wrap">
           <table className="payroll-table">
@@ -233,7 +234,7 @@ export default function PayrollIndexPage() {
       </section>
 
       <style>{PAYROLL_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

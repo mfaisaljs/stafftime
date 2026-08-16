@@ -1,4 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
@@ -228,7 +229,7 @@ export default function StaffManagementPage() {
   const selectedCount = selectedIds.size;
 
   return (
-    <s-page heading="Staff Management" inlineSize="large">
+    <AppPage heading="Staff Management" inlineSize="large">
       <s-stack direction="block" gap="large">
         <section className="plan-card">
           <div className="plan-icon">
@@ -657,7 +658,7 @@ export default function StaffManagementPage() {
         atCap={atCap}
       />
       <style>{STAFF_MANAGEMENT_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

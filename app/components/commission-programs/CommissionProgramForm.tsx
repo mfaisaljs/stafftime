@@ -1,4 +1,5 @@
 import { Form } from "react-router";
+import { AppPage } from "../AppPage";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -333,7 +334,7 @@ export default function CommissionProgramForm({
   };
 
   return (
-    <s-page heading={pageHeading} inlineSize="large">
+    <AppPage heading={pageHeading} inlineSize="large">
       {actionError && !staffErrorFromAction && (
         <s-banner tone="critical" heading={actionError} />
       )}
@@ -813,7 +814,7 @@ export default function CommissionProgramForm({
       </Form>
 
       <style>{CREATE_COMMISSION_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

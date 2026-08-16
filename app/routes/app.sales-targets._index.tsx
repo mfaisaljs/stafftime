@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData, useRouteError } from "react-router";
+import { AppPage } from "../components/AppPage";
 import { useEffect, useMemo, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -486,7 +487,7 @@ export default function SalesTargetsIndex() {
   };
 
   return (
-    <s-page heading="Sales Targets" inlineSize="large">
+    <AppPage heading="Sales Targets" inlineSize="large">
       <div className="sales-targets-page">
         {targetRows.length > 0 && (
           <div className="targets-toolbar">
@@ -844,7 +845,7 @@ export default function SalesTargetsIndex() {
       </s-modal>
 
       <style>{SALES_TARGETS_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

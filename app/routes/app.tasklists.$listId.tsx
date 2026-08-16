@@ -10,6 +10,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router";
+import { AppPage } from "../components/AppPage";
 import {
   Check,
   Clock3,
@@ -226,7 +227,7 @@ export default function TaskListDetailPage() {
   const taskCountLabel = `${totalCount} task${totalCount === 1 ? "" : "s"}`;
 
   return (
-    <s-page heading={list.name} inlineSize="large">
+    <AppPage heading={list.name} inlineSize="large">
       <s-button
         slot="secondary-actions"
         type="button"
@@ -435,7 +436,7 @@ export default function TaskListDetailPage() {
       </div>
 
       <style>{DETAIL_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 

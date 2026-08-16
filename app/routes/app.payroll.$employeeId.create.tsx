@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import type { ChangeEvent, ReactNode } from "react";
+import { AppPage } from "../components/AppPage";
 import { useMemo, useRef, useState } from "react";
 import {
   Form,
@@ -523,7 +524,7 @@ export default function CreatePayrollPage() {
   };
 
   return (
-    <s-page heading="Create Payroll" inlineSize="large">
+    <AppPage heading="Create Payroll" inlineSize="large">
       {actionData && "error" in actionData && actionData.error && (
         <s-banner heading={actionData.error} tone="critical" />
       )}
@@ -891,7 +892,7 @@ export default function CreatePayrollPage() {
       </Form>
 
       <style>{CREATE_PAYROLL_STYLES}</style>
-    </s-page>
+    </AppPage>
   );
 }
 
