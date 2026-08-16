@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useLoaderData, useSearchParams } from "react-router";
 import { AppLink } from "../components/AppLink";
-import { AppLink } from "../components/AppLink";
+import { clockPhotoPath } from "../services/clock-photo.server";
 import {
   AlertCircle,
   ArrowLeft,
@@ -325,6 +325,22 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       totalHours: formatDurationHms(summary.totalWorkedSeconds, hourFormat),
       hasClockInPhoto: Boolean(entry.photoUrl),
       hasClockOutPhoto: Boolean(entry.clockOutPhotoUrl),
+      clockInPhotoSrc: entry.photoUrl
+        ? clockPhotoPath({
+            shopDomain: session.shop,
+            employeeId,
+            timeEntryId: entry.id,
+            kind: "in",
+          })
+        : null,
+      clockOutPhotoSrc: entry.clockOutPhotoUrl
+        ? clockPhotoPath({
+            shopDomain: session.shop,
+            employeeId,
+            timeEntryId: entry.id,
+            kind: "out",
+          })
+        : null,
     };
   });
 
@@ -509,13 +525,14 @@ function OverviewTab({
     totalHours: string;
     hasClockInPhoto: boolean;
     hasClockOutPhoto: boolean;
+    clockInPhotoSrc: string | null;
+    clockOutPhotoSrc: string | null;
   }>;
 }) {
   const fullName = `${employee.firstName} ${employee.lastName}`;
   const [photoRow, setPhotoRow] = useState<(typeof attendanceRows)[number] | null>(
     null,
   );
-  const photoBase = `/app/staff/${employee.id}/time-entry`;
 
   const openPhotos = (row: (typeof attendanceRows)[number]) => {
     setPhotoRow(row);
@@ -715,7 +732,7 @@ function OverviewTab({
                             >
                               <img
                                 className="photo-thumb"
-                                src={`${photoBase}/${row.id}/photo?kind=in`}
+                                src={row.clockInPhotoSrc ?? ""}
                                 alt=""
                               />
                             </button>
@@ -729,7 +746,7 @@ function OverviewTab({
                             >
                               <img
                                 className="photo-thumb"
-                                src={`${photoBase}/${row.id}/photo?kind=out`}
+                                src={row.clockOutPhotoSrc ?? ""}
                                 alt=""
                               />
                             </button>
@@ -770,7 +787,7 @@ function OverviewTab({
                 <figcaption>Clock in</figcaption>
                 {photoRow.hasClockInPhoto ? (
                   <img
-                    src={`${photoBase}/${photoRow.id}/photo?kind=in`}
+                    src={photoRow.clockInPhotoSrc ?? ""}
                     alt={`Clock-in selfie for ${formatTableDate(photoRow.date)}`}
                   />
                 ) : (
@@ -781,7 +798,7 @@ function OverviewTab({
                 <figcaption>Clock out</figcaption>
                 {photoRow.hasClockOutPhoto ? (
                   <img
-                    src={`${photoBase}/${photoRow.id}/photo?kind=out`}
+                    src={photoRow.clockOutPhotoSrc ?? ""}
                     alt={`Clock-out selfie for ${formatTableDate(photoRow.date)}`}
                   />
                 ) : (

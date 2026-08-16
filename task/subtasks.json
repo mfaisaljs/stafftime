@@ -2632,6 +2632,26 @@
         "app/routes/portal.clock.tsx"
       ],
       "lastUpdated": "2026-08-16T23:00:00.000Z"
+    },
+    {
+      "id": "ST140",
+      "taskId": "T012",
+      "title": "Serve clock-in/out selfies on staff attendance",
+      "description": "POS stores selfies on TimeEntry; admin attendance thumbnails 404'd because no photo route existed. Add a signed photo endpoint and wire staff Overview images to it.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST068"],
+      "acceptanceCriteria": [
+        "Staff Overview Photos column loads clock-in and clock-out selfies taken on POS",
+        "Photo URLs are signed and scoped to the time entry"
+      ],
+      "files": [
+        "app/routes/api.clock-photo.$timeEntryId.tsx",
+        "app/services/clock-photo.server.ts",
+        "app/services/clock-photo.server.test.ts",
+        "app/routes/app.staff.$employeeId._index.tsx"
+      ],
+      "lastUpdated": "2026-08-16T23:15:00.000Z"
     }
   ]
 }
