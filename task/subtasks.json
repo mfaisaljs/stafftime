@@ -2214,6 +2214,25 @@
         "app/routes/auth.$.tsx"
       ],
       "lastUpdated": "2026-08-16T14:20:00.000Z"
+    },
+    {
+      "id": "ST116",
+      "taskId": "T009",
+      "title": "Prefix Admin title bar with app name",
+      "description": "s-page headings use AppPage so Shopify Admin shows Trubuild: POS Staff Clock In - <route name>.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "Dashboard title bar is Trubuild: POS Staff Clock In - Dashboard",
+        "Other Admin routes use the same App name - route name pattern"
+      ],
+      "files": [
+        "app/utils/app-title.ts",
+        "app/components/AppPage.tsx",
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-16T14:25:00.000Z"
     }
   ]
 }
