@@ -33,7 +33,7 @@ function billingConfigForPlan(plan: Plan) {
 
   if (extraSeatMax(plan) > 0 && plan.extraStaffRate > 0) {
     lineItems.push({
-      amount: extraSeatMax(plan) * plan.extraStaffRate,
+      amount: plan.usageCappedAmount,
       currencyCode: "USD",
       interval: BillingInterval.Usage,
       terms: `$${plan.extraStaffRate} per extra staff beyond ${plan.includedStaff} included`,

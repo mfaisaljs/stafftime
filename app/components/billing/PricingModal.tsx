@@ -9,11 +9,12 @@ import {
   FREE_PLAN_HANDLE,
   getPlan,
   PAID_PLANS,
+  EXTRA_SEAT_MAX,
   type Plan,
 } from "../../services/billing/plans";
 
 export const PRICING_MODAL_ID = "stafftime-pricing-modal";
-const EXTRA_SEAT_SLIDER_MAX = 50;
+const EXTRA_SEAT_SLIDER_MAX = EXTRA_SEAT_MAX;
 
 function PlanCheckoutForm({
   checkoutFetcher,

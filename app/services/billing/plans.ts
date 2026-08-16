@@ -1,5 +1,6 @@
 export const FREE_PLAN_HANDLE = "free";
 export const ADDITIONAL_STAFF_METER = "additional_staff";
+export const EXTRA_SEAT_MAX = 50;
 
 export type PlanHandle =
   | "free"
@@ -16,6 +17,7 @@ export type Plan = {
   includedStaff: number;
   extraStaffRate: number;
   maxStaff: number;
+  usageCappedAmount: number;
   trialDays: number;
   featured?: boolean;
   description: string;
@@ -29,7 +31,8 @@ export const PLANS: Plan[] = [
     monthlyPrice: 0,
     includedStaff: 2,
     extraStaffRate: 6,
-    maxStaff: 4,
+    maxStaff: 2 + EXTRA_SEAT_MAX,
+    usageCappedAmount: 301,
     trialDays: 0,
     description: "Get started with two staff seats.",
     features: [
@@ -46,6 +49,7 @@ export const PLANS: Plan[] = [
     includedStaff: 5,
     extraStaffRate: 5,
     maxStaff: 25,
+    usageCappedAmount: 275,
     trialDays: 0,
     description: "For growing POS teams.",
     features: [
@@ -65,6 +69,7 @@ export const PLANS: Plan[] = [
     includedStaff: 10,
     extraStaffRate: 4,
     maxStaff: 100,
+    usageCappedAmount: 650,
     trialDays: 7,
     featured: true,
     description: "Full workforce toolkit for busy stores.",
@@ -84,6 +89,7 @@ export const PLANS: Plan[] = [
     includedStaff: 100,
     extraStaffRate: 2,
     maxStaff: 500,
+    usageCappedAmount: 2100,
     trialDays: 7,
     description: "High-volume teams and multi-location ops.",
     features: [
@@ -169,7 +175,7 @@ export function appSubscriptionLineItems(plan: Plan) {
         appUsagePricingDetails: {
           terms: `${formatUsd(plan.extraStaffRate)} per extra staff beyond ${plan.includedStaff} included`,
           cappedAmount: {
-            amount: extraMax * plan.extraStaffRate,
+            amount: plan.usageCappedAmount,
             currencyCode: "USD",
           },
         },
@@ -220,8 +226,11 @@ export function maxExtrasBeforeNextPlan(plan: Plan) {
   return extras;
 }
 
-/** Staff cap for UI and enforcement — below the next plan when extras would cost more. */
+/** Staff cap for UI and enforcement. Free allows the full extra-seat slider. */
 export function effectiveMaxStaff(plan: Plan) {
+  if (plan.handle === FREE_PLAN_HANDLE) {
+    return plan.maxStaff;
+  }
   return plan.includedStaff + maxExtrasBeforeNextPlan(plan);
 }
 

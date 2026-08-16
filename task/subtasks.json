@@ -2269,6 +2269,44 @@
         "app/routes/auth.$.tsx"
       ],
       "lastUpdated": "2026-08-16T14:35:00.000Z"
+    },
+    {
+      "id": "ST119",
+      "taskId": "T018",
+      "title": "Free usage cap $300 for 50 extra seats",
+      "description": "Free maxStaff is 52 (2 included + 50 extras); Shopify usage cappedAmount is $300.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST117"],
+      "acceptanceCriteria": [
+        "Free extraSeatMax is 50 and usage cap is $300",
+        "effectiveMaxStaff for Free is 52"
+      ],
+      "files": [
+        "app/services/billing/plans.ts",
+        "app/shopify.server.ts",
+        "app/services/billing.server.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T14:40:00.000Z"
+    },
+    {
+      "id": "ST120",
+      "taskId": "T018",
+      "title": "Set per-plan Shopify usage capped amounts",
+      "description": "Free $301, Small Business $275, Workforce $650, Enterprise $2100.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST119"],
+      "acceptanceCriteria": [
+        "Each plan usageCappedAmount matches the specified USD cap",
+        "billing.request and appSubscriptionCreate use those caps"
+      ],
+      "files": [
+        "app/services/billing/plans.ts",
+        "app/shopify.server.ts",
+        "app/services/billing.server.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T14:45:00.000Z"
     }
   ]
 }

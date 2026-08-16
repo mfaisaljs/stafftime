@@ -60,11 +60,11 @@ describe("billing plan catalog", () => {
     expect(includedStaffFromHandle("workforce")).toBe(10);
     expect(includedStaffFromHandle("enterprise")).toBe(100);
 
-    expect(staffLimitFromHandle("free")).toBe(4);
+    expect(staffLimitFromHandle("free")).toBe(52);
     expect(staffLimitFromHandle("small-business")).toBe(25);
     expect(staffLimitFromHandle("workforce")).toBe(100);
     expect(staffLimitFromHandle("enterprise")).toBe(500);
-    expect(staffLimitFromHandle("unknown")).toBe(4);
+    expect(staffLimitFromHandle("unknown")).toBe(52);
   });
 
   it("offers the next plan after each max", () => {
@@ -80,9 +80,9 @@ describe("billing plan catalog", () => {
     expect(extrasTriggerNextPlan(free, 5)).toBe(true);
   });
 
-  it("caps free at 4 staff (2 included + 2 extras) before upgrading", () => {
+  it("caps free at 52 staff (2 included + 50 extras)", () => {
     const free = getPlan("free");
-    expect(effectiveMaxStaff(free)).toBe(4);
+    expect(effectiveMaxStaff(free)).toBe(52);
     expect(extrasTriggerNextPlan(free, 5)).toBe(true);
     expect(extrasTriggerNextPlan(free, 4)).toBe(false);
   });
@@ -107,7 +107,24 @@ describe("billing plan catalog", () => {
       plan: { appRecurringPricingDetails: { price: { amount: 24.99 } } },
     });
     expect(items[1]).toMatchObject({
-      plan: { appUsagePricingDetails: { cappedAmount: { amount: 100 } } },
+      plan: { appUsagePricingDetails: { cappedAmount: { amount: 275 } } },
+    });
+  });
+
+  it("uses the configured usage cap for each plan", () => {
+    expect(getPlan("free").usageCappedAmount).toBe(301);
+    expect(getPlan("small-business").usageCappedAmount).toBe(275);
+    expect(getPlan("workforce").usageCappedAmount).toBe(650);
+    expect(getPlan("enterprise").usageCappedAmount).toBe(2100);
+    expect(
+      appSubscriptionLineItems(getPlan("workforce"))[1],
+    ).toMatchObject({
+      plan: { appUsagePricingDetails: { cappedAmount: { amount: 650 } } },
+    });
+    expect(
+      appSubscriptionLineItems(getPlan("enterprise"))[1],
+    ).toMatchObject({
+      plan: { appUsagePricingDetails: { cappedAmount: { amount: 2100 } } },
     });
   });
 
@@ -118,7 +135,7 @@ describe("billing plan catalog", () => {
       plan: { appRecurringPricingDetails: { price: { amount: 0 } } },
     });
     expect(items[1]).toMatchObject({
-      plan: { appUsagePricingDetails: { cappedAmount: { amount: 12 } } },
+      plan: { appUsagePricingDetails: { cappedAmount: { amount: 301 } } },
     });
   });
 
@@ -194,7 +211,7 @@ describe("billing enforcement and usage", () => {
     const freeShop = await prisma.shop.findUniqueOrThrow({
       where: { domain: TEST_DOMAIN },
     });
-    expect(freeShop.staffLimit).toBe(4);
+    expect(freeShop.staffLimit).toBe(52);
     expect(freeShop.planHandle).toBe("free");
   });
 
@@ -264,10 +281,10 @@ describe("billing enforcement and usage", () => {
     const shop = await ensureShop(TEST_DOMAIN);
     await prisma.shop.update({
       where: { id: shop.id },
-      data: { subscriptionStatus: "active", reportedStaffUsage: 2 },
+      data: { subscriptionStatus: "active", reportedStaffUsage: 50 },
     });
     await prisma.employee.createMany({
-      data: Array.from({ length: 4 }, (_, index) => ({
+      data: Array.from({ length: 52 }, (_, index) => ({
         shopId: shop.id,
         firstName: `Cap${index}`,
         lastName: "Seat",
@@ -278,7 +295,7 @@ describe("billing enforcement and usage", () => {
 
     await expect(assertStaffSeatAvailable(shop.id)).rejects.toMatchObject({
       name: "StaffSeatLimitError",
-      staffLimit: 4,
+      staffLimit: 52,
       nextPlanName: "Small Business",
     });
   });

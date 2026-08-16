@@ -1,11 +1,11 @@
 import type { PlanHandle } from "./plans";
-import { isPlanHandle } from "./plans";
+import { EXTRA_SEAT_MAX, isPlanHandle } from "./plans";
 import prisma from "../../db.server";
 import { shopFromDest } from "../../utils/http.server";
 import { redirect } from "react-router";
 
 export const MAX_BILLING_RETURN_URL_LENGTH = 255;
-export const MAX_EXTRA_SEATS = 50;
+export const MAX_EXTRA_SEATS = EXTRA_SEAT_MAX;
 
 export function nextSubscribedExtraSeats(
   existingExtraSeats: number,
