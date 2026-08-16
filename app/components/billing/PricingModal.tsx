@@ -107,7 +107,11 @@ export function PricingPlans({
     EXTRA_SEAT_SLIDER_MAX - currentExtraStaffCount,
   );
   const [extraStaff, setExtraStaff] = useState(() =>
-    clampStaff(remainingExtraSeats > 0 ? 1 : 0, 0, remainingExtraSeats),
+    clampStaff(
+      needsPlanSelection || remainingExtraSeats === 0 ? 0 : 1,
+      0,
+      remainingExtraSeats,
+    ),
   );
   const [estimateByPlan, setEstimateByPlan] = useState<Record<string, number>>({
     workforce: 10,
