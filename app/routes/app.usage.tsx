@@ -263,7 +263,7 @@ export default function UsagePage() {
                   <s-text color="subdued">Usage fee</s-text>
                   <s-heading>
                     {subscription
-                      ? formatUsd(usageRecordTotal || usageUsed)
+                      ? formatUsd(usageRecordTotal || local.extraCharge)
                       : formatUsd(local.extraCharge)}
                   </s-heading>
                   <s-text color="subdued">Subscribed extras this period</s-text>
