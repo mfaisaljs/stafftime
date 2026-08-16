@@ -3,6 +3,7 @@ import { redirect } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
+  ensureUsageCycle,
   refreshSubscription,
   saveShopifyShopGid,
   syncSubscriptionFromPlanHandle,
@@ -36,10 +37,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   if (planHandle) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
+    await ensureUsageCycle(session.shop);
     return redirect("/app/staff?billing=updated");
   }
 
   await refreshSubscription(session.shop);
+  await ensureUsageCycle(session.shop);
   return redirect("/app/staff?billing=refreshed");
 };
 

@@ -15,6 +15,7 @@ export type Plan = {
   monthlyPrice: number;
   includedStaff: number;
   extraStaffRate: number;
+  maxStaff: number;
   trialDays: number;
   featured?: boolean;
   description: string;
@@ -28,6 +29,7 @@ export const PLANS: Plan[] = [
     monthlyPrice: 0,
     includedStaff: 2,
     extraStaffRate: 6,
+    maxStaff: 22,
     trialDays: 0,
     description: "Get started with two staff seats.",
     features: [
@@ -43,6 +45,7 @@ export const PLANS: Plan[] = [
     monthlyPrice: 24.99,
     includedStaff: 5,
     extraStaffRate: 5,
+    maxStaff: 25,
     trialDays: 0,
     description: "For growing POS teams.",
     features: [
@@ -61,6 +64,7 @@ export const PLANS: Plan[] = [
     monthlyPrice: 39.99,
     includedStaff: 10,
     extraStaffRate: 4,
+    maxStaff: 100,
     trialDays: 7,
     featured: true,
     description: "Full workforce toolkit for busy stores.",
@@ -79,6 +83,7 @@ export const PLANS: Plan[] = [
     monthlyPrice: 199.99,
     includedStaff: 100,
     extraStaffRate: 2,
+    maxStaff: 500,
     trialDays: 7,
     description: "High-volume teams and multi-location ops.",
     features: [
@@ -107,8 +112,16 @@ export function getPlan(handle: string | null | undefined): Plan {
   return FREE_PLAN;
 }
 
-export function staffLimitFromHandle(handle: string | null | undefined): number {
+export function includedStaffFromHandle(handle: string | null | undefined): number {
   return getPlan(handle).includedStaff;
+}
+
+export function staffLimitFromHandle(handle: string | null | undefined): number {
+  return getPlan(handle).maxStaff;
+}
+
+export function extraSeatMax(plan: Plan) {
+  return Math.max(0, plan.maxStaff - plan.includedStaff);
 }
 
 export function extraStaffCount(staffCount: number, includedStaff: number) {

@@ -5,7 +5,8 @@ import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
-import { getShopBilling } from "../services/billing.server";
+import { ensureUsageCycle, getShopBilling } from "../services/billing.server";
+import { formatUsd } from "../services/billing/plans";
 import {
   openPricingModal,
   PricingModal,
@@ -14,6 +15,7 @@ import {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  await ensureUsageCycle(session.shop);
   const [employees, billing] = await Promise.all([
     getEmployees(session),
     getShopBilling(session.shop),
@@ -22,6 +24,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return {
     employees,
     staffLimit: billing.staffLimit,
+    includedStaff: billing.includedStaff,
+    extraStaffCount: billing.extraStaffCount,
+    extraStaffRate: billing.extraStaffRate,
     planName: billing.plan.name,
     planHandle: billing.planHandle,
     pricingPlansUrl: billing.pricingPlansUrl,
@@ -37,6 +42,9 @@ export default function StaffManagementPage() {
   const {
     employees,
     staffLimit,
+    includedStaff,
+    extraStaffCount,
+    extraStaffRate,
     planName,
     planHandle,
     pricingPlansUrl,
@@ -217,7 +225,11 @@ export default function StaffManagementPage() {
             </div>
             <div className="staff-usage">
               <span>
-                Available Staff: {availableStaff} | Total Staff: {totalStaff}
+                {totalStaff} staff ({includedStaff} included
+                {extraStaffCount > 0
+                  ? ` + ${extraStaffCount} extra at ${formatUsd(extraStaffRate)}/mo`
+                  : ""}
+                ) · {availableStaff} available of {staffLimit}
               </span>
               <div className="usage-bar" aria-label={`${usagePercent}% used`}>
                 <span style={{ width: `${usagePercent}%` }} />

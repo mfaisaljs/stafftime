@@ -1,14 +1,18 @@
 import { useState } from "react";
 import {
   estimatedMonthlyTotal,
+  extraSeatMax,
   formatUsd,
-  FREE_PLAN,
+  getPlan,
   PAID_PLANS,
   type Plan,
 } from "../../services/billing/plans";
 
 export const PRICING_MODAL_ID = "stafftime-pricing-modal";
-const FREE_SLIDER_MAX = 20;
+
+function openShopifyPricing(url: string) {
+  open(url, "_top");
+}
 
 export function openPricingModal() {
   const modal = document.getElementById(PRICING_MODAL_ID) as
@@ -35,20 +39,18 @@ export function PricingPlans({
   initialStaffCount?: number;
   variant?: "page" | "modal";
 }) {
-  const [freeExtraStaff, setFreeExtraStaff] = useState(() =>
-    clampStaff(
-      initialStaffCount - FREE_PLAN.includedStaff,
-      0,
-      FREE_SLIDER_MAX,
-    ),
+  const currentPlan = getPlan(currentPlanHandle);
+  const extraMax = extraSeatMax(currentPlan);
+  const [extraStaff, setExtraStaff] = useState(() =>
+    clampStaff(initialStaffCount - currentPlan.includedStaff, 0, extraMax),
   );
   const [estimateByPlan, setEstimateByPlan] = useState<Record<string, number>>({
     workforce: 10,
     enterprise: 100,
   });
 
-  const freeExtra = freeExtraStaff * FREE_PLAN.extraStaffRate;
-  const stayOnFree = freeExtraStaff === 0;
+  const extraPrice = extraStaff * currentPlan.extraStaffRate;
+  const noExtras = extraStaff === 0;
 
   return (
     <>
@@ -125,72 +127,73 @@ export function PricingPlans({
                     <li key={feature}>{feature}</li>
                   ))}
                 </ul>
-                <a
+                <button
+                  type="button"
                   className={`pricing-cta${plan.featured ? " primary" : ""}`}
-                  href={pricingPlansUrl}
-                  target="_top"
-                  rel="noreferrer"
+                  onClick={() => openShopifyPricing(pricingPlansUrl)}
                 >
                   {ctaLabel(plan, isCurrent)}
-                </a>
+                </button>
               </article>
             );
           })}
         </div>
 
         <div className="pricing-free-bar">
-          <s-badge tone="warning">Free plan</s-badge>
+          <s-badge tone="warning">{currentPlan.name} plan</s-badge>
           <div className="pricing-free-copy">
-            <strong>Up to {FREE_PLAN.includedStaff} Staff Members</strong>
+            <strong>Up to {currentPlan.includedStaff} Staff Members included</strong>
             <span>
-              {stayOnFree
-                ? "No charge for two seats."
-                : `${formatUsd(FREE_PLAN.extraStaffRate)} per extra staff / month`}
+              {noExtras
+                ? `No extra-seat charge within ${currentPlan.includedStaff} included seats.`
+                : `${formatUsd(currentPlan.extraStaffRate)} per extra staff / month`}
             </span>
           </div>
           <label className="pricing-slider">
             <input
               type="range"
               min={0}
-              max={FREE_SLIDER_MAX}
-              value={freeExtraStaff}
+              max={extraMax}
+              value={extraStaff}
               onChange={(event) =>
-                setFreeExtraStaff(Number(event.currentTarget.value))
+                setExtraStaff(Number(event.currentTarget.value))
               }
-              aria-label="Extra staff beyond two free seats"
+              aria-label="Extra staff beyond included seats"
             />
             <input
               type="number"
               min={0}
-              max={FREE_SLIDER_MAX}
+              max={extraMax}
               step={1}
-              value={freeExtraStaff}
+              value={extraStaff}
               onChange={(event) =>
-                setFreeExtraStaff(
-                  clampStaff(Number(event.currentTarget.value), 0, FREE_SLIDER_MAX),
-                )
+                setExtraStaff(clampStaff(Number(event.currentTarget.value), 0, extraMax))
               }
               aria-label="Extra staff count"
             />
           </label>
-          {stayOnFree ? (
+          {noExtras ? (
             variant === "modal" ? (
               <s-button
                 variant="secondary"
                 commandFor={PRICING_MODAL_ID}
                 command="--hide"
               >
-                Continue with Free
+                Continue with {currentPlan.name}
               </s-button>
             ) : (
               <s-button variant="secondary" href="/app/staff">
-                Continue with Free
+                Continue with {currentPlan.name}
               </s-button>
             )
           ) : (
-            <a className="pricing-cta primary" href={pricingPlansUrl} target="_top" rel="noreferrer">
-              Subscribe for {formatUsd(freeExtra)}
-            </a>
+            <button
+              type="button"
+              className="pricing-cta primary"
+              onClick={() => openShopifyPricing(pricingPlansUrl)}
+            >
+              Subscribe for {formatUsd(extraPrice)}
+            </button>
           )}
         </div>
       </div>
@@ -339,11 +342,14 @@ const PRICING_MODAL_STYLES = `
   .pricing-free-bar .pricing-cta {
     align-items: center;
     background: #1f1f1f;
+    border: 0;
     border-radius: 10px;
     box-sizing: border-box;
     color: #fff;
+    cursor: pointer;
     display: flex;
     flex-shrink: 0;
+    font: inherit;
     font-weight: 600;
     justify-content: center;
     margin-top: auto;

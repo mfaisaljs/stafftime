@@ -3,16 +3,20 @@ import { useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { PricingPlans } from "../components/billing/PricingModal";
-import { getShopBilling } from "../services/billing.server";
+import { ensureUsageCycle, getShopBilling } from "../services/billing.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  await ensureUsageCycle(session.shop);
   const billing = await getShopBilling(session.shop);
 
   return {
     planHandle: billing.planHandle,
     planName: billing.plan.name,
     staffLimit: billing.staffLimit,
+    includedStaff: billing.includedStaff,
+    extraStaffCount: billing.extraStaffCount,
+    extraStaffRate: billing.extraStaffRate,
     activeStaffCount: billing.activeStaffCount,
     pricingPlansUrl: billing.pricingPlansUrl,
   };
@@ -23,6 +27,9 @@ export default function PricingPage() {
     planHandle,
     planName,
     staffLimit,
+    includedStaff,
+    extraStaffCount,
+    extraStaffRate,
     activeStaffCount,
     pricingPlansUrl,
   } = useLoaderData<typeof loader>();
@@ -32,7 +39,11 @@ export default function PricingPage() {
       <s-stack direction="block" gap="large">
         <s-banner heading={`Current plan: ${planName}`} tone="info">
           <s-text>
-            {activeStaffCount} of {staffLimit} staff seats in use.
+            {activeStaffCount} staff ({includedStaff} included
+            {extraStaffCount > 0
+              ? ` + ${extraStaffCount} extra at $${extraStaffRate}/mo`
+              : ""}
+            ) of {staffLimit} max.
           </s-text>
         </s-banner>
         <PricingPlans

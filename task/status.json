@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018"],
-  "lastUpdated": "2026-08-16T11:06:00.000Z",
+  "lastUpdated": "2026-08-16T11:25:00.000Z",
   "notes": [
+    "ST100 complete: extras allowed up to maxStaff, usage +1/-1 after included seats, cycle re-report, Subscribe opens Shopify via open(_top).",
     "Updated: Free plan slider counts extra staff only (excludes the 2 included seats).",
     "Fixed: Enterprise feature bullets no longer stretch; extra card space sits above the button.",
     "Fixed: Pricing plan buttons share the same height and sit at the bottom of each card.",

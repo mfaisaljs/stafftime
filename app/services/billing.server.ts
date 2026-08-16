@@ -8,7 +8,6 @@ import {
   getAppHandle,
   getPlan,
   shopifyPricingPlansUrl,
-  staffLimitFromHandle,
   usageDeltaForStaffChange,
   usageOverage,
   type Plan,
@@ -34,10 +33,14 @@ export type ShopBilling = {
   plan: Plan;
   billingInterval: "monthly";
   staffLimit: number;
+  includedStaff: number;
+  extraStaffCount: number;
+  extraStaffRate: number;
   subscriptionStatus: string;
   trialEndsAt: string | null;
   shopifyShopGid: string | null;
   reportedStaffUsage: number;
+  usageCycleKey: string | null;
   activeStaffCount: number;
   availableSeats: number;
   atCap: boolean;
@@ -47,11 +50,17 @@ export type ShopBilling = {
 const DEFAULT_BILLING = {
   planHandle: FREE_PLAN_HANDLE,
   billingInterval: "monthly" as const,
-  staffLimit: FREE_PLAN.includedStaff,
+  staffLimit: FREE_PLAN.maxStaff,
   subscriptionStatus: "none",
   trialEndsAt: null as Date | null,
   reportedStaffUsage: 0,
 };
+
+export function calendarUsageCycleKey(now = new Date()) {
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
 
 export async function countActiveStaff(shopId: string) {
   return prisma.employee.count({
@@ -72,13 +81,17 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
       planHandle: plan.handle,
       plan,
       billingInterval: "monthly",
-      staffLimit: plan.includedStaff,
+      staffLimit: plan.maxStaff,
+      includedStaff: plan.includedStaff,
+      extraStaffCount: 0,
+      extraStaffRate: plan.extraStaffRate,
       subscriptionStatus: "none",
       trialEndsAt: null,
       shopifyShopGid: null,
       reportedStaffUsage: 0,
+      usageCycleKey: null,
       activeStaffCount: 0,
-      availableSeats: plan.includedStaff,
+      availableSeats: plan.maxStaff,
       atCap: false,
       pricingPlansUrl: shopifyPricingPlansUrl({
         shopDomain,
@@ -89,7 +102,8 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
 
   const plan = getPlan(shop.planHandle);
   const activeStaffCount = await countActiveStaff(shop.id);
-  const staffLimit = shop.staffLimit || plan.includedStaff;
+  const staffLimit = plan.maxStaff;
+  const extraStaffCount = usageOverage(activeStaffCount, plan.includedStaff);
 
   return {
     shopId: shop.id,
@@ -98,10 +112,14 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
     plan,
     billingInterval: "monthly",
     staffLimit,
+    includedStaff: plan.includedStaff,
+    extraStaffCount,
+    extraStaffRate: plan.extraStaffRate,
     subscriptionStatus: shop.subscriptionStatus,
     trialEndsAt: shop.trialEndsAt?.toISOString() ?? null,
     shopifyShopGid: shop.shopifyShopGid,
     reportedStaffUsage: shop.reportedStaffUsage,
+    usageCycleKey: shop.usageCycleKey,
     activeStaffCount,
     availableSeats: Math.max(staffLimit - activeStaffCount, 0),
     atCap: activeStaffCount >= staffLimit,
@@ -128,7 +146,7 @@ export async function syncSubscriptionFromPlanHandle(
     data: {
       planHandle: plan.handle,
       billingInterval: "monthly",
-      staffLimit: plan.includedStaff,
+      staffLimit: plan.maxStaff,
       subscriptionStatus:
         plan.handle === FREE_PLAN_HANDLE
           ? "none"
@@ -145,6 +163,7 @@ type PartnerSubscription = {
   billingPeriod: string | null;
   trialEndsAt: string | null;
   status: string | null;
+  cycleStart: string | null;
 };
 
 export async function refreshSubscription(shopDomain: string) {
@@ -170,7 +189,7 @@ export async function refreshSubscription(shopDomain: string) {
     data: {
       planHandle: plan.handle,
       billingInterval: "monthly",
-      staffLimit: staffLimitFromHandle(plan.handle),
+      staffLimit: plan.maxStaff,
       subscriptionStatus: remote.status ?? (plan.handle === "free" ? "none" : "active"),
       trialEndsAt: remote.trialEndsAt ? new Date(remote.trialEndsAt) : null,
     },
@@ -180,7 +199,7 @@ export async function refreshSubscription(shopDomain: string) {
 export async function assertStaffSeatAvailable(shopId: string) {
   const shop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
   const activeStaffCount = await countActiveStaff(shopId);
-  const staffLimit = shop.staffLimit || getPlan(shop.planHandle).includedStaff;
+  const staffLimit = getPlan(shop.planHandle).maxStaff;
   if (activeStaffCount >= staffLimit) {
     throw new StaffSeatLimitError(staffLimit);
   }
@@ -255,7 +274,7 @@ export async function reportStaffUsageDelta(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to report staff usage (${response.status})`);
+    return { skipped: true, reason: "no_credentials" };
   }
 
   await prisma.shop.update({
@@ -266,10 +285,55 @@ export async function reportStaffUsageDelta(
   return { skipped: false, delta, idempotencyKey };
 }
 
+export async function rollUsageCycleIfNeeded(
+  shopDomain: string,
+  deps: { now?: Date; cycleKey?: string } = {},
+) {
+  const domain = shopFromDest(shopDomain).toLowerCase();
+  const shop = await prisma.shop.findUnique({ where: { domain } });
+  if (!shop) {
+    return { rolled: false as const, cycleKey: null };
+  }
+
+  const remote = await fetchActiveSubscription(shop.shopifyShopGid);
+  const cycleKey =
+    deps.cycleKey ??
+    (remote !== undefined && remote?.cycleStart
+      ? remote.cycleStart.slice(0, 10)
+      : calendarUsageCycleKey(deps.now));
+
+  if (shop.usageCycleKey === cycleKey) {
+    return { rolled: false as const, cycleKey };
+  }
+
+  await prisma.shop.update({
+    where: { id: shop.id },
+    data: {
+      usageCycleKey: cycleKey,
+      reportedStaffUsage: 0,
+    },
+  });
+
+  return { rolled: true as const, cycleKey };
+}
+
+export async function ensureUsageCycle(
+  shopDomain: string,
+  deps: { fetchImpl?: typeof fetch; now?: Date; cycleKey?: string } = {},
+) {
+  const { rolled } = await rollUsageCycleIfNeeded(shopDomain, deps);
+  if (!rolled) {
+    return { skipped: true as const, reason: "same_cycle" as const, rolled: false };
+  }
+  const result = await reconcileStaffUsage(shopDomain, deps);
+  return { ...result, rolled: true };
+}
+
 export async function reconcileStaffUsage(
   shopDomain: string,
-  deps: { fetchImpl?: typeof fetch } = {},
+  deps: { fetchImpl?: typeof fetch; now?: Date; cycleKey?: string } = {},
 ) {
+  await rollUsageCycleIfNeeded(shopDomain, deps);
   const billing = await getShopBilling(shopDomain);
   if (!billing.shopId) {
     return { skipped: true as const, reason: "no_shop" as const };
@@ -278,7 +342,11 @@ export async function reconcileStaffUsage(
   const includedStaff = billing.plan.includedStaff;
   const targetOverage = usageOverage(billing.activeStaffCount, includedStaff);
   const delta = targetOverage - billing.reportedStaffUsage;
-  return reportStaffUsageDelta(shopDomain, delta, deps);
+  try {
+    return await reportStaffUsageDelta(shopDomain, delta, deps);
+  } catch {
+    return { skipped: true as const, reason: "no_credentials" as const };
+  }
 }
 
 async function fetchActiveSubscription(
@@ -309,6 +377,9 @@ async function fetchActiveSubscription(
           activeSubscription(appId: $appId, shopId: $shopId) {
             billingPeriod
             trialEndsAt
+            currentBillingCycle {
+              startTime
+            }
             items {
               handle
             }
@@ -328,6 +399,7 @@ async function fetchActiveSubscription(
       activeSubscription?: {
         billingPeriod?: string | null;
         trialEndsAt?: string | null;
+        currentBillingCycle?: { startTime?: string | null } | null;
         items?: Array<{ handle?: string | null }>;
       } | null;
     };
@@ -349,5 +421,6 @@ async function fetchActiveSubscription(
     billingPeriod: subscription.billingPeriod ?? "monthly",
     trialEndsAt: subscription.trialEndsAt ?? null,
     status: subscription.trialEndsAt ? "trial" : "active",
+    cycleStart: subscription.currentBillingCycle?.startTime ?? null,
   };
 }

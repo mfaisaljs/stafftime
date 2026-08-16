@@ -81,11 +81,12 @@ model Shop {
 
   planHandle         String    @default("free")
   billingInterval    String    @default("monthly")
-  staffLimit         Int       @default(2)
+  staffLimit         Int       @default(22)
   subscriptionStatus String    @default("none")
   trialEndsAt        DateTime?
   shopifyShopGid     String?
   reportedStaffUsage Int       @default(0)
+  usageCycleKey      String?
 
   locations           StoreLocation[]
   employees           Employee[]

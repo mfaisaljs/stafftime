@@ -1863,6 +1863,33 @@
         "app/components/billing/PricingModal.tsx"
       ],
       "lastUpdated": "2026-08-16T10:45:00.000Z"
+    },
+    {
+      "id": "ST100",
+      "taskId": "T018",
+      "title": "Recurring extra-seat usage",
+      "description": "Cap on maxStaff, usage deltas for extras, cycle re-report, plan-aware slider, Subscribe open(_top).",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST097", "ST099"],
+      "acceptanceCriteria": [
+        "Free allows a 3rd staff member; usage +1 after included seats",
+        "staffLimit/cap uses plan maxStaff; included is for usage math only",
+        "New usageCycleKey resets reported usage and re-reports current extras",
+        "Subscribe/Trial open Shopify pricing_plans via open(_top)",
+        "Bottom slider uses the current plan extra rate"
+      ],
+      "files": [
+        "app/services/billing/plans.ts",
+        "app/services/billing.server.ts",
+        "app/services/billing.server.test.ts",
+        "app/components/billing/PricingModal.tsx",
+        "app/routes/app.staff._index.tsx",
+        "app/routes/app.pricing.tsx",
+        "prisma/schema.prisma",
+        "prisma/migrations/20260816050000_shop_usage_cycle/migration.sql"
+      ],
+      "lastUpdated": "2026-08-16T11:25:00.000Z"
     }
   ]
 }
