@@ -124,6 +124,50 @@ export function extraSeatMax(plan: Plan) {
   return Math.max(0, plan.maxStaff - plan.includedStaff);
 }
 
+export function appSubscriptionLineItems(plan: Plan) {
+  const extraMax = extraSeatMax(plan);
+  const lineItems: Array<{
+    plan:
+      | {
+          appRecurringPricingDetails: {
+            price: { amount: number; currencyCode: "USD" };
+            interval: "EVERY_30_DAYS";
+          };
+        }
+      | {
+          appUsagePricingDetails: {
+            terms: string;
+            cappedAmount: { amount: number; currencyCode: "USD" };
+          };
+        };
+  }> = [
+    {
+      plan: {
+        appRecurringPricingDetails: {
+          price: { amount: plan.monthlyPrice, currencyCode: "USD" },
+          interval: "EVERY_30_DAYS",
+        },
+      },
+    },
+  ];
+
+  if (extraMax > 0 && plan.extraStaffRate > 0) {
+    lineItems.push({
+      plan: {
+        appUsagePricingDetails: {
+          terms: `${formatUsd(plan.extraStaffRate)} per extra staff beyond ${plan.includedStaff} included`,
+          cappedAmount: {
+            amount: extraMax * plan.extraStaffRate,
+            currencyCode: "USD",
+          },
+        },
+      },
+    });
+  }
+
+  return lineItems;
+}
+
 const PLAN_ORDER: PlanHandle[] = [
   "free",
   "small-business",

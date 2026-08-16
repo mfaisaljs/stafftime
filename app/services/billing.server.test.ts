@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import prisma from "../db.server";
 import {
+  appSubscriptionLineItems,
   extraStaffPrice,
   extrasTriggerNextPlan,
   getPlan,
@@ -74,6 +75,28 @@ describe("billing plan catalog", () => {
     const free = getPlan("free");
     expect(extrasTriggerNextPlan(free, 4)).toBe(false);
     expect(extrasTriggerNextPlan(free, 5)).toBe(true);
+  });
+
+  it("builds a recurring plus usage line for paid plans", () => {
+    const items = appSubscriptionLineItems(getPlan("small-business"));
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      plan: { appRecurringPricingDetails: { price: { amount: 24.99 } } },
+    });
+    expect(items[1]).toMatchObject({
+      plan: { appUsagePricingDetails: { cappedAmount: { amount: 100 } } },
+    });
+  });
+
+  it("builds a zero-dollar recurring plus usage line for free", () => {
+    const items = appSubscriptionLineItems(getPlan("free"));
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      plan: { appRecurringPricingDetails: { price: { amount: 0 } } },
+    });
+    expect(items[1]).toMatchObject({
+      plan: { appUsagePricingDetails: { cappedAmount: { amount: 120 } } },
+    });
   });
 
   it("prices extra staff as (n - included) * rate", () => {

@@ -62,6 +62,10 @@ const DEFAULT_BILLING = {
   reportedStaffUsage: 0,
 };
 
+export function isActiveSubscription(subscriptionStatus: string) {
+  return subscriptionStatus === "active" || subscriptionStatus === "trial";
+}
+
 export function calendarUsageCycleKey(now = new Date()) {
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, "0");
@@ -157,7 +161,7 @@ export async function syncSubscriptionFromPlanHandle(
       staffLimit: plan.maxStaff,
       subscriptionStatus:
         plan.handle === FREE_PLAN_HANDLE
-          ? "none"
+          ? "active"
           : trialEndsAt
             ? "trial"
             : "active",
@@ -331,11 +335,8 @@ export async function ensureUsageCycle(
   deps: { fetchImpl?: typeof fetch; now?: Date; cycleKey?: string } = {},
 ) {
   const { rolled } = await rollUsageCycleIfNeeded(shopDomain, deps);
-  if (!rolled) {
-    return { skipped: true as const, reason: "same_cycle" as const, rolled: false };
-  }
   const result = await reconcileStaffUsage(shopDomain, deps);
-  return { ...result, rolled: true };
+  return { ...result, rolled };
 }
 
 export async function reconcileStaffUsage(

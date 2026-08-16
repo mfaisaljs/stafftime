@@ -1915,6 +1915,53 @@
         "app/components/billing/PricingModal.tsx"
       ],
       "lastUpdated": "2026-08-16T11:40:00.000Z"
+    },
+    {
+      "id": "ST102",
+      "taskId": "T018",
+      "title": "Billing API subscribe checkout",
+      "description": "Subscribe POSTs to /app/pricing with embedded params; billing.request creates appSubscription and opens Shopify charge approval.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST101"],
+      "acceptanceCriteria": [
+        "Paid plan Subscribe/Trial posts to /app/billing/subscribe?plan=",
+        "appSubscriptionCreate returns confirmationUrl and redirects _top",
+        "After approve, /app/billing?plan_handle= syncs the plan"
+      ],
+      "files": [
+        "app/routes/app.pricing.tsx",
+        "app/shopify.server.ts",
+        "app/services/billing/checkout.ts",
+        "app/components/billing/PricingModal.tsx",
+        "app/services/billing.server.test.ts",
+        "app/services/billing/checkout.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T12:10:00.000Z"
+    },
+    {
+      "id": "ST103",
+      "taskId": "T018",
+      "title": "Free plan extra-seat checkout ($0 + usage)",
+      "description": "Bottom bar on Free plan submits plan=free so billing.request creates $0 recurring + usage charge, not Small Business.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST102"],
+      "acceptanceCriteria": [
+        "Free slider Subscribe posts plan=free",
+        "shopify.server billing config includes free plan with $0 + usage line items",
+        "Shopify approval shows $0/mo plus $6/extra seat terms",
+        "parseCheckoutPlanHandle accepts free"
+      ],
+      "files": [
+        "app/components/billing/PricingModal.tsx",
+        "app/shopify.server.ts",
+        "app/services/billing/checkout.ts",
+        "app/services/billing/checkout.test.ts",
+        "app/services/billing.server.ts",
+        "app/routes/app.pricing.tsx"
+      ],
+      "lastUpdated": "2026-08-16T12:20:00.000Z"
     }
   ]
 }

@@ -2,10 +2,55 @@ import "@shopify/shopify-app-react-router/adapters/node";
 import {
   ApiVersion,
   AppDistribution,
+  BillingInterval,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
+import { FREE_PLAN, extraSeatMax, PAID_PLANS, type Plan } from "./services/billing/plans";
+
+function billingConfigForPlan(plan: Plan) {
+  const lineItems: Array<
+    | {
+        amount: number;
+        currencyCode: "USD";
+        interval: typeof BillingInterval.Every30Days;
+      }
+    | {
+        amount: number;
+        currencyCode: "USD";
+        interval: typeof BillingInterval.Usage;
+        terms: string;
+      }
+  > = [
+    {
+      amount: plan.monthlyPrice,
+      currencyCode: "USD",
+      interval: BillingInterval.Every30Days,
+    },
+  ];
+
+  if (extraSeatMax(plan) > 0 && plan.extraStaffRate > 0) {
+    lineItems.push({
+      amount: extraSeatMax(plan) * plan.extraStaffRate,
+      currencyCode: "USD",
+      interval: BillingInterval.Usage,
+      terms: `$${plan.extraStaffRate} per extra staff beyond ${plan.includedStaff} included`,
+    });
+  }
+
+  return {
+    trialDays: plan.trialDays || undefined,
+    lineItems,
+  };
+}
+
+const billing = {
+  [FREE_PLAN.handle]: billingConfigForPlan(FREE_PLAN),
+  ...Object.fromEntries(
+    PAID_PLANS.map((plan) => [plan.handle, billingConfigForPlan(plan)]),
+  ),
+};
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -16,6 +61,7 @@ const shopify = shopifyApp({
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
+  billing,
   future: {
     expiringOfflineAccessTokens: true,
   },

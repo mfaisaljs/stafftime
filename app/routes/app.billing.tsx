@@ -1,5 +1,4 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { redirect } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
@@ -18,7 +17,8 @@ const SHOP_GID_QUERY = `#graphql
 `;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session, redirect: shopifyRedirect } =
+    await authenticate.admin(request);
   const url = new URL(request.url);
   const planHandle = url.searchParams.get("plan_handle");
 
@@ -38,12 +38,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (planHandle) {
     await syncSubscriptionFromPlanHandle(session.shop, planHandle);
     await ensureUsageCycle(session.shop);
-    return redirect("/app/staff?billing=updated");
+    return shopifyRedirect("/app/staff?billing=updated");
   }
 
   await refreshSubscription(session.shop);
   await ensureUsageCycle(session.shop);
-  return redirect("/app/staff?billing=refreshed");
+  return shopifyRedirect("/app/staff?billing=refreshed");
 };
 
 export const headers: HeadersFunction = (headersArgs) => {
