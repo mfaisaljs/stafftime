@@ -1,0 +1,13 @@
+{
+  "name": "manager-view",
+  "private": true,
+  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@shopify/ui-extensions": "^2026.1.5",
+    "preact": "^10.24.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

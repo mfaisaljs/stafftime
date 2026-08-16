@@ -1,0 +1,19 @@
+api_version = "2026-01"
+
+[[extensions]]
+type = "ui_extension"
+name = "t:name"
+uid = "a692fd10-f348-47ed-ba50-c4775a342e7b"
+handle = "manager-view"
+description = "Trubuild: Manager View to monitor staff activity and clock staff in/out"
+
+[extensions.supported_features]
+runs_offline = true
+
+[[extensions.targeting]]
+module = "./src/Tile.tsx"
+target = "pos.home.tile.render"
+
+[[extensions.targeting]]
+module = "./src/Modal.tsx"
+target = "pos.home.modal.render"

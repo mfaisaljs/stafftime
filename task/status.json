@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016"],
-  "lastUpdated": "2026-08-12T21:25:00.000Z",
+  "lastUpdated": "2026-08-16T01:10:00.000Z",
   "notes": [
+    "ST093 complete: POS Manager View tile — manager PIN, staff list with live attendance filters, staff detail (profile/payroll/shifts), and clock in/out on behalf of staff.",
     "ST092 complete: Commission and Sales Target attribution blocks/menu items prompt for PIN before opening the modal (same as POS tiles).",
     "Fixed: POS Commission program choice labels render as one line (e.g. “(1 item)”) instead of split parentheses/text nodes.",
     "Updated: POS Commission attribution lets staff select programs (none pre-selected); specific-product rules beat all-product; multi-select when cart spans both.",

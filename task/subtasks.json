@@ -1714,6 +1714,26 @@
         "extensions/commission/src/posApi.ts"
       ],
       "lastUpdated": "2026-08-12T21:25:00.000Z"
+    },
+    {
+      "id": "ST093",
+      "taskId": "T017",
+      "title": "POS Manager View tile",
+      "description": "Add Manager View POS tile (PIN-gated for manager roles): staff list with live attendance, staff detail with profile/payroll/shifts, and clock in/out on behalf of staff.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST080", "ST069"],
+      "acceptanceCriteria": [
+        "Manager View tile prompts for PIN then opens only for manager roles when portalManagerView is enabled",
+        "Modal lists staff with Working/On break/On leave/Absent/Late filters and today metrics",
+        "Selecting a staff member shows personal/contact/work info, date-ranged overview/shifts/payroll, and manager clock in/out/break actions"
+      ],
+      "files": [
+        "extensions/manager-view/",
+        "app/services/manager-view.server.ts",
+        "app/routes/api.pos.manager-view.tsx"
+      ],
+      "lastUpdated": "2026-08-16T01:10:00.000Z"
     }
   ]
 }
