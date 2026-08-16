@@ -2652,6 +2652,23 @@
         "app/services/clock-photo.server.test.ts"
       ],
       "lastUpdated": "2026-08-16T23:45:00.000Z"
+    },
+    {
+      "id": "ST141",
+      "taskId": "T019",
+      "title": "Keep Shopify Admin root on app shell",
+      "description": "Prevent Shopify Admin's normal shop query parameter from being treated as a portal launch URL at the root path.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST137"],
+      "acceptanceCriteria": [
+        "Root requests on the main app host redirect to /app even when Shopify includes shop query params",
+        "Root requests on the dedicated portal host still redirect to /portal"
+      ],
+      "files": [
+        "app/routes/_index/route.tsx"
+      ],
+      "lastUpdated": "2026-08-16T23:55:00.000Z"
     }
   ]
 }
