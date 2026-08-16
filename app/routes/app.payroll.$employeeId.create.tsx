@@ -1449,12 +1449,14 @@ const CREATE_PAYROLL_STYLES = `
   }
 
   .overview-panels {
+    align-items: start;
     display: grid;
     gap: 12px;
     grid-template-columns: 1.2fr 1fr;
   }
 
   .overview-panel {
+    align-content: start;
     border: 1px solid #ececec;
     border-radius: 10px;
     display: grid;
