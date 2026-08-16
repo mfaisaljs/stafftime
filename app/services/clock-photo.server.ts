@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { shopFromDest } from "../utils/http.server";
 
 /** Max stored data-URL length (~300KB binary after base64 overhead). */
@@ -45,16 +45,31 @@ export function clockPhotoPath(input: {
   employeeId: string;
   timeEntryId: string;
   kind: ClockPhotoKind;
+  fingerprint?: string;
   now?: number;
 }) {
   const expiresAt = (input.now ?? Date.now()) + PHOTO_TTL_MS;
   const sig = signClockPhotoAccess({ ...input, expiresAt });
   const query = new URLSearchParams({
-    kind: input.kind,
     exp: String(expiresAt),
     sig,
   });
-  return `/api/clock-photo/${input.timeEntryId}?${query}`;
+  if (input.fingerprint) query.set("v", input.fingerprint);
+  return `/api/clock-photo/${input.timeEntryId}/${input.kind}?${query}`;
+}
+
+export function clockPhotoFingerprint(photoUrl: string) {
+  return createHash("sha256").update(photoUrl).digest("hex").slice(0, 12);
+}
+
+export function clockPhotosMatch(
+  left?: string | null,
+  right?: string | null,
+) {
+  const a = decodeClockPhoto(left);
+  const b = decodeClockPhoto(right);
+  if (!a || !b) return false;
+  return a.body.equals(b.body);
 }
 
 export function verifyClockPhotoAccess(input: {

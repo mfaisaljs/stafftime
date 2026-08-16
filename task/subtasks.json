@@ -2646,7 +2646,7 @@
         "Photo URLs are signed and scoped to the time entry"
       ],
       "files": [
-        "app/routes/api.clock-photo.$timeEntryId.tsx",
+        "app/routes/api.clock-photo.$timeEntryId.$kind.tsx",
         "app/services/clock-photo.server.ts",
         "app/services/clock-photo.server.test.ts",
         "app/routes/app.staff.$employeeId._index.tsx"

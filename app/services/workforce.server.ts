@@ -18,7 +18,11 @@ import {
   isEmployeeOnApprovedLeave,
   leaveCompensationForEmployeeDate,
 } from "./settings.server";
-import { normalizeClockPhoto, requireClockPhoto } from "./clock-photo.server";
+import {
+  clockPhotosMatch,
+  normalizeClockPhoto,
+  requireClockPhoto,
+} from "./clock-photo.server";
 import {
   SHIFT_STATUS,
   listApprovedLeaveDaysForEmployee,
@@ -992,6 +996,11 @@ export async function clockOut(params: {
   const settings = await getShopSettings(shop.id);
   const clockOutPhotoUrl = normalizeClockPhoto(params.photo, params.photoType);
   requireClockPhoto(settings.requirePhoto, clockOutPhotoUrl, "clock out");
+  if (clockPhotosMatch(clockOutPhotoUrl, entry.photoUrl)) {
+    throw new Error(
+      "Clock-out selfie is the same as clock-in. Please retake the photo.",
+    );
+  }
 
   const openBreak = entry.breaks[0];
   if (openBreak) {

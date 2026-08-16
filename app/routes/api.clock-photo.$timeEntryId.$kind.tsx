@@ -7,12 +7,12 @@ import {
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const timeEntryId = params.timeEntryId?.trim();
+  const kind = params.kind?.trim() || "";
   if (!timeEntryId) {
     throw new Response("Photo not found", { status: 404 });
   }
 
   const url = new URL(request.url);
-  const kind = url.searchParams.get("kind") || "";
   const expiresAt = Number(url.searchParams.get("exp") || "");
   const sig = url.searchParams.get("sig") || "";
 
@@ -51,7 +51,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   return new Response(new Uint8Array(decoded.body), {
     headers: {
       "Content-Type": decoded.mime,
-      "Cache-Control": "private, max-age=300",
+      "Cache-Control": "private, no-store",
     },
   });
 };

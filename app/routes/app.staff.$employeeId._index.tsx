@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useLoaderData, useSearchParams } from "react-router";
 import { AppLink } from "../components/AppLink";
-import { clockPhotoPath } from "../services/clock-photo.server";
+import { clockPhotoFingerprint, clockPhotoPath } from "../services/clock-photo.server";
 import {
   AlertCircle,
   ArrowLeft,
@@ -331,6 +331,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
             employeeId,
             timeEntryId: entry.id,
             kind: "in",
+            fingerprint: clockPhotoFingerprint(entry.photoUrl),
           })
         : null,
       clockOutPhotoSrc: entry.clockOutPhotoUrl
@@ -339,6 +340,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
             employeeId,
             timeEntryId: entry.id,
             kind: "out",
+            fingerprint: clockPhotoFingerprint(entry.clockOutPhotoUrl),
           })
         : null,
     };
@@ -735,6 +737,7 @@ function OverviewTab({
                                 src={row.clockInPhotoSrc ?? ""}
                                 alt=""
                               />
+                              <span>In</span>
                             </button>
                           ) : null}
                           {row.hasClockOutPhoto ? (
@@ -749,6 +752,7 @@ function OverviewTab({
                                 src={row.clockOutPhotoSrc ?? ""}
                                 alt=""
                               />
+                              <span>Out</span>
                             </button>
                           ) : null}
                           <s-button
@@ -1547,6 +1551,16 @@ const STAFF_DETAIL_STYLES = `
     cursor: pointer;
     overflow: hidden;
     padding: 0;
+    text-align: center;
+  }
+
+  .photo-thumb-btn span {
+    color: #616161;
+    display: block;
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1;
+    padding: 3px 0 4px;
   }
 
   .photo-thumb {
