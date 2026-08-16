@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "94ec09cf3eaee34d49da7c9a2e1b91cd"
-name = "Trubuild: Staff Management"
+name = "Trubuild: POS Staff Clock In"
 handle = "trubuild-staff-management"
 application_url = "https://staff-time.onrender.com"
 embedded = true
