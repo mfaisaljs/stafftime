@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   estimatedMonthlyTotal,
-  extraStaffPrice,
   formatUsd,
   FREE_PLAN,
   PAID_PLANS,
@@ -36,20 +35,20 @@ export function PricingPlans({
   initialStaffCount?: number;
   variant?: "page" | "modal";
 }) {
-  const [freeStaff, setFreeStaff] = useState(() =>
-    clampStaff(initialStaffCount, 1, FREE_SLIDER_MAX),
+  const [freeExtraStaff, setFreeExtraStaff] = useState(() =>
+    clampStaff(
+      initialStaffCount - FREE_PLAN.includedStaff,
+      0,
+      FREE_SLIDER_MAX,
+    ),
   );
   const [estimateByPlan, setEstimateByPlan] = useState<Record<string, number>>({
     workforce: 10,
-    enterprise: 101,
+    enterprise: 100,
   });
 
-  const freeExtra = extraStaffPrice(
-    freeStaff,
-    FREE_PLAN.includedStaff,
-    FREE_PLAN.extraStaffRate,
-  );
-  const stayOnFree = freeStaff <= FREE_PLAN.includedStaff;
+  const freeExtra = freeExtraStaff * FREE_PLAN.extraStaffRate;
+  const stayOnFree = freeExtraStaff === 0;
 
   return (
     <>
@@ -78,7 +77,13 @@ export function PricingPlans({
                 ) : null}
                 <h3>{plan.name}</h3>
                 <p className="pricing-price">
-                  <strong>{formatUsd(plan.monthlyPrice)}</strong>
+                  <strong>
+                    {formatUsd(
+                      plan.handle === "workforce" || plan.handle === "enterprise"
+                        ? estimate
+                        : plan.monthlyPrice,
+                    )}
+                  </strong>
                   <span>/PER MONTH</span>
                 </p>
                 <p className="pricing-included">
@@ -86,17 +91,14 @@ export function PricingPlans({
                   extra / staff
                 </p>
                 {plan.handle === "workforce" || plan.handle === "enterprise" ? (
-                  <label className="pricing-estimate">
+                  <div className="pricing-estimate">
                     <span className="pricing-upto">
                       Up to
-                      <s-select
-                        label="Staff members"
-                        labelAccessibilityVisibility="exclusive"
+                      <select
+                        aria-label={`${plan.name} staff members`}
                         value={String(estimateStaff)}
                         onChange={(event) => {
-                          const value = Number(
-                            (event.currentTarget as { value?: string }).value,
-                          );
+                          const value = Number(event.currentTarget.value);
                           if (!Number.isFinite(value)) return;
                           setEstimateByPlan((previous) => ({
                             ...previous,
@@ -105,15 +107,14 @@ export function PricingPlans({
                         }}
                       >
                         {staffOptionsForPlan(plan.handle).map((count) => (
-                          <s-option key={count} value={String(count)}>
+                          <option key={count} value={count}>
                             {count}
-                          </s-option>
+                          </option>
                         ))}
-                      </s-select>
+                      </select>
                       staff member
                     </span>
-                    <small>Estimate {formatUsd(estimate)} / month</small>
-                  </label>
+                  </div>
                 ) : (
                   <p className="pricing-estimate-copy">
                     {plan.description}
@@ -150,26 +151,26 @@ export function PricingPlans({
           <label className="pricing-slider">
             <input
               type="range"
-              min={1}
+              min={0}
               max={FREE_SLIDER_MAX}
-              value={freeStaff}
-              onChange={(event) => setFreeStaff(Number(event.currentTarget.value))}
-              aria-label="Free plan staff count"
+              value={freeExtraStaff}
+              onChange={(event) =>
+                setFreeExtraStaff(Number(event.currentTarget.value))
+              }
+              aria-label="Extra staff beyond two free seats"
             />
-            <s-number-field
-              label="Staff"
-              labelAccessibilityVisibility="exclusive"
-              min={1}
+            <input
+              type="number"
+              min={0}
               max={FREE_SLIDER_MAX}
               step={1}
-              value={String(freeStaff)}
-              onInput={(event) => {
-                const value = Number(
-                  (event.currentTarget as { value?: string }).value,
-                );
-                if (!Number.isFinite(value)) return;
-                setFreeStaff(clampStaff(value, 1, FREE_SLIDER_MAX));
-              }}
+              value={freeExtraStaff}
+              onChange={(event) =>
+                setFreeExtraStaff(
+                  clampStaff(Number(event.currentTarget.value), 0, FREE_SLIDER_MAX),
+                )
+              }
+              aria-label="Extra staff count"
             />
           </label>
           {stayOnFree ? (
@@ -230,7 +231,7 @@ function clampStaff(value: number, min: number, max: number) {
 }
 
 const WORKFORCE_STAFF_OPTIONS = rangeInclusive(10, 100);
-const ENTERPRISE_STAFF_OPTIONS = rangeInclusive(101, 500);
+const ENTERPRISE_STAFF_OPTIONS = rangeInclusive(100, 500);
 
 function rangeInclusive(from: number, to: number) {
   return Array.from({ length: to - from + 1 }, (_, index) => from + index);
@@ -256,8 +257,10 @@ const PRICING_MODAL_STYLES = `
     background: #fff;
     border: 1px solid #e3e3e3;
     border-radius: 16px;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
+    min-height: 100%;
     padding: 20px;
   }
 
@@ -310,12 +313,18 @@ const PRICING_MODAL_STYLES = `
     gap: 8px;
   }
 
-  .pricing-upto s-select {
+  .pricing-upto select {
+    background: #fff;
+    border: 1px solid #8a8a8a;
+    border-radius: 8px;
+    min-height: 32px;
     min-width: 88px;
+    padding: 4px 8px;
   }
 
   .pricing-card ul {
     display: grid;
+    align-content: start;
     gap: 6px;
     margin: 0;
     padding-left: 18px;
@@ -328,14 +337,20 @@ const PRICING_MODAL_STYLES = `
 
   .pricing-cta,
   .pricing-free-bar .pricing-cta {
+    align-items: center;
     background: #1f1f1f;
     border-radius: 10px;
+    box-sizing: border-box;
     color: #fff;
-    display: inline-flex;
+    display: flex;
+    flex-shrink: 0;
     font-weight: 600;
     justify-content: center;
+    margin-top: auto;
+    min-height: 40px;
     padding: 10px 14px;
     text-decoration: none;
+    width: 100%;
   }
 
   .pricing-cta.primary {
@@ -368,6 +383,15 @@ const PRICING_MODAL_STYLES = `
   .pricing-slider input[type="range"] {
     accent-color: #e67e22;
     width: 100%;
+  }
+
+  .pricing-slider input[type="number"] {
+    background: #fff;
+    border: 1px solid #8a8a8a;
+    border-radius: 8px;
+    min-height: 32px;
+    padding: 4px 8px;
+    width: 88px;
   }
 
   @media (max-width: 900px) {
