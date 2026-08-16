@@ -5,8 +5,7 @@ import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
-import { ensureUsageCycle, getShopBilling } from "../services/billing.server";
-import { formatUsd } from "../services/billing/plans";
+import { ensureUsageCycle, getShopBilling, subscribedSeatsFullMessage } from "../services/billing.server";
 import {
   openPricingModal,
   PricingModal,
@@ -26,11 +25,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     staffLimit: billing.staffLimit,
     includedStaff: billing.includedStaff,
     extraStaffCount: billing.extraStaffCount,
-    extraStaffRate: billing.extraStaffRate,
+    reportedStaffUsage: billing.reportedStaffUsage,
+    subscribedSeats: billing.subscribedSeats,
     planName: billing.plan.name,
     planHandle: billing.planHandle,
     pricingPlansUrl: billing.pricingPlansUrl,
     atCap: billing.atCap,
+    atSubscribedCap: billing.atSubscribedCap,
     nextPlan: billing.nextPlan
       ? {
           name: billing.nextPlan.name,
@@ -52,11 +53,13 @@ export default function StaffManagementPage() {
     staffLimit,
     includedStaff,
     extraStaffCount,
-    extraStaffRate,
+    reportedStaffUsage,
+    subscribedSeats,
     planName,
     planHandle,
     pricingPlansUrl,
     atCap,
+    atSubscribedCap,
     nextPlan,
   } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
@@ -206,8 +209,11 @@ export default function StaffManagementPage() {
   };
 
   const totalStaff = employees.filter((employee) => employee.status !== "ARCHIVED").length;
-  const availableStaff = Math.max(staffLimit - totalStaff, 0);
-  const usagePercent = Math.min(Math.round((totalStaff / staffLimit) * 100), 100);
+  const availableStaff = Math.max(subscribedSeats - totalStaff, 0);
+  const usagePercent =
+    subscribedSeats > 0
+      ? Math.min(Math.round((totalStaff / subscribedSeats) * 100), 100)
+      : 0;
   const activeCount = employees.filter((employee) => employee.status === "ACTIVE").length;
   const inactiveCount = employees.filter(
     (employee) => employee.status === "INACTIVE",
@@ -235,43 +241,57 @@ export default function StaffManagementPage() {
             <div className="staff-usage">
               <span>
                 {totalStaff} staff ({includedStaff} included
-                {extraStaffCount > 0
-                  ? ` + ${extraStaffCount} extra at ${formatUsd(extraStaffRate)}/mo`
+                {reportedStaffUsage > 0
+                  ? ` + ${reportedStaffUsage} subscribed extra`
                   : ""}
-                ) · {availableStaff} available of {staffLimit}
+                ) · {availableStaff} available of {subscribedSeats} subscribed
               </span>
               <div className="usage-bar" aria-label={`${usagePercent}% used`}>
                 <span style={{ width: `${usagePercent}%` }} />
               </div>
               <span>{usagePercent}% used</span>
-              {availableStaff === 0 && (
+              {atCap ? (
                 <strong className="limit-text">
                   {nextPlan
                     ? `${planName} max is ${staffLimit}. Upgrade to ${nextPlan.name} (up to ${nextPlan.maxStaff}).`
                     : `${planName} max is ${staffLimit} staff.`}
                 </strong>
-              )}
+              ) : atSubscribedCap ? (
+                <strong className="limit-text">
+                  {subscribedSeatsFullMessage(subscribedSeats)}
+                </strong>
+              ) : null}
             </div>
           </div>
           <div className="plan-action">
             <span>
-              {nextPlan
+              {atCap && nextPlan
                 ? `Upgrade to ${nextPlan.name} to add more staff`
-                : "Upgrade to add more staff"}
+                : atSubscribedCap
+                  ? "Subscribe for extra seats on Pricing"
+                  : nextPlan
+                    ? `Upgrade to ${nextPlan.name} to add more staff`
+                    : "Upgrade to add more staff"}
             </span>
-            <s-button
-              variant="primary"
-              commandFor={PRICING_MODAL_ID}
-              command="--show"
-            >
-              {nextPlan ? `Upgrade to ${nextPlan.name}` : "Upgrade Plan"}
-            </s-button>
+            {atSubscribedCap && !atCap ? (
+              <s-button variant="primary" href="/app/pricing">
+                Add extra seats
+              </s-button>
+            ) : (
+              <s-button
+                variant="primary"
+                commandFor={PRICING_MODAL_ID}
+                command="--show"
+              >
+                {nextPlan ? `Upgrade to ${nextPlan.name}` : "Upgrade Plan"}
+              </s-button>
+            )}
           </div>
         </section>
 
         {searchParams.get("billing") && (
           <s-banner heading="Plan updated" tone="success" dismissible>
-            Your staff seat limit is now {staffLimit}.
+            Your subscribed seat capacity is now {subscribedSeats}.
           </s-banner>
         )}
 
@@ -285,7 +305,11 @@ export default function StaffManagementPage() {
         </div>
 
         <div className="staff-actions">
-          {atCap ? (
+          {atSubscribedCap && !atCap ? (
+            <s-button variant="primary" href="/app/pricing">
+              Subscribe for more seats
+            </s-button>
+          ) : atCap ? (
             <s-button
               variant="primary"
               commandFor={PRICING_MODAL_ID}
@@ -627,7 +651,7 @@ export default function StaffManagementPage() {
       <PricingModal
         pricingPlansUrl={pricingPlansUrl}
         currentPlanHandle={planHandle}
-        initialStaffCount={Math.max(totalStaff, 2)}
+        initialStaffCount={Math.max(totalStaff, 1)}
         currentExtraStaffCount={extraStaffCount}
         atCap={atCap}
       />

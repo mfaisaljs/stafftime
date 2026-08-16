@@ -101,7 +101,7 @@ export default function PricingPage() {
         <PricingPlans
           pricingPlansUrl={pricingPlansUrl}
           currentPlanHandle={planHandle}
-          initialStaffCount={Math.max(activeStaffCount, 2)}
+          initialStaffCount={Math.max(activeStaffCount, 1)}
           currentExtraStaffCount={extraStaffCount}
           atCap={atCap}
           variant="page"

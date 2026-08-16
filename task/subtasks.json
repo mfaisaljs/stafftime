@@ -1985,6 +1985,83 @@
         "app/services/shop-lifecycle.server.test.ts"
       ],
       "lastUpdated": "2026-08-16T12:38:00.000Z"
+    },
+    {
+      "id": "ST105",
+      "taskId": "T018",
+      "title": "Free plan cap at 4 staff total",
+      "description": "Free maxStaff is 4 (2 included + 2 paid extras); usage billing capped at $12/mo.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST101"],
+      "acceptanceCriteria": [
+        "Free effectiveMaxStaff and staffLimit are 4",
+        "Free usage line cappedAmount is $12 (2 extras × $6)",
+        "Staff adds block at 4 with upgrade to Small Business"
+      ],
+      "files": [
+        "app/services/billing/plans.ts",
+        "app/services/billing.server.test.ts"
+      ],
+      "lastUpdated": "2026-08-16T13:05:00.000Z"
+    },
+    {
+      "id": "ST106",
+      "taskId": "T018",
+      "title": "Pricing slider defaults to 1 staff",
+      "description": "Free-plan bottom bar uses total staff count (1–cap) with default 1 instead of extra-seat count starting at 0.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST105"],
+      "acceptanceCriteria": [
+        "Slider and number input default to 1 total staff",
+        "initialStaffCount floors at 1, not 2",
+        "No extra-seat messaging when total staff is within included seats"
+      ],
+      "files": [
+        "app/components/billing/PricingModal.tsx",
+        "app/routes/app.pricing.tsx",
+        "app/routes/app.staff._index.tsx"
+      ],
+      "lastUpdated": "2026-08-16T13:10:00.000Z"
+    },
+    {
+      "id": "ST107",
+      "taskId": "T018",
+      "title": "Pricing slider 0–50 extras, no next-plan upsell",
+      "description": "Extra-seat slider max 50; remove Recommended next badge and auto-upgrade CTA from pricing modal/page.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST106"],
+      "acceptanceCriteria": [
+        "Extra seat slider and number input range 0–50",
+        "No Recommended next badge on paid plan cards",
+        "Bottom bar always subscribes on current plan for extras, never auto-switches plan"
+      ],
+      "files": [
+        "app/components/billing/PricingModal.tsx"
+      ],
+      "lastUpdated": "2026-08-16T13:18:00.000Z"
+    },
+    {
+      "id": "ST108",
+      "taskId": "T018",
+      "title": "Subscribed-seats-full messaging",
+      "description": "When subscribed seats are full but plan cap is not hit, message and CTA direct merchants to add extra seats on Pricing (not upgrade next plan).",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST107"],
+      "acceptanceCriteria": [
+        "Subscribed cap message: All N subscribed seats are in use. Add extra seats on Pricing.",
+        "Staff page plan card shows Add extra seats button when at subscribed cap",
+        "Plan upgrade copy only when at plan max (atCap)"
+      ],
+      "files": [
+        "app/services/billing.server.ts",
+        "app/routes/app.staff._index.tsx",
+        "app/routes/app.staff.new.tsx"
+      ],
+      "lastUpdated": "2026-08-16T13:25:00.000Z"
     }
   ]
 }

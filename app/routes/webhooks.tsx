@@ -1,4 +1,4 @@
-import type { ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import {
@@ -14,6 +14,17 @@ type CompliancePayload = {
     email?: string | null;
     phone?: string | null;
   };
+};
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  if (request.method !== "GET") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+
+  return Response.json({
+    status: "ok",
+    endpoint: "/webhooks",
+  });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {

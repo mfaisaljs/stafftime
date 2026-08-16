@@ -3,11 +3,13 @@ import prisma from "../db.server";
 import {
   appSubscriptionLineItems,
   extraStaffPrice,
+  effectiveMaxStaff,
   extrasTriggerNextPlan,
   getPlan,
   includedStaffFromHandle,
   nextPlan,
   staffLimitFromHandle,
+  subscribedSeatCount,
   usageDeltaForStaffChange,
 } from "./billing/plans";
 import {
@@ -16,6 +18,7 @@ import {
   reconcileStaffUsage,
   reportStaffUsageDelta,
   StaffSeatLimitError,
+  SubscribedSeatLimitError,
   syncSubscriptionFromPlanHandle,
 } from "./billing.server";
 import { createEmployee, ensureShop } from "./workforce.server";
@@ -57,11 +60,11 @@ describe("billing plan catalog", () => {
     expect(includedStaffFromHandle("workforce")).toBe(10);
     expect(includedStaffFromHandle("enterprise")).toBe(100);
 
-    expect(staffLimitFromHandle("free")).toBe(22);
+    expect(staffLimitFromHandle("free")).toBe(4);
     expect(staffLimitFromHandle("small-business")).toBe(25);
     expect(staffLimitFromHandle("workforce")).toBe(100);
     expect(staffLimitFromHandle("enterprise")).toBe(500);
-    expect(staffLimitFromHandle("unknown")).toBe(22);
+    expect(staffLimitFromHandle("unknown")).toBe(4);
   });
 
   it("offers the next plan after each max", () => {
@@ -75,6 +78,19 @@ describe("billing plan catalog", () => {
     const free = getPlan("free");
     expect(extrasTriggerNextPlan(free, 4)).toBe(false);
     expect(extrasTriggerNextPlan(free, 5)).toBe(true);
+  });
+
+  it("caps free at 4 staff (2 included + 2 extras) before upgrading", () => {
+    const free = getPlan("free");
+    expect(effectiveMaxStaff(free)).toBe(4);
+    expect(extrasTriggerNextPlan(free, 5)).toBe(true);
+    expect(extrasTriggerNextPlan(free, 4)).toBe(false);
+  });
+
+  it("computes subscribed seats from included plus reported usage", () => {
+    expect(subscribedSeatCount(2, 0)).toBe(2);
+    expect(subscribedSeatCount(2, 3)).toBe(5);
+    expect(subscribedSeatCount(5, 2)).toBe(7);
   });
 
   it("builds a recurring plus usage line for paid plans", () => {
@@ -95,7 +111,7 @@ describe("billing plan catalog", () => {
       plan: { appRecurringPricingDetails: { price: { amount: 0 } } },
     });
     expect(items[1]).toMatchObject({
-      plan: { appUsagePricingDetails: { cappedAmount: { amount: 120 } } },
+      plan: { appUsagePricingDetails: { cappedAmount: { amount: 12 } } },
     });
   });
 
@@ -146,20 +162,20 @@ describe("billing enforcement and usage", () => {
     delete process.env.SHOPIFY_APP_EVENTS_TOKEN;
   });
 
-  it("syncs staffLimit to each plan maxStaff", async () => {
+  it("syncs staffLimit to each plan effective cap", async () => {
     await ensureShop(TEST_DOMAIN);
 
     await syncSubscriptionFromPlanHandle(TEST_DOMAIN, "small-business");
     expect(
       (await prisma.shop.findUniqueOrThrow({ where: { domain: TEST_DOMAIN } }))
         .staffLimit,
-    ).toBe(25);
+    ).toBe(12);
 
     await syncSubscriptionFromPlanHandle(TEST_DOMAIN, "workforce");
     expect(
       (await prisma.shop.findUniqueOrThrow({ where: { domain: TEST_DOMAIN } }))
         .staffLimit,
-    ).toBe(100);
+    ).toBe(59);
 
     await syncSubscriptionFromPlanHandle(TEST_DOMAIN, "enterprise");
     expect(
@@ -171,12 +187,44 @@ describe("billing enforcement and usage", () => {
     const freeShop = await prisma.shop.findUniqueOrThrow({
       where: { domain: TEST_DOMAIN },
     });
-    expect(freeShop.staffLimit).toBe(22);
+    expect(freeShop.staffLimit).toBe(4);
     expect(freeShop.planHandle).toBe("free");
   });
 
-  it("allows a 3rd Free staff member and blocks only at maxStaff", async () => {
+  it("blocks adds when subscribed seats are full", async () => {
     const shop = await ensureShop(TEST_DOMAIN);
+    await createEmployee({
+      shopId: shop.id,
+      firstName: "One",
+      lastName: "Seat",
+      pin: "1001",
+    });
+    await createEmployee({
+      shopId: shop.id,
+      firstName: "Two",
+      lastName: "Seat",
+      pin: "1002",
+    });
+
+    await expect(assertStaffSeatAvailable(shop.id)).rejects.toBeInstanceOf(
+      SubscribedSeatLimitError,
+    );
+    await expect(
+      createEmployee({
+        shopId: shop.id,
+        firstName: "Three",
+        lastName: "Seat",
+        pin: "1003",
+      }),
+    ).rejects.toBeInstanceOf(SubscribedSeatLimitError);
+  });
+
+  it("allows one extra hire after usage billing is active on Free", async () => {
+    const shop = await ensureShop(TEST_DOMAIN);
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: { subscriptionStatus: "active" },
+    });
     await createEmployee({
       shopId: shop.id,
       firstName: "One",
@@ -199,9 +247,16 @@ describe("billing enforcement and usage", () => {
         pin: "1003",
       }),
     ).resolves.toMatchObject({ firstName: "Three" });
+  });
 
+  it("allows a 3rd Free staff member and blocks at the effective cap", async () => {
+    const shop = await ensureShop(TEST_DOMAIN);
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: { subscriptionStatus: "active", reportedStaffUsage: 2 },
+    });
     await prisma.employee.createMany({
-      data: Array.from({ length: 19 }, (_, index) => ({
+      data: Array.from({ length: 4 }, (_, index) => ({
         shopId: shop.id,
         firstName: `Cap${index}`,
         lastName: "Seat",
@@ -212,7 +267,7 @@ describe("billing enforcement and usage", () => {
 
     await expect(assertStaffSeatAvailable(shop.id)).rejects.toMatchObject({
       name: "StaffSeatLimitError",
-      staffLimit: 22,
+      staffLimit: 4,
       nextPlanName: "Small Business",
     });
   });
@@ -221,7 +276,7 @@ describe("billing enforcement and usage", () => {
     const shop = await ensureShop(TEST_DOMAIN);
     await prisma.shop.update({
       where: { id: shop.id },
-      data: { shopifyShopGid: "gid://shopify/Shop/999" },
+      data: { shopifyShopGid: "gid://shopify/Shop/999", subscriptionStatus: "active" },
     });
     process.env.SHOPIFY_APP_EVENTS_TOKEN = "test-token";
     const { calls, fetchImpl } = mockUsageFetch();
@@ -286,11 +341,11 @@ describe("billing enforcement and usage", () => {
       where: { id: shop.id },
       data: {
         shopifyShopGid: "gid://shopify/Shop/999",
-        reportedStaffUsage: 3,
+        reportedStaffUsage: 2,
         usageCycleKey: "2000-01",
       },
     });
-    await seedEmployees(shop.id, 5);
+    await seedEmployees(shop.id, 4);
     process.env.SHOPIFY_APP_EVENTS_TOKEN = "test-token";
     const { calls, fetchImpl } = mockUsageFetch();
 
@@ -298,14 +353,14 @@ describe("billing enforcement and usage", () => {
       fetchImpl,
       cycleKey: "2026-08",
     });
-    expect(result).toMatchObject({ rolled: true, skipped: false, delta: 3 });
-    expect(calls[0]?.value).toBe(3);
+    expect(result).toMatchObject({ rolled: true, skipped: false, delta: 2 });
+    expect(calls[0]?.value).toBe(2);
 
     const shopAfter = await prisma.shop.findUniqueOrThrow({
       where: { domain: TEST_DOMAIN },
     });
     expect(shopAfter.usageCycleKey).toBe("2026-08");
-    expect(shopAfter.reportedStaffUsage).toBe(3);
+    expect(shopAfter.reportedStaffUsage).toBe(2);
   });
 
   it("reports +1 on create and -1 on archive only after included seats", async () => {

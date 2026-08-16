@@ -13,6 +13,8 @@ import {
   usageOverage,
   type Plan,
   type PlanHandle,
+  subscribedSeatCount,
+  effectiveMaxStaff,
 } from "./billing/plans";
 
 export class StaffSeatLimitError extends Error {
@@ -31,6 +33,45 @@ export class StaffSeatLimitError extends Error {
   }
 }
 
+export class SubscribedSeatLimitError extends Error {
+  readonly subscribedSeats: number;
+
+  constructor(subscribedSeats: number) {
+    super(subscribedSeatsFullMessage(subscribedSeats));
+    this.name = "SubscribedSeatLimitError";
+    this.subscribedSeats = subscribedSeats;
+  }
+}
+
+export function subscribedSeatsFullMessage(subscribedSeats: number) {
+  return `All ${subscribedSeats} subscribed seats are in use. Add extra seats on Pricing.`;
+}
+
+/** How many staff can be added before billing blocks a new hire. */
+export function seatCapacityForAdds(params: {
+  plan: Plan;
+  reportedStaffUsage: number;
+  subscriptionStatus: string;
+  activeStaffCount: number;
+}) {
+  const subscribed = subscribedSeatCount(
+    params.plan.includedStaff,
+    params.reportedStaffUsage,
+  );
+  const planMax = effectiveMaxStaff(params.plan);
+  let capacity = subscribed;
+
+  if (
+    params.subscriptionStatus === "active" &&
+    params.activeStaffCount >= params.plan.includedStaff &&
+    capacity < planMax
+  ) {
+    capacity = Math.min(capacity + 1, planMax);
+  }
+
+  return capacity;
+}
+
 export type ShopBilling = {
   shopId: string;
   domain: string;
@@ -46,8 +87,10 @@ export type ShopBilling = {
   shopifyShopGid: string | null;
   reportedStaffUsage: number;
   usageCycleKey: string | null;
+  subscribedSeats: number;
   activeStaffCount: number;
   availableSeats: number;
+  atSubscribedCap: boolean;
   atCap: boolean;
   nextPlan: Plan | null;
   pricingPlansUrl: string;
@@ -56,7 +99,7 @@ export type ShopBilling = {
 const DEFAULT_BILLING = {
   planHandle: FREE_PLAN_HANDLE,
   billingInterval: "monthly" as const,
-  staffLimit: FREE_PLAN.maxStaff,
+  staffLimit: effectiveMaxStaff(FREE_PLAN),
   subscriptionStatus: "none",
   trialEndsAt: null as Date | null,
   reportedStaffUsage: 0,
@@ -81,13 +124,14 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
 
   if (!shop) {
     const plan = FREE_PLAN;
+    const subscribedSeats = subscribedSeatCount(plan.includedStaff, 0);
     return {
       shopId: "",
       domain: shopFromDest(shopDomain).toLowerCase(),
       planHandle: plan.handle,
       plan,
       billingInterval: "monthly",
-      staffLimit: plan.maxStaff,
+      staffLimit: effectiveMaxStaff(plan),
       includedStaff: plan.includedStaff,
       extraStaffCount: 0,
       extraStaffRate: plan.extraStaffRate,
@@ -96,8 +140,10 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
       shopifyShopGid: null,
       reportedStaffUsage: 0,
       usageCycleKey: null,
+      subscribedSeats,
       activeStaffCount: 0,
-      availableSeats: plan.maxStaff,
+      availableSeats: subscribedSeats,
+      atSubscribedCap: false,
       atCap: false,
       nextPlan: nextPlan(plan.handle),
       pricingPlansUrl: shopifyPricingPlansUrl({
@@ -109,8 +155,18 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
 
   const plan = getPlan(shop.planHandle);
   const activeStaffCount = await countActiveStaff(shop.id);
-  const staffLimit = plan.maxStaff;
+  const staffLimit = effectiveMaxStaff(plan);
   const extraStaffCount = usageOverage(activeStaffCount, plan.includedStaff);
+  const subscribedSeats = subscribedSeatCount(
+    plan.includedStaff,
+    shop.reportedStaffUsage,
+  );
+  const addCapacity = seatCapacityForAdds({
+    plan,
+    reportedStaffUsage: shop.reportedStaffUsage,
+    subscriptionStatus: shop.subscriptionStatus,
+    activeStaffCount,
+  });
 
   return {
     shopId: shop.id,
@@ -127,8 +183,10 @@ export async function getShopBilling(shopDomain: string): Promise<ShopBilling> {
     shopifyShopGid: shop.shopifyShopGid,
     reportedStaffUsage: shop.reportedStaffUsage,
     usageCycleKey: shop.usageCycleKey,
+    subscribedSeats,
     activeStaffCount,
-    availableSeats: Math.max(staffLimit - activeStaffCount, 0),
+    availableSeats: Math.max(subscribedSeats - activeStaffCount, 0),
+    atSubscribedCap: activeStaffCount >= addCapacity,
     atCap: activeStaffCount >= staffLimit,
     nextPlan: nextPlan(plan.handle),
     pricingPlansUrl: shopifyPricingPlansUrl({
@@ -154,7 +212,7 @@ export async function syncSubscriptionFromPlanHandle(
     data: {
       planHandle: plan.handle,
       billingInterval: "monthly",
-      staffLimit: plan.maxStaff,
+      staffLimit: effectiveMaxStaff(plan),
       subscriptionStatus:
         plan.handle === FREE_PLAN_HANDLE
           ? "active"
@@ -197,7 +255,7 @@ export async function refreshSubscription(shopDomain: string) {
     data: {
       planHandle: plan.handle,
       billingInterval: "monthly",
-      staffLimit: plan.maxStaff,
+      staffLimit: effectiveMaxStaff(plan),
       subscriptionStatus: remote.status ?? (plan.handle === "free" ? "none" : "active"),
       trialEndsAt: remote.trialEndsAt ? new Date(remote.trialEndsAt) : null,
     },
@@ -208,9 +266,25 @@ export async function assertStaffSeatAvailable(shopId: string) {
   const shop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
   const activeStaffCount = await countActiveStaff(shopId);
   const plan = getPlan(shop.planHandle);
-  const staffLimit = plan.maxStaff;
+  const subscribedSeats = subscribedSeatCount(
+    plan.includedStaff,
+    shop.reportedStaffUsage,
+  );
+  const addCapacity = seatCapacityForAdds({
+    plan,
+    reportedStaffUsage: shop.reportedStaffUsage,
+    subscriptionStatus: shop.subscriptionStatus,
+    activeStaffCount,
+  });
+
+  const staffLimit = effectiveMaxStaff(plan);
+
   if (activeStaffCount >= staffLimit) {
     throw new StaffSeatLimitError(staffLimit, nextPlan(plan.handle)?.name ?? null);
+  }
+
+  if (activeStaffCount >= addCapacity) {
+    throw new SubscribedSeatLimitError(subscribedSeats);
   }
 }
 

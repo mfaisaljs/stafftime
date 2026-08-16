@@ -51,7 +51,7 @@ Start development (localhost mode — no external tunnel required):
 npm run dev
 ```
 
-This uses `shopify.app.local.toml`, which omits webhook subscriptions because Shopify cannot deliver webhooks to `localhost`. The unified `/webhooks` route still exists in code and is registered via `shopify.app.toml` on deploy.
+This uses `shopify.app.local.toml`. Plain `npm run dev` (localhost) cannot receive webhooks. Use `npm run dev:pos` with your ngrok tunnel so Shopify can POST to `/webhooks`. Webhooks are registered on install via `afterAuth` and via `shopify.app.toml` on deploy.
 
 Then press **`p`** in the CLI terminal to open the app in Shopify Admin.
 

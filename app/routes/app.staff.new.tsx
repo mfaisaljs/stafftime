@@ -14,8 +14,10 @@ import {
 } from "../services/admin.server";
 import {
   StaffSeatLimitError,
+  SubscribedSeatLimitError,
   getShopBilling,
   reconcileStaffUsage,
+  subscribedSeatsFullMessage,
 } from "../services/billing.server";
 import { createEmployee } from "../services/workforce.server";
 
@@ -28,6 +30,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return {
     locations,
     atCap: billing.atCap,
+    atSubscribedCap: billing.atSubscribedCap,
+    subscribedSeats: billing.subscribedSeats,
     staffLimit: billing.staffLimit,
     planName: billing.plan.name,
     nextPlanName: billing.nextPlan?.name ?? null,
@@ -46,6 +50,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const weeklyAvailability = formData.getAll("weeklyAvailability").join(",");
 
     const billing = await getShopBilling(session.shop);
+    if (billing.atSubscribedCap) {
+      return {
+        error: subscribedSeatsFullMessage(billing.subscribedSeats),
+        atSubscribedCap: true,
+      };
+    }
     if (billing.atCap) {
       return {
         error: billing.nextPlan
@@ -103,6 +113,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       error:
         error instanceof Error ? error.message : "Could not add employee",
       atCap: error instanceof StaffSeatLimitError,
+      atSubscribedCap: error instanceof SubscribedSeatLimitError,
     };
   }
 
@@ -110,10 +121,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function StaffPage() {
-  const { locations, atCap, staffLimit, planName, nextPlanName, nextPlanMax } =
+  const { locations, atCap, atSubscribedCap, subscribedSeats, staffLimit, planName, nextPlanName, nextPlanMax } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const showCapError = atCap || actionData?.atCap;
+  const showSubscribedCapError = atSubscribedCap || actionData?.atSubscribedCap;
   const [pin, setPin] = useState("");
   const [payrollType, setPayrollType] = useState("HOURLY");
   const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
@@ -155,6 +167,14 @@ export default function StaffPage() {
 
   return (
     <s-page heading="Add Shopify Staff" inlineSize="large">
+      {showSubscribedCapError && (
+        <s-banner heading="Subscribed seats full" tone="warning">
+          <s-text>{subscribedSeatsFullMessage(subscribedSeats)}</s-text>
+          <s-button variant="primary" href="/app/pricing">
+            View pricing
+          </s-button>
+        </s-banner>
+      )}
       {showCapError && (
         <s-banner heading="Staff seat limit reached" tone="warning">
           <s-text>
@@ -168,7 +188,7 @@ export default function StaffPage() {
           </s-button>
         </s-banner>
       )}
-      {actionData?.error && !actionData.atCap && (
+      {actionData?.error && !actionData.atCap && !actionData.atSubscribedCap && (
         <s-banner heading={actionData.error} tone="critical" />
       )}
       {actionData?.success && (

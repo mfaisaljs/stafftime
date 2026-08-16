@@ -29,7 +29,7 @@ export const PLANS: Plan[] = [
     monthlyPrice: 0,
     includedStaff: 2,
     extraStaffRate: 6,
-    maxStaff: 22,
+    maxStaff: 4,
     trialDays: 0,
     description: "Get started with two staff seats.",
     features: [
@@ -120,6 +120,14 @@ export function staffLimitFromHandle(handle: string | null | undefined): number 
   return getPlan(handle).maxStaff;
 }
 
+/** Billable seat capacity: included seats plus reported usage extras. */
+export function subscribedSeatCount(
+  includedStaff: number,
+  reportedStaffUsage: number,
+) {
+  return includedStaff + Math.max(0, reportedStaffUsage);
+}
+
 export function extraSeatMax(plan: Plan) {
   return Math.max(0, plan.maxStaff - plan.includedStaff);
 }
@@ -191,6 +199,26 @@ export function extrasTriggerNextPlan(plan: Plan, extraStaff: number) {
     return false;
   }
   return extraStaff * plan.extraStaffRate >= next.monthlyPrice;
+}
+
+/** Max extra seats before the next plan's monthly price is a better deal. */
+export function maxExtrasBeforeNextPlan(plan: Plan) {
+  const next = nextPlan(plan.handle);
+  if (!next || plan.extraStaffRate <= 0) {
+    return extraSeatMax(plan);
+  }
+
+  let extras = 0;
+  const ceiling = extraSeatMax(plan);
+  while (extras < ceiling && !extrasTriggerNextPlan(plan, extras + 1)) {
+    extras += 1;
+  }
+  return extras;
+}
+
+/** Staff cap for UI and enforcement — below the next plan when extras would cost more. */
+export function effectiveMaxStaff(plan: Plan) {
+  return plan.includedStaff + maxExtrasBeforeNextPlan(plan);
 }
 
 export function extraStaffCount(staffCount: number, includedStaff: number) {
