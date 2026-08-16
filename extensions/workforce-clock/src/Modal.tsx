@@ -17,15 +17,7 @@ import {
   type VerifyResponse,
   verifyPin,
 } from "./posApi";
-import {
-  captureClockInSelfie,
-  captureClockOutSelfie,
-  clearClockInPhoto,
-  loadClockInPhoto,
-  photoPayload,
-  saveClockInPhoto,
-  type CapturedPhoto,
-} from "./clockPhoto";
+import { captureClockSelfie } from "./camera";
 
 type Screen = "main" | "history";
 
@@ -44,7 +36,6 @@ function WorkforceModal() {
   const [now, setNow] = useState(Date.now());
   const clockOffsetRef = useRef(0);
   const pinPadOpenRef = useRef(false);
-  const [pendingClockOut, setPendingClockOut] = useState<CapturedPhoto | null>(null);
 
   const syncClockOffset = useCallback((status: EmployeeStatus, serverTime?: number) => {
     if (typeof serverTime === "number") {
@@ -74,15 +65,6 @@ function WorkforceModal() {
         serverTime: data.serverTime ?? data.status.serverTime,
       };
       syncClockOffset(next.status, next.serverTime);
-      if (
-        next.status.clockInPhotoFingerprint &&
-        next.employee.id
-      ) {
-        void saveClockInPhoto(
-          next.employee.id,
-          next.status.clockInPhotoFingerprint,
-        );
-      }
       setVerified(next);
       setQrCode("");
       setMode("pin");
@@ -214,105 +196,34 @@ function WorkforceModal() {
     }
   }
 
-  async function resolveClockInFingerprint(employeeId: string) {
-    const stored = await loadClockInPhoto(employeeId);
-    if (stored) return stored;
-    if (
-      verified?.employee.id === employeeId &&
-      verified.status.clockInPhotoFingerprint
-    ) {
-      return verified.status.clockInPhotoFingerprint;
-    }
-    return "";
-  }
-
-  async function submitClockAction(
-    action: string,
-    photoPayload: { photo?: string; photoType?: string } = {},
-  ) {
-    if (!verified) return;
-    const data = (await apiFetch(`/api/pos/${action}`, {
-      employeeId: verified.employee.id,
-      ...(action === "clock-out" && note.trim() ? { notes: note.trim() } : {}),
-      ...photoPayload,
-    })) as { status: EmployeeStatus; serverTime?: number };
-    applyVerified({
-      ...verified,
-      status: data.status,
-      serverTime: data.serverTime,
-    });
-  }
-
   async function performAction(action: string) {
     if (!verified) return;
     setLoading(true);
     try {
-      if (action === "clock-out" && verified.settings?.requirePhoto) {
-        const clockInFingerprint = await resolveClockInFingerprint(
-          verified.employee.id,
-        );
-        const selfie = await captureClockOutSelfie(clockInFingerprint);
-        setPendingClockOut(selfie);
-        return;
-      }
-
       let photoPayload: { photo?: string; photoType?: string } = {};
-      if (action === "clock-in" && verified.settings?.requirePhoto) {
-        const selfie = await captureClockInSelfie();
-        await saveClockInPhoto(verified.employee.id, selfie.photo);
-        photoPayload = { photo: selfie.photo, photoType: selfie.photoType };
+      if (
+        (action === "clock-in" || action === "clock-out") &&
+        verified.settings?.requirePhoto
+      ) {
+        const selfie = await captureClockSelfie();
+        photoPayload = {
+          photo: selfie.photo,
+          photoType: selfie.photoType,
+        };
       }
 
-      await submitClockAction(action, photoPayload);
-
-      if (action === "clock-out") {
-        await clearClockInPhoto(verified.employee.id);
-        setNote("");
-      }
-      showToast(successMessageForAction(action));
-    } catch (err) {
-      showToast(messageFromError(err, "Action failed"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function confirmClockOut() {
-    if (!verified || !pendingClockOut) return;
-    setLoading(true);
-    try {
-      const clockInFingerprint = await resolveClockInFingerprint(
-        verified.employee.id,
-      );
-      if (photoPayload(pendingClockOut.photo) === clockInFingerprint) {
-        throw new Error(
-          "Clock-out selfie matches clock-in. Retake the photo.",
-        );
-      }
-      await submitClockAction("clock-out", {
-        photo: pendingClockOut.photo,
-        photoType: pendingClockOut.photoType,
+      const data = (await apiFetch(`/api/pos/${action}`, {
+        employeeId: verified.employee.id,
+        ...(action === "clock-out" && note.trim() ? { notes: note.trim() } : {}),
+        ...photoPayload,
+      })) as { status: EmployeeStatus; serverTime?: number };
+      applyVerified({
+        ...verified,
+        status: data.status,
+        serverTime: data.serverTime,
       });
-      await clearClockInPhoto(verified.employee.id);
-      setPendingClockOut(null);
-      setNote("");
-      showToast(successMessageForAction("clock-out"));
-    } catch (err) {
-      showToast(messageFromError(err, "Action failed"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function retakeClockOut() {
-    if (!verified) return;
-    setLoading(true);
-    try {
-      const clockInFingerprint = await resolveClockInFingerprint(
-        verified.employee.id,
-      );
-      const selfie = await captureClockOutSelfie(clockInFingerprint);
-      setPendingClockOut(selfie);
+      if (action === "clock-out") setNote("");
+      showToast(successMessageForAction(action));
     } catch (err) {
       showToast(messageFromError(err, "Action failed"));
     } finally {
@@ -328,7 +239,6 @@ function WorkforceModal() {
     setScreen("main");
     setNote("");
     setLoading(false);
-    setPendingClockOut(null);
     setTimeout(() => showNativePinPad(), 0);
   }
 
@@ -401,18 +311,6 @@ function WorkforceModal() {
       <HistoryScreen
         history={status.history ?? []}
         onBack={() => setScreen("main")}
-      />
-    );
-  }
-
-  if (pendingClockOut) {
-    return (
-      <ClockOutPhotoScreen
-        previewSrc={pendingClockOut.previewSrc}
-        loading={loading}
-        onRetake={() => void retakeClockOut()}
-        onConfirm={() => void confirmClockOut()}
-        onCancel={() => setPendingClockOut(null)}
       />
     );
   }
@@ -822,48 +720,4 @@ function successMessageForAction(action: string): string {
     default:
       return "Done";
   }
-}
-
-function ClockOutPhotoScreen(props: {
-  previewSrc: string;
-  loading: boolean;
-  onRetake: () => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <s-page heading="Clock out selfie">
-      <s-scroll-box>
-        <s-box padding="large">
-          <s-stack direction="block" gap="large">
-            <s-text>
-              Confirm this is a new selfie for clock-out. It must be different
-              from your clock-in photo.
-            </s-text>
-            <s-image src={props.previewSrc} />
-            <s-stack direction="inline" gap="small" alignItems="center">
-              <s-button
-                variant="secondary"
-                disabled={props.loading}
-                onClick={props.onRetake}
-              >
-                Retake
-              </s-button>
-              <s-button
-                variant="primary"
-                loading={props.loading}
-                disabled={props.loading}
-                onClick={props.onConfirm}
-              >
-                Use photo & clock out
-              </s-button>
-            </s-stack>
-            <s-button variant="secondary" disabled={props.loading} onClick={props.onCancel}>
-              Cancel
-            </s-button>
-          </s-stack>
-        </s-box>
-      </s-scroll-box>
-    </s-page>
-  );
 }

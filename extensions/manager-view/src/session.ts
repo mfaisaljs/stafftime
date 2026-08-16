@@ -136,7 +136,6 @@ export type EmployeeClockStatus = {
     badge: string;
     tone: "success" | "critical" | "warning" | "neutral";
   }>;
-  clockInPhotoFingerprint?: string;
 };
 
 export type ManagerStaffDetail = {

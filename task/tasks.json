@@ -124,9 +124,9 @@
       "status": "in_progress",
       "priority": "medium",
       "phase": "enterprise",
-      "progressPercent": 67,
+      "progressPercent": 50,
       "dependencies": ["T004"],
-      "lastUpdated": "2026-08-16T23:15:00.000Z"
+      "lastUpdated": "2026-08-16T03:00:00.000Z"
     },
     {
       "id": "T013",

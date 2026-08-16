@@ -1,22 +1,13 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { shopFromDest } from "../utils/http.server";
-
 /** Max stored data-URL length (~300KB binary after base64 overhead). */
 const MAX_PHOTO_CHARS = 450_000;
-const PHOTO_TTL_MS = 2 * 60 * 60 * 1000;
-
-export type ClockPhotoKind = "in" | "out";
 
 export function normalizeClockPhoto(
   photo?: string | null,
   mimeType?: string | null,
 ): string | undefined {
   if (photo == null) return undefined;
-  let trimmed = String(photo).trim();
+  const trimmed = String(photo).trim();
   if (!trimmed) return undefined;
-  while (trimmed.startsWith("data:image/") && trimmed.includes(";base64,data:image/")) {
-    trimmed = trimmed.slice(trimmed.indexOf(";base64,") + 8);
-  }
   if (trimmed.length > MAX_PHOTO_CHARS) {
     throw new Error("Photo is too large. Please retake the selfie.");
   }
@@ -29,9 +20,7 @@ export function normalizeClockPhoto(
     typeof mimeType === "string" && mimeType.startsWith("image/")
       ? mimeType
       : "image/jpeg";
-  const payload = clockPhotoPayload(trimmed);
-  if (!payload) return undefined;
-  return `data:${mime};base64,${payload}`;
+  return `data:${mime};base64,${trimmed}`;
 }
 
 export function requireClockPhoto(
@@ -42,144 +31,5 @@ export function requireClockPhoto(
   if (!requirePhoto) return;
   if (!photoUrl) {
     throw new Error(`A selfie photo is required before ${actionLabel}.`);
-  }
-}
-
-export function clockPhotoPath(input: {
-  shopDomain: string;
-  employeeId: string;
-  timeEntryId: string;
-  kind: ClockPhotoKind;
-  fingerprint?: string;
-  now?: number;
-}) {
-  const expiresAt = (input.now ?? Date.now()) + PHOTO_TTL_MS;
-  const sig = signClockPhotoAccess({ ...input, expiresAt });
-  const query = new URLSearchParams({
-    exp: String(expiresAt),
-    sig,
-  });
-  if (input.fingerprint) query.set("v", input.fingerprint);
-  return `/api/clock-photo/${input.timeEntryId}/${input.kind}?${query}`;
-}
-
-export function clockPhotoFingerprint(photoUrl: string) {
-  return createHash("sha256").update(photoUrl).digest("hex").slice(0, 12);
-}
-
-export function clockPhotoPayload(value: string | null | undefined) {
-  if (!value) return "";
-  let trimmed = value.trim();
-  while (trimmed.startsWith("data:image/") && trimmed.includes(";base64,data:image/")) {
-    trimmed = trimmed.slice(trimmed.indexOf(";base64,") + 8);
-  }
-  const marker = ";base64,";
-  const index = trimmed.indexOf(marker);
-  return (index >= 0 ? trimmed.slice(index + marker.length) : trimmed).replace(
-    /\s/g,
-    "",
-  );
-}
-
-export function clockPhotosMatch(
-  left?: string | null,
-  right?: string | null,
-) {
-  const a = clockPhotoPayload(left);
-  const b = clockPhotoPayload(right);
-  if (!a || !b) return false;
-  return a === b;
-}
-
-export function verifyClockPhotoAccess(input: {
-  shopDomain: string;
-  employeeId: string;
-  timeEntryId: string;
-  kind: string;
-  expiresAt: number;
-  sig: string;
-  now?: number;
-}): input is {
-  shopDomain: string;
-  employeeId: string;
-  timeEntryId: string;
-  kind: ClockPhotoKind;
-  expiresAt: number;
-  sig: string;
-  now?: number;
-} {
-  if (input.kind !== "in" && input.kind !== "out") return false;
-  if (!Number.isFinite(input.expiresAt)) return false;
-  if (input.expiresAt < (input.now ?? Date.now())) return false;
-  const expected = signClockPhotoAccess({
-    shopDomain: input.shopDomain,
-    employeeId: input.employeeId,
-    timeEntryId: input.timeEntryId,
-    kind: input.kind,
-    expiresAt: input.expiresAt,
-  });
-  return safeEqualHex(expected, input.sig);
-}
-
-export function decodeClockPhoto(photoUrl: string | null | undefined): {
-  mime: string;
-  body: Buffer;
-} | null {
-  if (!photoUrl) return null;
-  let value = photoUrl.trim();
-  if (!value) return null;
-
-  // POS may send a data URL that was wrapped twice.
-  if (value.startsWith("data:image/") && value.includes(";base64,data:image/")) {
-    value = value.slice(value.indexOf(";base64,") + 8);
-  }
-
-  const dataUrl = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/i.exec(value);
-  if (dataUrl) {
-    const body = Buffer.from(dataUrl[2].replace(/\s/g, ""), "base64");
-    if (!body.length) return null;
-    return { mime: dataUrl[1].toLowerCase(), body };
-  }
-
-  if (/^[A-Za-z0-9+/=\s]+$/.test(value) && value.replace(/\s/g, "").length > 32) {
-    const body = Buffer.from(value.replace(/\s/g, ""), "base64");
-    if (!body.length) return null;
-    return { mime: "image/jpeg", body };
-  }
-
-  return null;
-}
-
-function signClockPhotoAccess(input: {
-  shopDomain: string;
-  employeeId: string;
-  timeEntryId: string;
-  kind: ClockPhotoKind;
-  expiresAt: number;
-}) {
-  const payload = [
-    shopFromDest(input.shopDomain).toLowerCase(),
-    input.employeeId,
-    input.timeEntryId,
-    input.kind,
-    String(input.expiresAt),
-  ].join(".");
-  return createHmac("sha256", photoSigningSecret())
-    .update(payload)
-    .digest("hex");
-}
-
-function photoSigningSecret() {
-  return process.env.SHOPIFY_API_SECRET || "clock-photo-dev-secret";
-}
-
-function safeEqualHex(left: string, right: string) {
-  try {
-    const a = Buffer.from(left, "hex");
-    const b = Buffer.from(right, "hex");
-    if (a.length === 0 || a.length !== b.length) return false;
-    return timingSafeEqual(a, b);
-  } catch {
-    return false;
   }
 }
