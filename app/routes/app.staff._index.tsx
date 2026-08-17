@@ -345,44 +345,46 @@ export default function StaffManagementPage() {
           </s-banner>
         )}
 
-        <div className="staff-type-tabs">
-          <button
-            className={`tab${staffType === "shopify" ? " active" : ""}`}
-            type="button"
-            onClick={() => setStaffType("shopify")}
-          >
-            Shopify Staff ({shopifyStaffCount})
-          </button>
-          <button
-            className={`tab${staffType === "non-shopify" ? " active" : ""}`}
-            type="button"
-            onClick={() => setStaffType("non-shopify")}
-          >
-            Non-Shopify Staff ({nonShopifyStaffCount})
-          </button>
-        </div>
-
-        <div className="staff-actions">
-          {atSubscribedCap && !atCap ? (
-            <s-button variant="primary" href={appPath("/app/pricing")}>
-              Subscribe for more seats
-            </s-button>
-          ) : atCap ? (
-            <s-button
-              variant="primary"
-              commandFor={PRICING_MODAL_ID}
-              command="--show"
+        <div className="staff-toolbar">
+          <div className="staff-type-tabs">
+            <button
+              className={`tab${staffType === "shopify" ? " active" : ""}`}
+              type="button"
+              onClick={() => setStaffType("shopify")}
             >
-              {nextPlan ? `Upgrade to ${nextPlan.name}` : "Staff limit reached"}
+              Shopify Staff ({shopifyStaffCount})
+            </button>
+            <button
+              className={`tab${staffType === "non-shopify" ? " active" : ""}`}
+              type="button"
+              onClick={() => setStaffType("non-shopify")}
+            >
+              Non-Shopify Staff ({nonShopifyStaffCount})
+            </button>
+          </div>
+
+          <div className="staff-actions">
+            {atSubscribedCap && !atCap ? (
+              <s-button variant="primary" href={appPath("/app/pricing")}>
+                Subscribe for more seats
+              </s-button>
+            ) : atCap ? (
+              <s-button
+                variant="primary"
+                commandFor={PRICING_MODAL_ID}
+                command="--show"
+              >
+                {nextPlan ? `Upgrade to ${nextPlan.name}` : "Staff limit reached"}
+              </s-button>
+            ) : (
+              <s-button variant="primary" href={newStaffHref}>
+                {addStaffLabel}
+              </s-button>
+            )}
+            <s-button variant="secondary" disabled>
+              Bulk Import
             </s-button>
-          ) : (
-            <s-button variant="primary" href={newStaffHref}>
-              {addStaffLabel}
-            </s-button>
-          )}
-          <s-button variant="secondary" disabled>
-            Bulk Import
-          </s-button>
+          </div>
         </div>
 
         <s-tooltip id="inactive-staff-tooltip">
@@ -950,6 +952,14 @@ const STAFF_MANAGEMENT_STYLES = `
     top: 12px;
   }
 
+  .staff-toolbar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
   .staff-type-tabs,
   .staff-actions,
   .table-toolbar,
@@ -962,7 +972,8 @@ const STAFF_MANAGEMENT_STYLES = `
   }
 
   .staff-type-tabs {
-    margin-top: -8px;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .tab,
@@ -981,7 +992,9 @@ const STAFF_MANAGEMENT_STYLES = `
   }
 
   .staff-actions {
+    flex: 0 0 auto;
     justify-content: flex-end;
+    margin-left: auto;
   }
 
   .bulk-actions {
@@ -1215,7 +1228,7 @@ const STAFF_MANAGEMENT_STYLES = `
     }
 
     .plan-action,
-    .staff-actions,
+    .staff-toolbar,
     .table-toolbar,
     .status-tabs {
       align-items: flex-start;
