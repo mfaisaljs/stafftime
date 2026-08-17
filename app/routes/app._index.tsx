@@ -76,12 +76,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const shopHandle = session.shop.replace(/\.myshopify\.com$/i, "");
   const posUiExtensionsUrl = `https://admin.shopify.com/store/${shopHandle}/apps/point-of-sale-channel/settings/pos-ui-extensions`;
+  const posEditorUrl = `https://admin.shopify.com/store/${shopHandle}/apps/point-of-sale-channel/editor?currentEditor=pointOfSale&mode=sections`;
 
   return {
     dateRange,
     recentActivity,
     portalUrl: publicPortalUrl(session.shop),
     posUiExtensionsUrl,
+    posEditorUrl,
     ...board,
   };
 };
@@ -96,6 +98,7 @@ export default function DashboardPage() {
     recentActivity,
     portalUrl,
     posUiExtensionsUrl,
+    posEditorUrl,
   } = useLoaderData<typeof loader>();
 
   return (
@@ -104,6 +107,7 @@ export default function DashboardPage() {
         <SetupGuide
           portalUrl={portalUrl}
           posUiExtensionsUrl={posUiExtensionsUrl}
+          posEditorUrl={posEditorUrl}
         />
 
         <AttendanceBoard
@@ -136,9 +140,11 @@ export default function DashboardPage() {
 function SetupGuide({
   portalUrl,
   posUiExtensionsUrl,
+  posEditorUrl,
 }: {
   portalUrl: string;
   posUiExtensionsUrl: string;
+  posEditorUrl: string;
 }) {
   const appPath = useAppPath();
   const storageKey = "stafftime.setupGuide.v1";
@@ -149,6 +155,7 @@ function SetupGuide({
     portal: false,
     enroll: false,
     pos: false,
+    titles: false,
   });
 
   useEffect(() => {
@@ -166,6 +173,7 @@ function SetupGuide({
           portal: Boolean(parsed.done?.portal),
           enroll: Boolean(parsed.done?.enroll),
           pos: Boolean(parsed.done?.pos),
+          titles: Boolean(parsed.done?.titles),
         });
       }
     } catch {
@@ -202,8 +210,18 @@ function SetupGuide({
       return {
         ...step,
         actions: step.actions.map((action) =>
-          action.label === "Add App"
+          action.label === "Add POS Block"
             ? { ...action, href: posUiExtensionsUrl, external: true }
+            : action,
+        ),
+      };
+    }
+    if (step.id === "titles") {
+      return {
+        ...step,
+        actions: step.actions.map((action) =>
+          action.label === "Add Titles"
+            ? { ...action, href: posEditorUrl, external: true }
             : action,
         ),
       };
@@ -340,7 +358,7 @@ function SetupGuide({
   );
 }
 
-type SetupStepId = "portal" | "enroll" | "pos";
+type SetupStepId = "portal" | "enroll" | "pos" | "titles";
 
 const SETUP_STEPS: Array<{
   id: SetupStepId;
@@ -371,7 +389,19 @@ const SETUP_STEPS: Array<{
     id: "pos",
     title: "Add app to Shopify POS",
     description: "Add block to your POS system.",
-    actions: [{ label: "Add App", href: "/app/settings" }],
+    actions: [{ label: "Add POS Block", href: "/app/settings", external: true }],
+  },
+  {
+    id: "titles",
+    title: "Add Titles",
+    description: "Add StaffTime tiles to your POS smart grid.",
+    actions: [
+      {
+        label: "Add Titles",
+        href: "/app/settings",
+        external: true,
+      },
+    ],
   },
 ];
 

@@ -2702,6 +2702,23 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-16T23:58:00.000Z"
+    },
+    {
+      "id": "ST144",
+      "taskId": "T004",
+      "title": "Setup guide Add Titles POS editor step",
+      "description": "Add dashboard setup step for POS smart grid tiles; rename Add App to Add POS Block.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST142"],
+      "acceptanceCriteria": [
+        "Setup guide includes Add Titles step linking to POS editor sections mode",
+        "Previous POS step button reads Add POS Block and opens POS UI extensions settings"
+      ],
+      "files": [
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-17T04:00:00.000Z"
     }
   ]
 }
