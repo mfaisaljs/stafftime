@@ -5,7 +5,7 @@ import type {
 } from "react-router";
 import type { ForwardedRef, InputHTMLAttributes, ReactNode } from "react";
 import { forwardRef, useRef, useState } from "react";
-import { useFetcher, useLoaderData } from "react-router";
+import { redirect, useFetcher, useLoaderData } from "react-router";
 import { AppPage } from "../components/AppPage";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -120,7 +120,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     };
   }
 
-  return { success: "Staff member added" };
+  return redirect("/app/staff?created=1");
 };
 
 export default function StaffPage() {

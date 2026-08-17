@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Pencil, Search, SlidersHorizontal, Star, Trash2 } from "lucide-react";
 import { AppLink } from "../components/AppLink";
 import { useAppPath } from "../hooks/useAppPath";
+import { useQueryParamToast } from "../hooks/useQueryParamToast";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getEmployees } from "../services/admin.server";
@@ -66,6 +67,7 @@ export default function StaffManagementPage() {
     atSubscribedCap,
     nextPlan,
   } = useLoaderData<typeof loader>();
+  useQueryParamToast({ created: "Staff member added" });
   const [searchParams] = useSearchParams();
   const appPath = useAppPath();
   const fetcher = useFetcher<BulkActionResult>();

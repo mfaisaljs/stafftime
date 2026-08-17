@@ -7,7 +7,6 @@ import { AppLink } from "../components/AppLink";
 import { mergeAppSearchParams } from "../utils/app-path";
 import {
   AlertCircle,
-  ArrowLeft,
   BadgePercent,
   BarChart2,
   Briefcase,
@@ -395,9 +394,6 @@ export default function StaffDetailPage() {
       <div className="staff-detail">
         <div className="detail-header">
           <div className="detail-title-row">
-            <AppLink className="back-link" to="/app/staff" aria-label="Back to staff">
-              <ArrowLeft aria-hidden="true" size={18} />
-            </AppLink>
             <h1 className="detail-name">{fullName}</h1>
             {employee.status === "ACTIVE" ? (
               <span className="status-badge active">Active</span>

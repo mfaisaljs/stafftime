@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-08-17T09:05:00.000Z",
+  "lastUpdated": "2026-08-17T09:15:00.000Z",
   "notes": [
+    "ST146 complete: add staff redirects to staff list; AppPage shows back link on nested routes.",
     "ST145 complete: setup guide stays on dashboard until all four steps are marked done; dismiss only when complete.",
     "ST144 complete: setup guide adds Add Titles POS editor step; Add App renamed to Add POS Block.",
     "ST143 complete: dashboard Book Consultation links to Calendly in a new tab.",

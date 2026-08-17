@@ -2737,6 +2737,29 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-17T09:05:00.000Z"
+    },
+    {
+      "id": "ST146",
+      "taskId": "T017",
+      "title": "Staff add redirect and global back navigation",
+      "description": "After adding staff redirect to staff list with toast; show back button on all nested admin routes via AppPage.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST035"],
+      "acceptanceCriteria": [
+        "Saving new staff redirects to /app/staff with success toast",
+        "Nested routes show a back link to their parent list or detail page",
+        "Top-level nav routes do not show a back link"
+      ],
+      "files": [
+        "app/routes/app.staff.new.tsx",
+        "app/routes/app.staff._index.tsx",
+        "app/components/AppPage.tsx",
+        "app/components/AppBackLink.tsx",
+        "app/utils/app-back-path.ts",
+        "app/routes/app.staff.$employeeId._index.tsx"
+      ],
+      "lastUpdated": "2026-08-17T09:15:00.000Z"
     }
   ]
 }
