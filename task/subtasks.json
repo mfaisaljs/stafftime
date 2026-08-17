@@ -2719,6 +2719,24 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-17T04:00:00.000Z"
+    },
+    {
+      "id": "ST145",
+      "taskId": "T004",
+      "title": "Setup guide stays visible until all steps complete",
+      "description": "Keep the dashboard setup guide visible while any step is incomplete; only allow dismiss after all steps are marked done.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST144"],
+      "acceptanceCriteria": [
+        "Setup guide renders on dashboard when any step is not marked done",
+        "Dismiss control only appears when all four steps are complete",
+        "Previously dismissed incomplete guides reappear on next visit"
+      ],
+      "files": [
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-17T09:05:00.000Z"
     }
   ]
 }

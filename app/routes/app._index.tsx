@@ -157,6 +157,7 @@ function SetupGuide({
     pos: false,
     titles: false,
   });
+  const allDone = SETUP_STEP_IDS.every((id) => done[id]);
 
   useEffect(() => {
     try {
@@ -167,14 +168,16 @@ function SetupGuide({
           dismissed?: boolean;
           done?: Partial<Record<SetupStepId, boolean>>;
         };
-        setCollapsed(Boolean(parsed.collapsed));
-        setDismissed(Boolean(parsed.dismissed));
-        setDone({
+        const loadedDone = {
           portal: Boolean(parsed.done?.portal),
           enroll: Boolean(parsed.done?.enroll),
           pos: Boolean(parsed.done?.pos),
           titles: Boolean(parsed.done?.titles),
-        });
+        };
+        const loadedAllDone = SETUP_STEP_IDS.every((id) => loadedDone[id]);
+        setCollapsed(Boolean(parsed.collapsed));
+        setDismissed(loadedAllDone && Boolean(parsed.dismissed));
+        setDone(loadedDone);
       }
     } catch {
       // ignore storage errors
@@ -188,12 +191,22 @@ function SetupGuide({
     try {
       window.localStorage.setItem(
         storageKey,
-        JSON.stringify({ collapsed, dismissed, done }),
+        JSON.stringify({
+          collapsed,
+          dismissed: allDone ? dismissed : false,
+          done,
+        }),
       );
     } catch {
       // ignore storage errors
     }
-  }, [collapsed, dismissed, done, ready]);
+  }, [allDone, collapsed, dismissed, done, ready]);
+
+  useEffect(() => {
+    if (!allDone && dismissed) {
+      setDismissed(false);
+    }
+  }, [allDone, dismissed]);
 
   const steps = SETUP_STEPS.map((step) => {
     if (step.id === "portal") {
@@ -231,9 +244,8 @@ function SetupGuide({
   const completedCount = steps.filter((step) => done[step.id]).length;
   const total = steps.length;
   const percent = Math.round((completedCount / total) * 100);
-  const allDone = completedCount === total;
 
-  if (dismissed) return null;
+  if (allDone && dismissed) return null;
 
   return (
     <section className="setup-guide">
@@ -264,14 +276,16 @@ function SetupGuide({
           >
             {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
-          <button
-            type="button"
-            className="setup-icon-btn"
-            aria-label="Dismiss setup guide"
-            onClick={() => setDismissed(true)}
-          >
-            <X size={16} />
-          </button>
+          {allDone ? (
+            <button
+              type="button"
+              className="setup-icon-btn"
+              aria-label="Dismiss setup guide"
+              onClick={() => setDismissed(true)}
+            >
+              <X size={16} />
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -359,6 +373,8 @@ function SetupGuide({
 }
 
 type SetupStepId = "portal" | "enroll" | "pos" | "titles";
+
+const SETUP_STEP_IDS: SetupStepId[] = ["portal", "enroll", "pos", "titles"];
 
 const SETUP_STEPS: Array<{
   id: SetupStepId;
