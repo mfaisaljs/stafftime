@@ -51,6 +51,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 type BulkActionResult = { success?: string; error?: string };
 
 type StatusFilter = "all" | "active" | "inactive" | "missing_payment" | "archived";
+type StaffType = "shopify" | "non-shopify";
 
 export default function StaffManagementPage() {
   const {
@@ -68,7 +69,9 @@ export default function StaffManagementPage() {
     nextPlan,
   } = useLoaderData<typeof loader>();
   useQueryParamToast({ created: "Staff member added" });
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const staffType: StaffType =
+    searchParams.get("staffType") === "non-shopify" ? "non-shopify" : "shopify";
   const appPath = useAppPath();
   const fetcher = useFetcher<BulkActionResult>();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -83,7 +86,9 @@ export default function StaffManagementPage() {
   const isBulkSubmitting = fetcher.state !== "idle";
 
   const filteredEmployees = useMemo(() => {
-    let list = employees;
+    let list = employees.filter((employee) =>
+      staffType === "shopify" ? employee.isShopifyStaff : !employee.isShopifyStaff,
+    );
 
     switch (statusFilter) {
       case "active":
@@ -123,7 +128,7 @@ export default function StaffManagementPage() {
         payment.includes(query)
       );
     });
-  }, [employees, statusFilter, searchQuery]);
+  }, [employees, staffType, statusFilter, searchQuery]);
 
   const allVisibleSelected =
     filteredEmployees.length > 0 &&
@@ -216,22 +221,60 @@ export default function StaffManagementPage() {
   };
 
   const totalStaff = employees.filter((employee) => employee.status !== "ARCHIVED").length;
+  const shopifyStaffCount = employees.filter(
+    (employee) => employee.status !== "ARCHIVED" && employee.isShopifyStaff,
+  ).length;
+  const nonShopifyStaffCount = employees.filter(
+    (employee) => employee.status !== "ARCHIVED" && !employee.isShopifyStaff,
+  ).length;
+  const visibleStaffCount =
+    staffType === "shopify" ? shopifyStaffCount : nonShopifyStaffCount;
   const availableStaff = Math.max(subscribedSeats - totalStaff, 0);
   const usagePercent =
     subscribedSeats > 0
       ? Math.min(Math.round((totalStaff / subscribedSeats) * 100), 100)
       : 0;
-  const activeCount = employees.filter((employee) => employee.status === "ACTIVE").length;
-  const inactiveCount = employees.filter(
+  const staffInTab = useMemo(
+    () =>
+      employees.filter((employee) =>
+        staffType === "shopify" ? employee.isShopifyStaff : !employee.isShopifyStaff,
+      ),
+    [employees, staffType],
+  );
+  const activeCount = staffInTab.filter((employee) => employee.status === "ACTIVE").length;
+  const inactiveCount = staffInTab.filter(
     (employee) => employee.status === "INACTIVE",
   ).length;
-  const archivedCount = employees.filter(
+  const archivedCount = staffInTab.filter(
     (employee) => employee.status === "ARCHIVED",
   ).length;
-  const missingPaymentCount = employees.filter(
+  const missingPaymentCount = staffInTab.filter(
     (employee) => employee.status !== "ARCHIVED" && hasMissingPaymentInfo(employee),
   ).length;
   const selectedCount = selectedIds.size;
+
+  const setStaffType = (next: StaffType) => {
+    setSearchParams(
+      (previous) => {
+        const params = new URLSearchParams(previous);
+        if (next === "shopify") {
+          params.delete("staffType");
+        } else {
+          params.set("staffType", "non-shopify");
+        }
+        return params;
+      },
+      { replace: true },
+    );
+    setSelectedIds(new Set());
+  };
+
+  const newStaffHref =
+    staffType === "non-shopify"
+      ? appPath("/app/staff/new?staffType=non-shopify")
+      : appPath("/app/staff/new");
+  const addStaffLabel =
+    staffType === "non-shopify" ? "Add Non-Shopify Staff" : "Add Shopify Staff";
 
   return (
     <AppPage heading="Staff Management" inlineSize="large">
@@ -303,11 +346,19 @@ export default function StaffManagementPage() {
         )}
 
         <div className="staff-type-tabs">
-          <button className="tab active" type="button">
-            Shopify Staff ({totalStaff})
+          <button
+            className={`tab${staffType === "shopify" ? " active" : ""}`}
+            type="button"
+            onClick={() => setStaffType("shopify")}
+          >
+            Shopify Staff ({shopifyStaffCount})
           </button>
-          <button className="tab" type="button">
-            Non-Shopify Staff (0)
+          <button
+            className={`tab${staffType === "non-shopify" ? " active" : ""}`}
+            type="button"
+            onClick={() => setStaffType("non-shopify")}
+          >
+            Non-Shopify Staff ({nonShopifyStaffCount})
           </button>
         </div>
 
@@ -325,8 +376,8 @@ export default function StaffManagementPage() {
               {nextPlan ? `Upgrade to ${nextPlan.name}` : "Staff limit reached"}
             </s-button>
           ) : (
-            <s-button variant="primary" href={appPath("/app/staff/new")}>
-              Add Shopify Staff
+            <s-button variant="primary" href={newStaffHref}>
+              {addStaffLabel}
             </s-button>
           )}
           <s-button variant="secondary" disabled>
@@ -641,8 +692,10 @@ export default function StaffManagementPage() {
                   <tr>
                     <td colSpan={8}>
                       <div className="empty-state">
-                        {employees.length === 0
-                          ? "No staff yet. Add your first Shopify staff member."
+                        {visibleStaffCount === 0
+                          ? staffType === "non-shopify"
+                            ? "No non-Shopify staff yet. Add your first non-Shopify staff member."
+                            : "No staff yet. Add your first Shopify staff member."
                           : statusFilter === "archived"
                             ? "No archived staff."
                             : "No staff match your search or filters."}

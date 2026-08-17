@@ -26,11 +26,14 @@ import { useAppPath } from "../hooks/useAppPath";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const isShopifyStaff =
+    new URL(request.url).searchParams.get("staffType") !== "non-shopify";
   const [locations, billing] = await Promise.all([
     getEmployeeLocations(session),
     getShopBilling(session.shop),
   ]);
   return {
+    isShopifyStaff,
     locations,
     atCap: billing.atCap,
     atSubscribedCap: billing.atSubscribedCap,
@@ -51,6 +54,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const position = String(formData.get("position") ?? "Staff");
     const locationAccess = String(formData.get("locationAccess") ?? "ALL");
     const weeklyAvailability = formData.getAll("weeklyAvailability").join(",");
+    const isShopifyStaff = formData.get("isShopifyStaff") !== "false";
 
     const billing = await getShopBilling(session.shop);
     if (billing.atSubscribedCap) {
@@ -109,6 +113,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         String(formData.get("bankAccountType") ?? "") === "INTERNATIONAL"
           ? String(formData.get("iban") ?? "") || undefined
           : undefined,
+      isShopifyStaff,
     });
     await reconcileStaffUsage(session.shop);
   } catch (error) {
@@ -120,12 +125,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     };
   }
 
-  return redirect("/app/staff?created=1");
+  return redirect(
+    isShopifyStaff
+      ? "/app/staff?created=1"
+      : "/app/staff?created=1&staffType=non-shopify",
+  );
 };
 
 export default function StaffPage() {
-  const { locations, atCap, atSubscribedCap, subscribedSeats, staffLimit, planName, nextPlanName, nextPlanMax } =
-    useLoaderData<typeof loader>();
+  const {
+    isShopifyStaff,
+    locations,
+    atCap,
+    atSubscribedCap,
+    subscribedSeats,
+    staffLimit,
+    planName,
+    nextPlanName,
+    nextPlanMax,
+  } = useLoaderData<typeof loader>();
+  const staffLabel = isShopifyStaff ? "Shopify Staff" : "Non-Shopify Staff";
   const fetcher = useFetcher<typeof action>();
   const appPath = useAppPath();
   useSaveBarToast(
@@ -174,7 +193,7 @@ export default function StaffPage() {
   };
 
   return (
-    <AppPage heading="Add Shopify Staff" inlineSize="large">
+    <AppPage heading={`Add ${staffLabel}`} inlineSize="large">
       {showSubscribedCapError && (
         <s-banner heading="Subscribed seats full" tone="warning">
           <s-text>{subscribedSeatsFullMessage(subscribedSeats)}</s-text>
@@ -202,7 +221,12 @@ export default function StaffPage() {
         data-discard-confirmation
         onReset={handleDiscard}
       >
-        <s-section heading="Add Shopify Staff">
+        <input
+          type="hidden"
+          name="isShopifyStaff"
+          value={isShopifyStaff ? "true" : "false"}
+        />
+        <s-section heading={`Add ${staffLabel}`}>
           <s-stack direction="block" gap="large">
             <FormSection
               title="Basic Information"

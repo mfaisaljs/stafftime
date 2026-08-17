@@ -147,6 +147,7 @@ model Employee {
   qrCode             String         @unique
   role               EmployeeRole   @default(EMPLOYEE)
   status             EmployeeStatus @default(ACTIVE)
+  isShopifyStaff     Boolean        @default(true)
   firstLoginAt       DateTime?
   hourlyRate         Float          @default(0)
   position           String?

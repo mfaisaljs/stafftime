@@ -2760,6 +2760,29 @@
         "app/routes/app.staff.$employeeId._index.tsx"
       ],
       "lastUpdated": "2026-08-17T09:15:00.000Z"
+    },
+    {
+      "id": "ST147",
+      "taskId": "T017",
+      "title": "Shopify vs Non-Shopify staff tabs and flag",
+      "description": "Add isShopifyStaff employee flag; staff list tabs filter by type; add staff form sets flag from tab.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST033"],
+      "acceptanceCriteria": [
+        "Employee model stores isShopifyStaff boolean defaulting true",
+        "Staff list Shopify/Non-Shopify tabs filter the table and show correct counts",
+        "Add staff from Non-Shopify tab creates staff with isShopifyStaff false and returns to that tab"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "prisma/migrations/20260817041500_employee_is_shopify_staff/migration.sql",
+        "app/services/workforce.server.ts",
+        "app/routes/app.staff._index.tsx",
+        "app/routes/app.staff.new.tsx",
+        "app/routes/app.staff.$employeeId.edit.tsx"
+      ],
+      "lastUpdated": "2026-08-17T09:20:00.000Z"
     }
   ]
 }

@@ -102,6 +102,7 @@ export async function createEmployee(input: {
   routingNumber?: string;
   swiftBic?: string;
   iban?: string;
+  isShopifyStaff?: boolean;
 }) {
   await assertPinAvailable(input.shopId, input.pin);
   await assertStaffSeatAvailable(input.shopId);
@@ -137,6 +138,7 @@ export async function createEmployee(input: {
       routingNumber: input.routingNumber,
       swiftBic: input.swiftBic,
       iban: input.iban,
+      isShopifyStaff: input.isShopifyStaff ?? true,
     },
   });
 }

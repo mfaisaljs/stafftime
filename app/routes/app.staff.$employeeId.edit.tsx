@@ -170,7 +170,10 @@ export default function EditStaffPage() {
   };
 
   return (
-    <AppPage heading="Edit Shopify Staff" inlineSize="large">
+    <AppPage
+      heading={employee.isShopifyStaff ? "Edit Shopify Staff" : "Edit Non-Shopify Staff"}
+      inlineSize="large"
+    >
       <s-section heading={`${employee.firstName} ${employee.lastName}`}>
         <fetcher.Form method="post" data-save-bar>
           <s-stack direction="block" gap="large">
