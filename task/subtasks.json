@@ -2867,6 +2867,23 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-26T23:21:00.000Z"
+    },
+    {
+      "id": "ST152",
+      "taskId": "T017",
+      "title": "Fix add staff save ReferenceError",
+      "description": "isShopifyStaff was scoped inside try but used in post-save redirect, causing Application Error on create.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST147"],
+      "acceptanceCriteria": [
+        "Saving new staff no longer throws isShopifyStaff is not defined",
+        "Redirect after create still respects Shopify vs non-Shopify staff type"
+      ],
+      "files": [
+        "app/routes/app.staff.new.tsx"
+      ],
+      "lastUpdated": "2026-08-26T23:27:00.000Z"
     }
   ]
 }

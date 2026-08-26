@@ -49,12 +49,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
   const formData = await request.formData();
+  const isShopifyStaff = formData.get("isShopifyStaff") !== "false";
 
   try {
     const position = String(formData.get("position") ?? "Staff");
     const locationAccess = String(formData.get("locationAccess") ?? "ALL");
     const weeklyAvailability = formData.getAll("weeklyAvailability").join(",");
-    const isShopifyStaff = formData.get("isShopifyStaff") !== "false";
 
     const billing = await getShopBilling(session.shop);
     if (billing.atSubscribedCap) {
