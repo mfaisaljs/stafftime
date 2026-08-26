@@ -12,6 +12,8 @@ import {
   restoreEmbeddedBillingParams,
 } from "../services/billing/checkout";
 import { getPlan } from "../services/billing/plans";
+import { emailService } from "../services/email.server";
+import { getShopInfo } from "../services/shop-info.server";
 import prisma from "../db.server";
 import { shopFromDest } from "../utils/http.server";
 
@@ -78,6 +80,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
       }
     }
+
+    try {
+      const shopInfo = await getShopInfo(admin);
+      await emailService.sendAppChargeAcceptedNotification(
+        shopFromDest(session.shop).toLowerCase(),
+        shopInfo?.name,
+        plan.name,
+        plan.monthlyPrice,
+      );
+    } catch (emailError) {
+      console.error(
+        "Failed to send charge accepted email notification:",
+        emailError,
+      );
+    }
+
     return shopifyRedirect("/app/staff?billing=updated");
   }
 

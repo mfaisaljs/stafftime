@@ -8,6 +8,7 @@ import { authenticate } from "../shopify.server";
 import { getShopBilling } from "../services/billing.server";
 import { ensureShop } from "../services/workforce.server";
 import ChatraWidget from "../components/ChatraWidget";
+import { chatraIdentityForShop } from "../utils/chatra-identity.server";
 import { shopFromDest } from "../utils/http.server";
 import { mergeAppSearchParams } from "../utils/app-path";
 
@@ -64,6 +65,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         apiKey: process.env.SHOPIFY_API_KEY || "",
         shopDomain: liveDomain.toLowerCase(),
         shopName,
+        chatra: chatraIdentityForShop(liveDomain.toLowerCase(), shopName),
       };
     }
   } catch {
@@ -75,15 +77,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     apiKey: process.env.SHOPIFY_API_KEY || "",
     shopDomain,
     shopName,
+    chatra: chatraIdentityForShop(shopDomain, shopName),
   };
 };
 
 export default function App() {
-  const { apiKey, shopDomain, shopName } = useLoaderData<typeof loader>();
+  const { apiKey, chatra } = useLoaderData<typeof loader>();
 
   return (
     <AppProvider embedded apiKey={apiKey}>
-      <ChatraWidget shopDomain={shopDomain} shopName={shopName} />
+      <ChatraWidget identity={chatra} />
       <s-app-nav>
         <AppNavLink href="/app">Dashboard</AppNavLink>
         <AppNavLink href="/app/staff">Staff</AppNavLink>

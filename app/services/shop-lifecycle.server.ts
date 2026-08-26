@@ -1,4 +1,5 @@
 import prisma from "../db.server";
+import { emailService } from "./email.server";
 import { shopFromDest } from "../utils/http.server";
 
 type WebhookCustomer = {
@@ -28,6 +29,21 @@ export async function deleteShopData(shop: string) {
 }
 
 export async function handleAppUninstalled(shop: string) {
+  const domain = normalizeShopDomain(shop);
+  const shopRecord = await prisma.shop.findUnique({ where: { domain } });
+
+  try {
+    await emailService.sendAppUninstallationNotification(
+      domain,
+      shopRecord?.name ?? undefined,
+    );
+  } catch (emailError) {
+    console.error(
+      "Failed to send uninstallation email notification:",
+      emailError,
+    );
+  }
+
   await deleteShopSessions(shop);
   return deleteShopData(shop);
 }

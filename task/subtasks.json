@@ -2783,6 +2783,53 @@
         "app/routes/app.staff.$employeeId.edit.tsx"
       ],
       "lastUpdated": "2026-08-17T09:20:00.000Z"
+    },
+    {
+      "id": "ST148",
+      "taskId": "T015",
+      "title": "Admin lifecycle email notifications",
+      "description": "Send TruBuild-style admin emails on app install, uninstall, and billing charge acceptance using SMTP and emoji subjects.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST104"],
+      "acceptanceCriteria": [
+        "New shop install sends 🚀/🎉 admin email after OAuth",
+        "App uninstall webhook sends ⚠️/💡 admin email before shop purge",
+        "Billing charge acceptance sends ✅ admin email with plan details",
+        "Emails skip gracefully when ADMIN_EMAIL or SMTP env vars are missing"
+      ],
+      "files": [
+        "app/services/email.server.ts",
+        "app/services/email.server.test.ts",
+        "app/services/shop-info.server.ts",
+        "app/shopify.server.ts",
+        "app/services/shop-lifecycle.server.ts",
+        "app/routes/app.billing.tsx",
+        "env.d.ts",
+        "package.json"
+      ],
+      "lastUpdated": "2026-08-26T23:05:00.000Z"
+    },
+    {
+      "id": "ST149",
+      "taskId": "T015",
+      "title": "Align Chatra widget with TruBuild store fields",
+      "description": "Match TruBuild ChatraSetup clientId hashing and Store Name / Shop Domain integration fields on admin and portal.",
+      "status": "completed",
+      "priority": "low",
+      "dependencies": ["ST127"],
+      "acceptanceCriteria": [
+        "ChatraWidget sets ChatraSetup.clientId from hashed shop domain",
+        "ChatraIntegration sends Store Name and Shop Domain fields",
+        "Admin app and portal both embed Chatra with shop identity"
+      ],
+      "files": [
+        "app/components/ChatraWidget.tsx",
+        "app/utils/chatra-identity.server.ts",
+        "app/routes/app.tsx",
+        "app/routes/portal.tsx"
+      ],
+      "lastUpdated": "2026-08-26T23:08:00.000Z"
     }
   ]
 }

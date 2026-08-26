@@ -9,6 +9,9 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 import { FREE_PLAN, extraSeatMax, PAID_PLANS, type Plan } from "./services/billing/plans";
+import { emailService } from "./services/email.server";
+import { getShopInfo } from "./services/shop-info.server";
+import { shopFromDest } from "./utils/http.server";
 
 function billingConfigForPlan(plan: Plan) {
   const lineItems: Array<
@@ -74,8 +77,26 @@ const shopify = shopifyApp({
     },
   },
   hooks: {
-    afterAuth: async ({ session }) => {
+    afterAuth: async ({ session, admin }) => {
+      const domain = shopFromDest(session.shop).toLowerCase();
+      const existingShop = await prisma.shop.findUnique({ where: { domain } });
+
       await shopify.registerWebhooks({ session });
+
+      if (!existingShop) {
+        try {
+          const shopInfo = await getShopInfo(admin);
+          await emailService.sendAppInstallationNotification(
+            domain,
+            shopInfo?.name,
+          );
+        } catch (emailError) {
+          console.error(
+            "Failed to send installation email notification:",
+            emailError,
+          );
+        }
+      }
     },
   },
   future: {

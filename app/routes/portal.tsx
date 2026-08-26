@@ -1,7 +1,9 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { Outlet, useLoaderData } from "react-router";
 import { PortalShell } from "../components/portal/PortalShell";
+import ChatraWidget from "../components/ChatraWidget";
 import { handlePortalAction, loadPortalHome } from "../utils/portal-auth.server";
+import { chatraIdentityForShop } from "../utils/chatra-identity.server";
 import { readPortalSession } from "../utils/portal-session.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -11,7 +13,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     session && session.shopDomain === home.shopDomain
       ? `${session.firstName} ${session.lastName}`.trim()
       : "";
-  return { ...home, employeeName };
+  return { ...home, employeeName, chatra: chatraIdentityForShop(home.shopDomain, home.shopName) };
 };
 
 export const action = handlePortalAction;
@@ -19,7 +21,9 @@ export const action = handlePortalAction;
 export default function PortalLayout() {
   const data = useLoaderData<typeof loader>();
   return (
-    <PortalShell
+    <>
+      <ChatraWidget identity={data.chatra} />
+      <PortalShell
       shopDomain={data.shopDomain}
       shopName={data.shopName}
       locationName={data.locationName}
@@ -27,6 +31,7 @@ export default function PortalLayout() {
     >
       <Outlet />
     </PortalShell>
+    </>
   );
 }
 
