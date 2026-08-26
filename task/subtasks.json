@@ -2902,6 +2902,24 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-26T23:45:00.000Z"
+    },
+    {
+      "id": "ST154",
+      "taskId": "T017",
+      "title": "Fix staff detail Overview tab navigation",
+      "description": "mergeAppSearchParams only preserves embedded Shopify params so tab=commission/payroll is removed when returning to Overview.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST136"],
+      "acceptanceCriteria": [
+        "Staff detail Overview tab works after visiting Commission or Payroll",
+        "Embedded shop/host params still preserved on in-app navigation"
+      ],
+      "files": [
+        "app/utils/app-path.ts",
+        "app/utils/app-path.test.ts"
+      ],
+      "lastUpdated": "2026-08-26T23:48:00.000Z"
     }
   ]
 }

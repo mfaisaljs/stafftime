@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-08-26T23:45:00.000Z",
+  "lastUpdated": "2026-08-26T23:48:00.000Z",
   "notes": [
+    "ST154 complete: staff detail Overview tab works again; mergeAppSearchParams only preserves embedded Shopify params.",
     "ST153 complete: dashboard Recent Activity message column shows alert icon and opens modal on click when a note exists.",
     "ST152 complete: add staff save no longer throws isShopifyStaff ReferenceError (variable moved outside try block).",
     "ST151 complete: dashboard Setup Guide no longer shows a Learn More link.",
