@@ -2850,6 +2850,23 @@
         "app/services/email.server.test.ts"
       ],
       "lastUpdated": "2026-08-26T23:18:00.000Z"
+    },
+    {
+      "id": "ST151",
+      "taskId": "T015",
+      "title": "Remove dashboard Setup Guide Learn More link",
+      "description": "Drop the Setup Guide hero Learn More link that pointed at generic Shopify app docs.",
+      "status": "completed",
+      "priority": "low",
+      "dependencies": ["ST133"],
+      "acceptanceCriteria": [
+        "Dashboard Setup Guide no longer renders a Learn More link",
+        "Collapse and dismiss controls remain in the Setup Guide header"
+      ],
+      "files": [
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-26T23:21:00.000Z"
     }
   ]
 }

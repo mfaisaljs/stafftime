@@ -260,14 +260,6 @@ function SetupGuide({
           <p>Finish these steps to get started</p>
         </div>
         <div className="setup-guide-hero-actions">
-          <a
-            className="setup-learn-more"
-            href="https://shopify.dev/docs/apps"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Learn More
-          </a>
           <button
             type="button"
             className="setup-icon-btn"
@@ -604,14 +596,6 @@ const DASHBOARD_STYLES = `
     align-items: center;
     display: flex;
     gap: 8px;
-  }
-
-  .setup-learn-more {
-    color: #2c6ecb;
-    font-size: 13px;
-    font-weight: 650;
-    text-decoration: none;
-    white-space: nowrap;
   }
 
   .setup-icon-btn {
