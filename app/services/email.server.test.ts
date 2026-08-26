@@ -70,7 +70,7 @@ describe("emailService lifecycle notifications", () => {
       "demo.myshopify.com",
       "Demo Shop",
       "Small Business",
-      24.99,
+      19.99,
     );
 
     expect(sendSpy).toHaveBeenCalledWith(

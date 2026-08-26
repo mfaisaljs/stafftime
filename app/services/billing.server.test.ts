@@ -104,7 +104,7 @@ describe("billing plan catalog", () => {
     const items = appSubscriptionLineItems(getPlan("small-business"));
     expect(items).toHaveLength(2);
     expect(items[0]).toMatchObject({
-      plan: { appRecurringPricingDetails: { price: { amount: 24.99 } } },
+      plan: { appRecurringPricingDetails: { price: { amount: 19.99 } } },
     });
     expect(items[1]).toMatchObject({
       plan: { appUsagePricingDetails: { cappedAmount: { amount: 275 } } },

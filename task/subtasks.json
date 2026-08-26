@@ -2830,6 +2830,26 @@
         "app/routes/portal.tsx"
       ],
       "lastUpdated": "2026-08-26T23:08:00.000Z"
+    },
+    {
+      "id": "ST150",
+      "taskId": "T018",
+      "title": "Reduce paid plan recurring prices",
+      "description": "Lower Small Business, Workforce, and Enterprise monthly recurring charges.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST099"],
+      "acceptanceCriteria": [
+        "Small Business monthly price is $19.99",
+        "Workforce monthly price is $34.99",
+        "Enterprise monthly price is $174.99"
+      ],
+      "files": [
+        "app/services/billing/plans.ts",
+        "app/services/billing.server.test.ts",
+        "app/services/email.server.test.ts"
+      ],
+      "lastUpdated": "2026-08-26T23:18:00.000Z"
     }
   ]
 }

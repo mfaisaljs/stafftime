@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-08-26T23:08:00.000Z",
+  "lastUpdated": "2026-08-26T23:18:00.000Z",
   "notes": [
+    "ST150 complete: paid plan prices updated to $19.99 / $34.99 / $174.99.",
     "ST149 complete: Chatra matches TruBuild with clientId hashing and Store Name / Shop Domain fields on admin + portal.",
     "ST148 complete: TruBuild-style admin emails on install (🚀), uninstall (⚠️), and charge accepted (✅) via SMTP.",
     "ST147 complete: Shopify vs Non-Shopify staff tabs use isShopifyStaff flag on Employee.",

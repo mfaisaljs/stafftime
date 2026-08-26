@@ -45,7 +45,7 @@ export const PLANS: Plan[] = [
   {
     handle: "small-business",
     name: "Small Business",
-    monthlyPrice: 24.99,
+    monthlyPrice: 19.99,
     includedStaff: 5,
     extraStaffRate: 5,
     maxStaff: 25,
@@ -65,7 +65,7 @@ export const PLANS: Plan[] = [
   {
     handle: "workforce",
     name: "Workforce",
-    monthlyPrice: 39.99,
+    monthlyPrice: 34.99,
     includedStaff: 10,
     extraStaffRate: 4,
     maxStaff: 100,
@@ -85,7 +85,7 @@ export const PLANS: Plan[] = [
   {
     handle: "enterprise",
     name: "Enterprise",
-    monthlyPrice: 199.99,
+    monthlyPrice: 174.99,
     includedStaff: 100,
     extraStaffRate: 2,
     maxStaff: 500,
