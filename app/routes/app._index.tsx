@@ -429,6 +429,19 @@ function RecentActivity({
     message: string | null;
   }>;
 }) {
+  const [selectedMessage, setSelectedMessage] = useState<{
+    staffName: string;
+    message: string;
+  } | null>(null);
+
+  const openMessageModal = (staffName: string, message: string) => {
+    setSelectedMessage({ staffName, message });
+    const modal = document.getElementById("activity-message-modal") as
+      | (HTMLElement & { showOverlay?: () => void })
+      | null;
+    modal?.showOverlay?.();
+  };
+
   return (
     <section className="recent-activity">
       <div className="recent-activity-banner">Staff Portal Features</div>
@@ -473,15 +486,23 @@ function RecentActivity({
                   </td>
                   <td>{row.activityLabel}</td>
                   <td>
-                    <span
-                      className="recent-message"
-                      title={row.message ?? "No message"}
-                    >
-                      <MessageCircle size={16} aria-hidden="true" />
-                      <span className="visually-hidden">
-                        {row.message ?? "No message"}
-                      </span>
-                    </span>
+                    {row.message ? (
+                      <button
+                        type="button"
+                        className="recent-message-btn"
+                        aria-label={`View message from ${row.staffName}`}
+                        onClick={() => openMessageModal(row.staffName, row.message!)}
+                      >
+                        <MessageCircle size={16} aria-hidden="true" />
+                        <CircleAlert
+                          size={14}
+                          aria-hidden="true"
+                          className="recent-message-alert"
+                        />
+                      </button>
+                    ) : (
+                      <span className="recent-message-empty">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -496,6 +517,28 @@ function RecentActivity({
           </table>
         </div>
       </div>
+
+      <s-modal
+        id="activity-message-modal"
+        heading={
+          selectedMessage
+            ? `Message from ${selectedMessage.staffName}`
+            : "Message"
+        }
+      >
+        <s-box padding="base">
+          <s-text>{selectedMessage?.message ?? ""}</s-text>
+        </s-box>
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor="activity-message-modal"
+          command="--hide"
+          onClick={() => setSelectedMessage(null)}
+        >
+          Close
+        </s-button>
+      </s-modal>
     </section>
   );
 }
@@ -792,9 +835,30 @@ const DASHBOARD_STYLES = `
     color: #b42318;
   }
 
-  .recent-message {
+  .recent-message-btn {
+    align-items: center;
+    background: none;
+    border: none;
     color: #616161;
+    cursor: pointer;
     display: inline-flex;
+    padding: 2px;
+    position: relative;
+  }
+
+  .recent-message-btn:hover {
+    color: #2c6ecb;
+  }
+
+  .recent-message-alert {
+    color: #b98900;
+    position: absolute;
+    right: -4px;
+    top: -4px;
+  }
+
+  .recent-message-empty {
+    color: #8a8a8a;
   }
 
   .recent-empty {

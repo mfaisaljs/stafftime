@@ -2884,6 +2884,24 @@
         "app/routes/app.staff.new.tsx"
       ],
       "lastUpdated": "2026-08-26T23:27:00.000Z"
+    },
+    {
+      "id": "ST153",
+      "taskId": "T007",
+      "title": "Dashboard activity message dialog",
+      "description": "Recent Activity message column shows message + alert icons when a note exists; click opens modal with full text.",
+      "status": "completed",
+      "priority": "low",
+      "dependencies": ["ST133"],
+      "acceptanceCriteria": [
+        "Rows with clock notes show message and alert icons",
+        "Rows without notes show an em dash",
+        "Clicking the icons opens a modal with the full message"
+      ],
+      "files": [
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-26T23:45:00.000Z"
     }
   ]
 }
