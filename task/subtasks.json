@@ -2920,6 +2920,24 @@
         "app/utils/app-path.test.ts"
       ],
       "lastUpdated": "2026-08-26T23:48:00.000Z"
+    },
+    {
+      "id": "ST155",
+      "taskId": "T017",
+      "title": "ResourceHub-style page header on every admin page",
+      "description": "Add the dark in-page title bar from ResourceHub to AppPage so every admin route shows an uppercase page heading and nested-route back link.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST146"],
+      "acceptanceCriteria": [
+        "Every AppPage route shows the dark header bar with the page title",
+        "Nested routes show ← Back in the header; top-level nav routes do not",
+        "Shopify s-page heading stays the app display name"
+      ],
+      "files": [
+        "app/components/AppPage.tsx"
+      ],
+      "lastUpdated": "2026-08-27T13:50:00.000Z"
     }
   ]
 }
