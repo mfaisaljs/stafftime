@@ -115,6 +115,7 @@ export function AttendanceBoard({
 
   return (
     <div className="attendance-page">
+      <style>{ATTENDANCE_STYLES}</style>
       <div className="attendance-toolbar">
         <DateRangeSelector
           value={dateRange}
@@ -289,7 +290,6 @@ export function AttendanceBoard({
           </table>
         </div>
       </section>
-      <style>{ATTENDANCE_STYLES}</style>
     </div>
   );
 }

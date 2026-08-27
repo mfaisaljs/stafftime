@@ -669,7 +669,7 @@ export default function CommissionProgramForm({
                             ></s-checkbox>
                             <div className="product-thumb" aria-hidden="true">
                               {product.imageUrl ? (
-                                <img src={product.imageUrl} alt="" />
+                                <img src={product.imageUrl} alt="" width={42} height={42} />
                               ) : (
                                 <FileText size={22} />
                               )}

@@ -25,6 +25,15 @@ import {
   getAttendanceBoard,
 } from "../services/workforce.server";
 import { publicPortalUrl } from "../utils/portal-url.server";
+import {
+  SETUP_GUIDE_STORAGE_KEY,
+  SETUP_STEP_IDS,
+  parseSetupGuideLayoutCookie,
+  persistSetupGuideLayoutCookie,
+  setupGuideLayoutFromPersisted,
+  type SetupGuideLayout,
+  type SetupStepId,
+} from "../utils/setup-guide-layout";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -84,6 +93,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     portalUrl: publicPortalUrl(session.shop),
     posUiExtensionsUrl,
     posEditorUrl,
+    setupGuideLayout: parseSetupGuideLayoutCookie(request.headers.get("cookie")),
     ...board,
   };
 };
@@ -99,15 +109,18 @@ export default function DashboardPage() {
     portalUrl,
     posUiExtensionsUrl,
     posEditorUrl,
+    setupGuideLayout,
   } = useLoaderData<typeof loader>();
 
   return (
     <AppPage heading="Dashboard" inlineSize="large">
+      <style>{DASHBOARD_STYLES}</style>
       <div className="dashboard-page">
         <SetupGuide
           portalUrl={portalUrl}
           posUiExtensionsUrl={posUiExtensionsUrl}
           posEditorUrl={posEditorUrl}
+          initialLayout={setupGuideLayout}
         />
 
         <AttendanceBoard
@@ -131,8 +144,6 @@ export default function DashboardPage() {
           />
         </div>
       </div>
-
-      <style>{DASHBOARD_STYLES}</style>
     </AppPage>
   );
 }
@@ -141,27 +152,31 @@ function SetupGuide({
   portalUrl,
   posUiExtensionsUrl,
   posEditorUrl,
+  initialLayout,
 }: {
   portalUrl: string;
   posUiExtensionsUrl: string;
   posEditorUrl: string;
+  initialLayout: SetupGuideLayout;
 }) {
   const appPath = useAppPath();
-  const storageKey = "stafftime.setupGuide.v1";
   const [ready, setReady] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const [done, setDone] = useState<Record<SetupStepId, boolean>>({
-    portal: false,
-    enroll: false,
-    pos: false,
-    titles: false,
+  const [collapsed, setCollapsed] = useState(initialLayout === "collapsed");
+  const [dismissed, setDismissed] = useState(initialLayout === "hidden");
+  const [done, setDone] = useState<Record<SetupStepId, boolean>>(() => {
+    const complete = initialLayout === "hidden";
+    return {
+      portal: complete,
+      enroll: complete,
+      pos: complete,
+      titles: complete,
+    };
   });
   const allDone = SETUP_STEP_IDS.every((id) => done[id]);
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(storageKey);
+      const raw = window.localStorage.getItem(SETUP_GUIDE_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as {
           collapsed?: boolean;
@@ -188,14 +203,16 @@ function SetupGuide({
 
   useEffect(() => {
     if (!ready) return;
+    const persisted = {
+      collapsed,
+      dismissed: allDone ? dismissed : false,
+      done,
+    };
+    persistSetupGuideLayoutCookie(setupGuideLayoutFromPersisted(persisted));
     try {
       window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          collapsed,
-          dismissed: allDone ? dismissed : false,
-          done,
-        }),
+        SETUP_GUIDE_STORAGE_KEY,
+        JSON.stringify(persisted),
       );
     } catch {
       // ignore storage errors
@@ -363,10 +380,6 @@ function SetupGuide({
     </section>
   );
 }
-
-type SetupStepId = "portal" | "enroll" | "pos" | "titles";
-
-const SETUP_STEP_IDS: SetupStepId[] = ["portal", "enroll", "pos", "titles"];
 
 const SETUP_STEPS: Array<{
   id: SetupStepId;

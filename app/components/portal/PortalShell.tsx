@@ -24,6 +24,7 @@ export function PortalShell(props: {
 
   return (
     <div className="portal-root">
+      <style>{PORTAL_STYLES}</style>
       <aside className={`portal-sidebar${collapsed ? " collapsed" : ""}`}>
         <button
           type="button"
@@ -97,7 +98,6 @@ export function PortalShell(props: {
         ) : null}
         {props.children}
       </main>
-      <style>{PORTAL_STYLES}</style>
     </div>
   );
 }

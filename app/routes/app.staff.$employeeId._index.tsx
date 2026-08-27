@@ -718,6 +718,8 @@ function OverviewTab({
                                 className="photo-thumb"
                                 src={photoSrc(row.id, "in")}
                                 alt=""
+                                width={36}
+                                height={36}
                               />
                             </button>
                           ) : null}
@@ -732,6 +734,8 @@ function OverviewTab({
                                 className="photo-thumb"
                                 src={photoSrc(row.id, "out")}
                                 alt=""
+                                width={36}
+                                height={36}
                               />
                             </button>
                           ) : null}
@@ -1529,8 +1533,10 @@ const STAFF_DETAIL_STYLES = `
     border: 1px solid #e3e3e3;
     border-radius: 8px;
     cursor: pointer;
+    height: 36px;
     overflow: hidden;
     padding: 0;
+    width: 36px;
   }
 
   .photo-thumb {

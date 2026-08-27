@@ -8,7 +8,9 @@ import {
   useRouteError,
 } from "react-router";
 import type { ReactNode } from "react";
+import { LAYOUT_STABILITY_CSS } from "./styles/layout-stability";
 import { ClientCrashReportEffect } from "./utils/client-crash-report";
+import { SETUP_GUIDE_ANTI_SHIFT_SCRIPT } from "./utils/setup-guide-layout";
 
 export default function App() {
   return (
@@ -20,6 +22,10 @@ export default function App() {
         <link
           rel="stylesheet"
           href="https://cdn.shopify.com/static/fonts/inter/v4/styles.css"
+        />
+        <style dangerouslySetInnerHTML={{ __html: LAYOUT_STABILITY_CSS }} />
+        <script
+          dangerouslySetInnerHTML={{ __html: SETUP_GUIDE_ANTI_SHIFT_SCRIPT }}
         />
         <Meta />
         <Links />

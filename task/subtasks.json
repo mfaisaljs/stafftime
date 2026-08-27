@@ -2964,6 +2964,28 @@
         "app/utils/crash-report-suppression.ts"
       ],
       "lastUpdated": "2026-08-27T14:05:00.000Z"
+    },
+    {
+      "id": "ST157",
+      "taskId": "T015",
+      "title": "Reduce admin Cumulative Layout Shift",
+      "description": "Fix Built for Shopify CLS (0.47 needs improvement) by reserving above-the-fold layout before Polaris upgrades and localStorage hydration.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST155"],
+      "acceptanceCriteria": [
+        "s-app-nav and setup-guide collapse/dismiss do not change first-paint layout",
+        "AppPage header styles are in document head so the dark title bar has height before body CSS",
+        "Setup guide cookie + localStorage stay in sync so SSR matches dismissed/collapsed state"
+      ],
+      "files": [
+        "app/root.tsx",
+        "app/styles/layout-stability.ts",
+        "app/utils/setup-guide-layout.ts",
+        "app/components/AppPage.tsx",
+        "app/routes/app._index.tsx"
+      ],
+      "lastUpdated": "2026-08-27T14:35:00.000Z"
     }
   ]
 }
