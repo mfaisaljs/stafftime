@@ -8,7 +8,7 @@ declare namespace NodeJS {
     SHOPIFY_APP_URL?: string;
     SHOPIFY_API_SECRET?: string;
     PORTAL_SESSION_SECRET?: string;
-    ADMIN_EMAIL?: string;
+    CRASH_REPORT_EMAIL?: string;
     EMAIL_HOST?: string;
     EMAIL_USER?: string;
     EMAIL_PASS?: string;

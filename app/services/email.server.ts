@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { APP_DISPLAY_NAME } from "../utils/app-title";
+import { isSuppressedApplicationCrashMessage } from "../utils/crash-report-suppression";
 
 type EmailConfig = {
   host: string;
@@ -19,6 +20,21 @@ type EmailData = {
   subject: string;
   html: string;
   text?: string;
+};
+
+const crashReportDedupe = new Map<string, number>();
+const CRASH_DEDUPE_MS = 120_000;
+
+export type ApplicationCrashReportInput = {
+  source: "server" | "client";
+  shopDomain?: string;
+  storeName: string;
+  route: string;
+  fullUrl?: string;
+  method?: string;
+  errorName: string;
+  message: string;
+  stack?: string;
 };
 
 function escapeEmailHtml(value: string) {
@@ -279,6 +295,81 @@ class EmailService {
       </div>
     `;
 
+    return this.sendEmail({ to: adminEmail, subject, html });
+  }
+
+  /**
+   * Notify admin (same recipient as install notifications) when the app throws an uncaught
+   * application error. Uses short deduplication to avoid duplicate emails (e.g. server + client).
+   */
+  async sendApplicationCrashReport(
+    input: ApplicationCrashReportInput,
+  ): Promise<boolean> {
+    if (process.env.CRASH_REPORT_EMAIL === "false") {
+      return false;
+    }
+    if (isSuppressedApplicationCrashMessage(input.message)) {
+      return true;
+    }
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      console.warn("ADMIN_EMAIL not configured, skipping crash report email");
+      return false;
+    }
+
+    const {
+      source,
+      shopDomain,
+      storeName,
+      route,
+      fullUrl,
+      method,
+      errorName,
+      message,
+      stack,
+    } = input;
+    const key = [
+      shopDomain ?? "",
+      route.slice(0, 500),
+      errorName,
+      message.slice(0, 300),
+    ].join("|");
+    const now = Date.now();
+    const last = crashReportDedupe.get(key);
+    if (last !== undefined && now - last < CRASH_DEDUPE_MS) {
+      return true;
+    }
+    crashReportDedupe.set(key, now);
+    if (crashReportDedupe.size > 800) {
+      const threshold = now - CRASH_DEDUPE_MS;
+      for (const [k, t] of crashReportDedupe) {
+        if (t < threshold) crashReportDedupe.delete(k);
+      }
+    }
+
+    const subject = `🚨 App crash: ${storeName} — ${errorName}`.slice(0, 200);
+    const preStack = stack ? escapeEmailHtml(stack) : "(no stack)";
+    const html = `
+      <div style="font-family: Consolas, Monaco, 'Courier New', monospace; max-width: 800px; margin: 0 auto; padding: 20px; font-size: 13px;">
+        <div style="background: #7f1d1d; color: #fecaca; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 18px;">${escapeEmailHtml(APP_DISPLAY_NAME)} — Application error</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.95;">Source: <strong>${escapeEmailHtml(source)}</strong></p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; border: 1px solid #e9ecef; border-top: none; border-radius: 0 0 8px 8px; color: #111;">
+          <p style="margin: 0 0 8px 0;"><strong>Store / shop label:</strong> ${escapeEmailHtml(storeName)}</p>
+          ${shopDomain ? `<p style="margin: 0 0 8px 0;"><strong>Shop domain:</strong> ${escapeEmailHtml(shopDomain)}</p>` : ""}
+          <p style="margin: 0 0 8px 0;"><strong>Route:</strong> ${escapeEmailHtml(route)}</p>
+          ${fullUrl ? `<p style="margin: 0 0 8px 0;"><strong>Full URL:</strong> ${escapeEmailHtml(fullUrl)}</p>` : ""}
+          ${method ? `<p style="margin: 0 0 8px 0;"><strong>HTTP method:</strong> ${escapeEmailHtml(method)}</p>` : ""}
+          <p style="margin: 0 0 8px 0;"><strong>Error name:</strong> ${escapeEmailHtml(errorName)}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Message:</strong></p>
+          <div style="background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6; white-space: pre-wrap; word-break: break-word;">${escapeEmailHtml(message)}</div>
+          <p style="margin: 16px 0 8px 0;"><strong>Stack trace:</strong></p>
+          <div style="background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; white-space: pre-wrap; overflow-x: auto; font-size: 12px; line-height: 1.45;">${preStack}</div>
+        </div>
+        <p style="text-align: center; margin-top: 16px; color: #999; font-size: 12px;">Automated crash report (same system as app install emails)</p>
+      </div>
+    `;
     return this.sendEmail({ to: adminEmail, subject, html });
   }
 }

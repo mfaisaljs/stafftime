@@ -2938,6 +2938,32 @@
         "app/components/AppPage.tsx"
       ],
       "lastUpdated": "2026-08-27T13:50:00.000Z"
+    },
+    {
+      "id": "ST156",
+      "taskId": "T015",
+      "title": "Global crash emails with full error details",
+      "description": "Match TruBuild: email ADMIN_EMAIL on uncaught server and client errors with shop, route, message, and stack; dedupe and suppress noisy hydration/network failures.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST148"],
+      "acceptanceCriteria": [
+        "Server loader/action crashes email ADMIN_EMAIL with stack, shop, route, and method",
+        "Client ErrorBoundary and window errors POST /api/app-error and send the same crash email",
+        "Duplicate reports within 2 minutes are suppressed; CRASH_REPORT_EMAIL=false disables emails"
+      ],
+      "files": [
+        "app/services/email.server.ts",
+        "app/routes/api.app-error.tsx",
+        "app/entry.server.tsx",
+        "app/entry.client.tsx",
+        "app/root.tsx",
+        "app/components/AppErrorBoundary.tsx",
+        "app/utils/client-crash-report.tsx",
+        "app/utils/crash-report.server.ts",
+        "app/utils/crash-report-suppression.ts"
+      ],
+      "lastUpdated": "2026-08-27T14:05:00.000Z"
     }
   ]
 }

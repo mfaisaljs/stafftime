@@ -1,8 +1,9 @@
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { useFetcher, useLoaderData, useRouteError } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { AppPage } from "../components/AppPage";
 import { useEffect, useMemo, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
+import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { authenticate } from "../shopify.server";
 import { getAdminShop, getEmployeeLocations, getEmployees } from "../services/admin.server";
 import prisma from "../db.server";
@@ -851,7 +852,7 @@ export default function SalesTargetsIndex() {
 }
 
 export function ErrorBoundary() {
-  return boundary.error(useRouteError());
+  return <AppErrorBoundary />;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {

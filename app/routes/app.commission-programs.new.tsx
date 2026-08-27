@@ -3,8 +3,9 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { redirect, useActionData, useLoaderData, useRouteError } from "react-router";
+import { redirect, useActionData, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
+import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import CommissionProgramForm from "../components/commission-programs/CommissionProgramForm";
 import { parseCommissionProgramForm } from "../components/commission-programs/parseCommissionProgramForm";
 import { authenticate } from "../shopify.server";
@@ -85,7 +86,7 @@ export default function CreateCommissionProgram() {
 }
 
 export function ErrorBoundary() {
-  return boundary.error(useRouteError());
+  return <AppErrorBoundary />;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {

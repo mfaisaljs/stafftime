@@ -2,11 +2,29 @@ import { PassThrough } from "stream";
 import { renderToPipeableStream } from "react-dom/server";
 import { ServerRouter } from "react-router";
 import { createReadableStreamFromReadable } from "@react-router/node";
-import { type EntryContext } from "react-router";
+import { type EntryContext, type HandleErrorFunction } from "react-router";
 import { isbot } from "isbot";
 import { addDocumentResponseHeaders } from "./shopify.server";
+import { reportServerCrash } from "./utils/crash-report.server";
 
 export const streamTimeout = 5000;
+
+/**
+ * Server-side uncaught errors (loaders, actions, shell render) — not thrown Response objects.
+ * Keeps `console.error` so logs are not lost (React Router delegates logging to this when defined).
+ */
+export const handleError: HandleErrorFunction = (error, { request }) => {
+  if (request.signal.aborted) {
+    return;
+  }
+  console.error(error);
+  if (!(error instanceof Error)) {
+    return;
+  }
+  void reportServerCrash(error, request).catch((reportErr) => {
+    console.error("Failed to send server crash report email:", reportErr);
+  });
+};
 
 export default async function handleRequest(
   request: Request,

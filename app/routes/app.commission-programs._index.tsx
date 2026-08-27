@@ -2,11 +2,11 @@ import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "re
 import {
   useFetcher,
   useLoaderData,
-  useRouteError,
   useSearchParams,
 } from "react-router";
 import { AppPage } from "../components/AppPage";
 import { AppLink } from "../components/AppLink";
+import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { FileText, Plus, Tag, ToggleRight, Type, User, Users } from "lucide-react";
 import { authenticate } from "../shopify.server";
@@ -244,7 +244,7 @@ export default function CommissionProgramsIndex() {
 }
 
 export function ErrorBoundary() {
-  return boundary.error(useRouteError());
+  return <AppErrorBoundary />;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {
