@@ -13,6 +13,20 @@ import { APP_PAGE_STYLES } from "../components/app-page-styles";
 export const LAYOUT_STABILITY_CSS = `
   ${APP_PAGE_STYLES}
 
+  html {
+    background: #f1f1f1;
+    min-height: 100%;
+  }
+
+  body {
+    background: #f1f1f1;
+    color: #303030;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+  }
+
   s-app-nav:not(:defined) {
     display: none !important;
   }
