@@ -1,5 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Outlet, redirect, useLoaderData, useLocation } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
@@ -9,6 +9,7 @@ import { authenticate } from "../shopify.server";
 import { getShopBilling } from "../services/billing.server";
 import { ensureShop } from "../services/workforce.server";
 import ChatraWidget from "../components/ChatraWidget";
+import { persistClientShopDomain } from "../utils/client-shop-domain";
 import { chatraIdentityForShop } from "../utils/chatra-identity.server";
 import { shopFromDest } from "../utils/http.server";
 import { mergeAppSearchParams } from "../utils/app-path";
@@ -83,7 +84,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function App() {
-  const { apiKey, chatra } = useLoaderData<typeof loader>();
+  const { apiKey, chatra, shopDomain } = useLoaderData<typeof loader>();
+
+  useEffect(() => {
+    persistClientShopDomain(shopDomain);
+  }, [shopDomain]);
 
   return (
     <AppProvider embedded apiKey={apiKey}>

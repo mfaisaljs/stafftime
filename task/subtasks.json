@@ -2986,6 +2986,31 @@
         "app/routes/app._index.tsx"
       ],
       "lastUpdated": "2026-08-27T14:35:00.000Z"
+    },
+    {
+      "id": "ST158",
+      "taskId": "T015",
+      "title": "Serialize client crash objects and suppress auth bounces",
+      "description": "Client crash emails showed Message [object Object] and Unknown shop because HydratedRouter onError stringified ErrorResponses and /api/app-error always labeled the method POST.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST156"],
+      "acceptanceCriteria": [
+        "Thrown objects and route error responses serialize to JSON/HTTP details instead of [object Object]",
+        "3xx/4xx session-token and auth route errors do not email ADMIN_EMAIL",
+        "Client reports include shop from query, host, App Bridge, or sessionStorage; method is not hardcoded as POST"
+      ],
+      "files": [
+        "app/utils/serialize-unknown-error.ts",
+        "app/utils/crash-report-suppression.ts",
+        "app/utils/client-crash-report.tsx",
+        "app/utils/client-shop-domain.ts",
+        "app/entry.client.tsx",
+        "app/components/AppErrorBoundary.tsx",
+        "app/routes/app.tsx",
+        "app/routes/api.app-error.tsx"
+      ],
+      "lastUpdated": "2026-09-01T16:27:00.000Z"
     }
   ]
 }

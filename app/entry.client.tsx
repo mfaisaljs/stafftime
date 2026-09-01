@@ -14,14 +14,7 @@ startTransition(() => {
     <StrictMode>
       <HydratedRouter
         onError={(error) => {
-          if (error instanceof Error) {
-            sendClientCrashReport(error);
-            return;
-          }
-          sendClientCrashReport({
-            name: "Error",
-            message: String(error),
-          });
+          sendClientCrashReport(error);
         }}
       />
     </StrictMode>,

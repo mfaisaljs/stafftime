@@ -1,7 +1,7 @@
 {
   "projectName": "StaffTime — Workforce OS for Shopify POS",
   "version": "0.1.1",
-  "lastUpdated": "2026-08-27T14:05:00.000Z",
+  "lastUpdated": "2026-09-01T16:27:00.000Z",
   "tasks": [
     {
       "id": "T001",
@@ -157,7 +157,7 @@
       "phase": "launch",
       "progressPercent": 88,
       "dependencies": ["T004", "T007", "T008"],
-      "lastUpdated": "2026-08-27T14:35:00.000Z"
+      "lastUpdated": "2026-09-01T16:27:00.000Z"
     },
     {
       "id": "T016",

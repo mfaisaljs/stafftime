@@ -116,7 +116,7 @@ export async function action({ request }: ActionFunctionArgs) {
         : pageUrl
           ? `${pageUrl.slice(0, 4000)}…`
           : undefined,
-    method: "POST",
+    method: typeof body.method === "string" ? body.method : undefined,
     errorName,
     message: message.length > 16_000 ? `${message.slice(0, 16_000)}…` : message,
     stack: stack && stack.length > 32_000 ? `${stack.slice(0, 32_000)}…` : stack,

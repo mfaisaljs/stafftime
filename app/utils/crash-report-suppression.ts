@@ -1,3 +1,5 @@
+import { isRouteErrorLike } from "./serialize-unknown-error";
+
 /**
  * Messages that should not trigger admin crash emails.
  * React production builds throw minified codes for hydration issues; these are noisy
@@ -22,6 +24,23 @@ export function isSuppressedApplicationCrashMessage(message: string): boolean {
     /^Failed to fetch$/i.test(normalized) ||
     /NetworkError when attempting to fetch resource/i.test(normalized) ||
     /^Network request failed$/i.test(normalized) ||
-    /^Load failed$/i.test(normalized)
+    /^Load failed$/i.test(normalized) ||
+    // Shopify session-token / App Bridge auth bounces (not application bugs).
+    /^HTTP (301|302|303|307|308|401|403|404)\b/.test(normalized)
   );
+}
+
+/**
+ * Client HydratedRouter onError often receives ErrorResponse objects for expected
+ * auth redirects (401/302) during the session-token POST to /app.
+ */
+export function isSuppressedClientCrash(error: unknown, message: string): boolean {
+  if (isSuppressedApplicationCrashMessage(message)) return true;
+  if (isRouteErrorLike(error) && error.status >= 300 && error.status < 500) {
+    return true;
+  }
+  if (typeof Response !== "undefined" && error instanceof Response) {
+    return error.status >= 300 && error.status < 500;
+  }
+  return false;
 }

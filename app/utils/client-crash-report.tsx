@@ -1,31 +1,62 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router";
-import { isSuppressedApplicationCrashMessage } from "./crash-report-suppression";
+import {
+  isSuppressedApplicationCrashMessage,
+  isSuppressedClientCrash,
+} from "./crash-report-suppression";
+import { serializeUnknownError } from "./serialize-unknown-error";
+import {
+  CLIENT_SHOP_DOMAIN_STORAGE_KEY,
+  shopFromHostParam,
+} from "./client-shop-domain";
+
+function shopFromAppBridge(): string | undefined {
+  const shopify = (window as Window & {
+    shopify?: { config?: { shop?: string }; shop?: string };
+  }).shopify;
+  const candidate = shopify?.config?.shop || shopify?.shop;
+  return candidate?.trim() || undefined;
+}
+
+function resolveClientShop(explicit?: string): string | undefined {
+  if (explicit?.trim()) return explicit.trim();
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery =
+    params.get("shop") || params.get("ShopDomain") || undefined;
+  if (fromQuery) return fromQuery;
+  const fromHost = shopFromHostParam(params.get("host"));
+  if (fromHost) return fromHost;
+  const fromBridge = shopFromAppBridge();
+  if (fromBridge) return fromBridge;
+  try {
+    return window.sessionStorage.getItem(CLIENT_SHOP_DOMAIN_STORAGE_KEY) || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Browser-only: POSTs to /api/app-error. Safe to import from root (calls run in useEffect / window handlers only).
  */
 export function sendClientCrashReport(
-  err: { name: string; message: string; stack?: string },
+  err: unknown,
   options?: { route?: string; pageUrl?: string; shop?: string },
 ): void {
   if (typeof window === "undefined") return;
-  if (isSuppressedApplicationCrashMessage(err.message)) return;
+  const serialized = serializeUnknownError(err);
+  if (isSuppressedClientCrash(err, serialized.message)) return;
+  if (isSuppressedApplicationCrashMessage(serialized.message)) return;
   const route =
     options?.route ?? `${window.location.pathname}${window.location.search}`;
   const pageUrl = options?.pageUrl ?? window.location.href;
-  const shop =
-    (options?.shop ??
-      new URLSearchParams(window.location.search).get("shop") ??
-      new URLSearchParams(window.location.search).get("ShopDomain")) ||
-    undefined;
+  const shop = resolveClientShop(options?.shop);
   const payload = {
     source: "client" as const,
     route,
     pageUrl,
-    errorName: err.name,
-    message: err.message,
-    stack: err.stack,
+    errorName: serialized.name,
+    message: serialized.message,
+    stack: serialized.stack,
     shop,
   };
   void fetch("/api/app-error", {
@@ -48,26 +79,19 @@ export function installClientCrashGlobalHandlers(): void {
   window.addEventListener(
     "error",
     (ev: ErrorEvent) => {
-      if (ev.error instanceof Error) {
+      if (ev.error != null) {
         sendClientCrashReport(ev.error);
+        return;
+      }
+      if (ev.message) {
+        sendClientCrashReport(ev.message);
       }
     },
     true,
   );
 
   window.addEventListener("unhandledrejection", (ev: PromiseRejectionEvent) => {
-    const reason = ev.reason;
-    if (reason instanceof Error) {
-      sendClientCrashReport(reason);
-      return;
-    }
-    let msg: string;
-    try {
-      msg = typeof reason === "string" ? reason : JSON.stringify(reason);
-    } catch {
-      msg = String(reason);
-    }
-    sendClientCrashReport({ name: "UnhandledRejection", message: msg });
+    sendClientCrashReport(ev.reason);
   });
 }
 
@@ -75,7 +99,7 @@ export function installClientCrashGlobalHandlers(): void {
  * Notifies admin via POST /api/app-error for client-only crashes.
  * Server-side loader/action errors are reported from entry.server handleError; dedupe reduces duplicates.
  */
-export function ClientCrashReportEffect({ error }: { error: Error }) {
+export function ClientCrashReportEffect({ error }: { error: unknown }) {
   const location = useLocation();
   const sentRef = useRef(false);
 

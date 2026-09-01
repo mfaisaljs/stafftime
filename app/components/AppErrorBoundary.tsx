@@ -6,7 +6,7 @@ export function AppErrorBoundary() {
   const error = useRouteError();
   return (
     <>
-      {error instanceof Error ? <ClientCrashReportEffect error={error} /> : null}
+      <ClientCrashReportEffect error={error} />
       {boundary.error(error)}
     </>
   );
