@@ -1,8 +1,12 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
 import { AppPage } from "../components/AppPage";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-import { useLoaderData, useSearchParams } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { AppLink } from "../components/AppLink";
 import { mergeAppSearchParams } from "../utils/app-path";
 import {
@@ -30,8 +34,14 @@ import { authenticate } from "../shopify.server";
 import {
   getAdminShop,
   getEmployeeById,
+  getEmployeeLocations,
   getEmployeeTimeEntries,
 } from "../services/admin.server";
+import {
+  createManualTimeEntry,
+  updateManualTimeEntry,
+} from "../services/workforce.server";
+import { showAdminToast } from "../utils/admin-toast";
 import {
   formatClockTime,
   formatDurationHms,
@@ -60,6 +70,29 @@ import {
 } from "../services/time-off-shifts.server";
 
 type StaffTab = "overview" | "commission" | "payroll";
+type ManualEntryActionResult = { success?: string; error?: string };
+type ManualEntryModalState =
+  | { mode: "create" }
+  | { mode: "edit"; row: AttendanceRow }
+  | null;
+type AttendanceRow = {
+  id: string;
+  date: string;
+  entryDate: string;
+  clockInTime: string;
+  clockOutTime: string;
+  status: string;
+  source: string;
+  location: string;
+  locationId: string;
+  notes: string;
+  breakTime: string;
+  firstIn: string;
+  lastOut: string;
+  totalHours: string;
+  hasClockInPhoto: boolean;
+  hasClockOutPhoto: boolean;
+};
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -82,7 +115,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     settings,
   );
 
-  const [timeEntries, shifts, timeOffRequests] = await Promise.all([
+  const [timeEntries, shifts, timeOffRequests, locations] = await Promise.all([
     getEmployeeTimeEntries(session, employeeId, startDate, endDate),
     prisma.shift.findMany({
       where: {
@@ -95,6 +128,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       },
     }),
     getApprovedTimeOffForRange(shop.id, dateRange.start, dateRange.end),
+    getEmployeeLocations(session),
   ]);
 
   const reportEnd = new Date();
@@ -309,15 +343,23 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     orders: commissionOrders,
   };
 
-  const attendanceRows = timeEntries.map((entry, index) => {
+  const attendanceRows: AttendanceRow[] = timeEntries.map((entry, index) => {
     const summary = summaries[index];
     const breakTotal = summary.paidBreakSeconds + summary.unpaidBreakSeconds;
 
     return {
       id: entry.id,
       date: entry.clockInAt.toISOString(),
+      entryDate: toDateKeyLocal(entry.clockInAt),
+      clockInTime: toTimeInputValue(entry.clockInAt),
+      clockOutTime: entry.clockOutAt
+        ? toTimeInputValue(entry.clockOutAt)
+        : "",
       status: entry.status,
+      source: entry.source,
       location: entry.location.name,
+      locationId: entry.locationId,
+      notes: entry.notes ?? "",
       breakTime: formatDurationHms(breakTotal, hourFormat),
       firstIn: formatClockTime(entry.clockInAt, timeFormat),
       lastOut: entry.clockOutAt ? formatClockTime(entry.clockOutAt, timeFormat) : "—",
@@ -359,11 +401,67 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       programs: assignedPrograms,
     },
     attendanceRows,
+    locations: locations.map((location) => ({
+      id: location.id,
+      name: location.name,
+    })),
   };
 };
 
+export const action = async ({ request, params }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const employeeId = params.employeeId;
+  if (!employeeId) throw new Response("Staff member not found", { status: 404 });
+
+  const shop = await getAdminShop(session);
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+  const date = String(formData.get("date") ?? "");
+  const clockInTime = String(formData.get("clockInTime") ?? "");
+  const clockOutTime = String(formData.get("clockOutTime") ?? "");
+  const locationId = String(formData.get("locationId") ?? "");
+  const notes = String(formData.get("notes") ?? "");
+
+  try {
+    if (intent === "createManualTimeEntry") {
+      await createManualTimeEntry({
+        shopId: shop.id,
+        employeeId,
+        locationId,
+        date,
+        clockInTime,
+        clockOutTime,
+        notes,
+      });
+      return { success: "Manual time entry added." };
+    }
+
+    if (intent === "updateManualTimeEntry") {
+      const timeEntryId = String(formData.get("timeEntryId") ?? "");
+      await updateManualTimeEntry({
+        shopId: shop.id,
+        employeeId,
+        timeEntryId,
+        locationId,
+        date,
+        clockInTime,
+        clockOutTime,
+        notes,
+      });
+      return { success: "Manual time entry updated." };
+    }
+
+    return { error: "Unknown action." };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not save time entry.",
+    };
+  }
+};
+
 export default function StaffDetailPage() {
-  const { employee, dateRange, metrics, commission, attendanceRows } =
+  const { employee, dateRange, metrics, commission, attendanceRows, locations } =
     useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -446,6 +544,7 @@ export default function StaffDetailPage() {
             employee={employee}
             metrics={metrics}
             attendanceRows={attendanceRows}
+            locations={locations}
             searchParams={searchParams}
           />
         )}
@@ -466,6 +565,7 @@ function OverviewTab({
   employee,
   metrics,
   attendanceRows,
+  locations,
   searchParams,
 }: {
   employee: {
@@ -477,7 +577,7 @@ function OverviewTab({
     position: string | null;
     paymentMethod: string;
     payrollType: string;
-    location: { name: string } | null;
+    location: { id: string; name: string } | null;
   };
   metrics: {
     totalEarnings: number;
@@ -496,29 +596,27 @@ function OverviewTab({
     paidLeaves: number;
     unpaidLeaves: number;
   };
-  attendanceRows: Array<{
-    id: string;
-    date: string;
-    status: string;
-    location: string;
-    breakTime: string;
-    firstIn: string;
-    lastOut: string;
-    totalHours: string;
-    hasClockInPhoto: boolean;
-    hasClockOutPhoto: boolean;
-  }>;
+  attendanceRows: AttendanceRow[];
+  locations: Array<{ id: string; name: string }>;
   searchParams: URLSearchParams;
 }) {
   const fullName = `${employee.firstName} ${employee.lastName}`;
-  const [photoRow, setPhotoRow] = useState<(typeof attendanceRows)[number] | null>(
-    null,
-  );
+  const fetcher = useFetcher<ManualEntryActionResult>();
+  const [photoRow, setPhotoRow] = useState<AttendanceRow | null>(null);
+  const [manualEntryModal, setManualEntryModal] =
+    useState<ManualEntryModalState>(null);
+  const [formError, setFormError] = useState("");
+  const defaultLocationId =
+    employee.location?.id ?? locations[0]?.id ?? "";
+  const editingRow =
+    manualEntryModal?.mode === "edit" ? manualEntryModal.row : null;
+  const isEditingManualEntry = Boolean(editingRow);
+  const saving = fetcher.state !== "idle";
   const photoBase = `/app/staff/${employee.id}/time-entry`;
   const photoSrc = (entryId: string, kind: "in" | "out") =>
     mergeAppSearchParams(`${photoBase}/${entryId}/photo?kind=${kind}`, searchParams);
 
-  const openPhotos = (row: (typeof attendanceRows)[number]) => {
+  const openPhotos = (row: AttendanceRow) => {
     setPhotoRow(row);
     requestAnimationFrame(() => {
       const modal = document.getElementById("attendance-photos-modal") as
@@ -527,6 +625,36 @@ function OverviewTab({
       modal?.showOverlay?.();
     });
   };
+
+  const hideManualEntryModal = () => {
+    const modal = document.getElementById("manual-time-entry-modal") as
+      | (HTMLElement & { hideOverlay?: () => void })
+      | null;
+    modal?.hideOverlay?.();
+    setManualEntryModal(null);
+    setFormError("");
+  };
+
+  const openManualEntryModal = (state: ManualEntryModalState) => {
+    setFormError("");
+    setManualEntryModal(state);
+    requestAnimationFrame(() => {
+      const modal = document.getElementById("manual-time-entry-modal") as
+        | (HTMLElement & { showOverlay?: () => void })
+        | null;
+      modal?.showOverlay?.();
+    });
+  };
+
+  useEffect(() => {
+    if (fetcher.data?.error) {
+      setFormError(fetcher.data.error);
+    }
+    if (fetcher.data?.success) {
+      showAdminToast(fetcher.data.success);
+      hideManualEntryModal();
+    }
+  }, [fetcher.data]);
 
   return (
     <>
@@ -669,7 +797,10 @@ function OverviewTab({
                 Export
               </span>
             </s-button>
-            <s-button variant="primary">
+            <s-button
+              variant="primary"
+              onClick={() => openManualEntryModal({ mode: "create" })}
+            >
               <span className="button-with-icon">
                 <Plus aria-hidden="true" size={16} />
                 Add Manual Entry
@@ -690,11 +821,13 @@ function OverviewTab({
                 <th>Last Out</th>
                 <th>Total Hours</th>
                 <th>Photos</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {attendanceRows.map((row) => {
                 const hasPhotos = row.hasClockInPhoto || row.hasClockOutPhoto;
+                const isManualEntry = row.source === "MANUAL";
                 return (
                   <tr key={row.id}>
                     <td>{formatTableDate(row.date)}</td>
@@ -750,18 +883,144 @@ function OverviewTab({
                         <span className="muted-cell">No photos</span>
                       )}
                     </td>
+                    <td>
+                      {isManualEntry ? (
+                        <s-button
+                          variant="tertiary"
+                          onClick={() =>
+                            openManualEntryModal({ mode: "edit", row })
+                          }
+                        >
+                          <span className="button-with-icon">
+                            <Pencil aria-hidden="true" size={14} />
+                            Edit
+                          </span>
+                        </s-button>
+                      ) : (
+                        <span className="muted-cell">—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {attendanceRows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="empty-cell">No attendance records</td>
+                  <td colSpan={9} className="empty-cell">No attendance records</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </section>
+
+      <s-modal
+        id="manual-time-entry-modal"
+        heading={isEditingManualEntry ? "Edit Manual Entry" : "Add Manual Entry"}
+        size="base"
+      >
+        <fetcher.Form
+          key={`${manualEntryModal?.mode ?? "closed"}-${editingRow?.id ?? "new"}`}
+          id="manual-time-entry-form"
+          method="post"
+          className="manual-entry-form"
+        >
+          <input
+            type="hidden"
+            name="intent"
+            value={
+              isEditingManualEntry
+                ? "updateManualTimeEntry"
+                : "createManualTimeEntry"
+            }
+          />
+          {isEditingManualEntry ? (
+            <input type="hidden" name="timeEntryId" value={editingRow?.id} />
+          ) : null}
+          {formError ? (
+            <s-banner tone="critical" heading={formError} />
+          ) : null}
+          <s-select
+            label="Location"
+            name="locationId"
+            value={editingRow?.locationId || defaultLocationId || undefined}
+            placeholder="Select a location"
+            required
+          >
+            {locations.map((location) => (
+              <s-option key={location.id} value={location.id}>
+                {location.name}
+              </s-option>
+            ))}
+          </s-select>
+          <label>
+            Date
+            <input
+              name="date"
+              type="date"
+              defaultValue={
+                editingRow?.entryDate ?? toDateKeyLocal(new Date())
+              }
+              required
+            />
+          </label>
+          <div className="time-grid">
+            <label>
+              Clock in
+              <input
+                name="clockInTime"
+                type="time"
+                defaultValue={editingRow?.clockInTime ?? "09:00"}
+                required
+              />
+            </label>
+            <label>
+              Clock out
+              <input
+                name="clockOutTime"
+                type="time"
+                defaultValue={editingRow?.clockOutTime ?? "17:00"}
+                required
+              />
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea
+              name="notes"
+              placeholder="Optional notes for this entry"
+              defaultValue={editingRow?.notes ?? ""}
+            />
+          </label>
+        </fetcher.Form>
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor="manual-time-entry-modal"
+          command="--hide"
+          onClick={hideManualEntryModal}
+        >
+          Cancel
+        </s-button>
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          type="button"
+          disabled={saving || locations.length === 0}
+          onClick={() =>
+            (
+              document.getElementById(
+                "manual-time-entry-form",
+              ) as HTMLFormElement | null
+            )?.requestSubmit()
+          }
+        >
+          {saving
+            ? "Saving..."
+            : isEditingManualEntry
+              ? "Save Entry"
+              : "Add Entry"}
+        </s-button>
+      </s-modal>
 
       <s-modal id="attendance-photos-modal" heading="Clock photos" size="large">
         {photoRow ? (
@@ -1188,6 +1447,12 @@ function toDateKeyLocal(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function toTimeInputValue(value: Date) {
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 function endOfDayFromKey(key: string) {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(year, month - 1, day, 23, 59, 59, 999);
@@ -1597,6 +1862,39 @@ const STAFF_DETAIL_STYLES = `
     font-size: 13px;
     justify-content: center;
     min-height: 180px;
+  }
+
+  .manual-entry-form {
+    display: grid;
+    gap: 12px;
+  }
+
+  .manual-entry-form label {
+    color: #303030;
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .manual-entry-form input,
+  .manual-entry-form textarea {
+    border: 1px solid #aeb4b9;
+    border-radius: 9px;
+    color: #303030;
+    font: inherit;
+    min-height: 42px;
+    padding: 0 14px;
+  }
+
+  .manual-entry-form textarea {
+    min-height: 92px;
+    padding: 14px;
+  }
+
+  .time-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 1fr;
   }
 
   .payroll-metrics {

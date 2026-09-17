@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-16T22:45:00.000Z",
+  "lastUpdated": "2026-09-17T07:30:00.000Z",
   "subtasks": [
     {
       "id": "ST001",
@@ -3011,6 +3011,25 @@
         "app/routes/api.app-error.tsx"
       ],
       "lastUpdated": "2026-09-01T16:27:00.000Z"
+    },
+    {
+      "id": "ST159",
+      "taskId": "T017",
+      "title": "Manual time entry add and edit on staff detail",
+      "description": "Wire Add Manual Entry on staff detail Overview attendance table to a modal form; allow editing entries with source MANUAL.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST037", "ST067"],
+      "acceptanceCriteria": [
+        "Add Manual Entry opens a modal with date, clock in/out, location, and notes",
+        "Saving creates a CLOSED TimeEntry with source MANUAL and refreshes attendance metrics",
+        "Manual rows show Edit; update persists changes and shows admin toast feedback"
+      ],
+      "files": [
+        "app/routes/app.staff.$employeeId._index.tsx",
+        "app/services/workforce.server.ts"
+      ],
+      "lastUpdated": "2026-09-17T07:30:00.000Z"
     }
   ]
 }

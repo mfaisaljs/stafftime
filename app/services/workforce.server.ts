@@ -1180,6 +1180,151 @@ export async function reviewMissedPunch(params: {
   return updated;
 }
 
+function parseManualEntryDateTime(date: string, time: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error("Choose a valid date.");
+  }
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    throw new Error("Choose a valid time.");
+  }
+  const value = new Date(`${date}T${time}:00`);
+  if (Number.isNaN(value.getTime())) {
+    throw new Error("Choose a valid date and time.");
+  }
+  return value;
+}
+
+async function assertManualTimeEntryLocation(shopId: string, locationId: string) {
+  const location = await prisma.storeLocation.findFirst({
+    where: { id: locationId, shopId, active: true },
+  });
+  if (!location) {
+    throw new Error("Choose a valid location.");
+  }
+  return location;
+}
+
+export async function createManualTimeEntry(params: {
+  shopId: string;
+  employeeId: string;
+  locationId: string;
+  date: string;
+  clockInTime: string;
+  clockOutTime: string;
+  notes?: string;
+}) {
+  const employee = await prisma.employee.findFirst({
+    where: { id: params.employeeId, shopId: params.shopId },
+  });
+  if (!employee) {
+    throw new Error("Staff member not found.");
+  }
+
+  const location = await assertManualTimeEntryLocation(
+    params.shopId,
+    params.locationId,
+  );
+  const clockInAt = parseManualEntryDateTime(params.date, params.clockInTime);
+  const clockOutAt = parseManualEntryDateTime(params.date, params.clockOutTime);
+  if (clockOutAt <= clockInAt) {
+    throw new Error("Clock out must be after clock in.");
+  }
+
+  const entry = await prisma.timeEntry.create({
+    data: {
+      shopId: params.shopId,
+      locationId: location.id,
+      employeeId: params.employeeId,
+      clockInAt,
+      clockOutAt,
+      status: "CLOSED",
+      hourlyRateSnapshot: employee.hourlyRate,
+      source: "MANUAL",
+      notes: params.notes?.trim() || null,
+    },
+  });
+
+  await writeAudit(
+    params.shopId,
+    "manual_time_entry_create",
+    "TimeEntry",
+    entry.id,
+    undefined,
+    {
+      employeeId: params.employeeId,
+      clockInAt: entry.clockInAt.toISOString(),
+      clockOutAt: entry.clockOutAt?.toISOString(),
+    },
+  );
+
+  return entry;
+}
+
+export async function updateManualTimeEntry(params: {
+  shopId: string;
+  employeeId: string;
+  timeEntryId: string;
+  locationId: string;
+  date: string;
+  clockInTime: string;
+  clockOutTime: string;
+  notes?: string;
+}) {
+  const entry = await prisma.timeEntry.findFirst({
+    where: {
+      id: params.timeEntryId,
+      shopId: params.shopId,
+      employeeId: params.employeeId,
+    },
+  });
+  if (!entry) {
+    throw new Error("Time entry not found.");
+  }
+  if (entry.source !== "MANUAL") {
+    throw new Error("Only manual time entries can be edited here.");
+  }
+
+  const location = await assertManualTimeEntryLocation(
+    params.shopId,
+    params.locationId,
+  );
+  const clockInAt = parseManualEntryDateTime(params.date, params.clockInTime);
+  const clockOutAt = parseManualEntryDateTime(params.date, params.clockOutTime);
+  if (clockOutAt <= clockInAt) {
+    throw new Error("Clock out must be after clock in.");
+  }
+
+  const updated = await prisma.timeEntry.update({
+    where: { id: entry.id },
+    data: {
+      locationId: location.id,
+      clockInAt,
+      clockOutAt,
+      status: "CLOSED",
+      notes: params.notes?.trim() || null,
+    },
+  });
+
+  await writeAudit(
+    params.shopId,
+    "manual_time_entry_update",
+    "TimeEntry",
+    updated.id,
+    {
+      clockInAt: entry.clockInAt.toISOString(),
+      clockOutAt: entry.clockOutAt?.toISOString(),
+      locationId: entry.locationId,
+    },
+    {
+      clockInAt: updated.clockInAt.toISOString(),
+      clockOutAt: updated.clockOutAt?.toISOString(),
+      locationId: updated.locationId,
+    },
+  );
+
+  return updated;
+}
+
 export async function getAttendanceSummary(shopDomain: string) {
   const shop = await ensureShop(shopDomain);
   const settings = await getShopSettings(shop.id);
