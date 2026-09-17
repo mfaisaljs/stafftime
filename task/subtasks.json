@@ -3055,13 +3055,13 @@
       "id": "ST161",
       "taskId": "T017",
       "title": "Shared checkbox and per-person admin task status",
-      "description": "Let admins mark each task shared or individual on create, edit, and View Details, and show per-person completion on unshared tasks.",
+      "description": "Let admins mark each task shared or individual on create and edit; View Details shows a read-only Shared/Individual badge and per-person status.",
       "status": "completed",
       "priority": "high",
       "dependencies": ["ST160"],
       "acceptanceCriteria": [
         "Create and edit task rows persist a Shared checkbox",
-        "View Details can toggle Shared without opening Edit",
+        "View Details shows a read-only Shared or Individual badge, not an editable checkbox",
         "Unshared tasks show per-person status with Complete remaining"
       ],
       "files": [
@@ -3072,7 +3072,7 @@
         "app/routes/app.tasklists.$listId_.edit.tsx",
         "app/routes/app.tasklists.$listId.tsx"
       ],
-      "lastUpdated": "2026-09-17T22:20:00.000Z"
+      "lastUpdated": "2026-09-17T22:30:00.000Z"
     },
     {
       "id": "ST162",

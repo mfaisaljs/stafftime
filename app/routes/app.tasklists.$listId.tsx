@@ -40,7 +40,6 @@ import {
   periodKeyForTimeline,
   periodLabelForTimeline,
   setAdminTaskItemCompletion,
-  setAdminTaskShared,
 } from "../services/tasklists.server";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -146,16 +145,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   }
 
   try {
-    if (intent === "setTaskShared") {
-      await setAdminTaskShared({
-        shopId: shop.id,
-        taskListId: listId,
-        taskItemId,
-        shared: String(formData.get("shared") ?? "") === "true",
-      });
-      return { ok: true };
-    }
-
     if (
       intent !== "completeTask" &&
       intent !== "completeTaskForEmployee" &&
@@ -388,24 +377,11 @@ export default function TaskListDetailPage() {
                           <td>
                             <div className="task-name-cell">
                               <strong>{task.title}</strong>
-                              <s-checkbox
-                                label="Shared"
-                                checked={task.shared}
-                                onChange={(event) => {
-                                  const checked = Boolean(
-                                    (
-                                      event.currentTarget as unknown as {
-                                        checked: boolean;
-                                      }
-                                    ).checked,
-                                  );
-                                  const data = new FormData();
-                                  data.set("intent", "setTaskShared");
-                                  data.set("taskItemId", task.id);
-                                  data.set("shared", checked ? "true" : "false");
-                                  fetcher.submit(data, { method: "post" });
-                                }}
-                              ></s-checkbox>
+                              <s-badge
+                                tone={task.shared ? "info" : "neutral"}
+                              >
+                                {task.shared ? "Shared" : "Individual"}
+                              </s-badge>
                             </div>
                           </td>
                           <td>
