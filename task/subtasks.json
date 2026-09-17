@@ -3030,6 +3030,69 @@
         "app/services/workforce.server.ts"
       ],
       "lastUpdated": "2026-09-17T07:30:00.000Z"
+    },
+    {
+      "id": "ST160",
+      "taskId": "T017",
+      "title": "Shared vs individual task completion schema",
+      "description": "Add TaskListItem.shared and per-assignee completion keys so shared tasks stay one-and-done while individual tasks track each assigned person.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST059"],
+      "acceptanceCriteria": [
+        "TaskListItem.shared defaults to true so existing lists stay shared",
+        "TaskListCompletion unique key is taskItemId + dateKey + assigneeKey",
+        "Existing completions migrate as shared assigneeKey empty string"
+      ],
+      "files": [
+        "prisma/schema.prisma",
+        "prisma/migrations/20260917221500_task_item_shared_assignee/migration.sql",
+        "app/services/tasklists.server.ts"
+      ],
+      "lastUpdated": "2026-09-17T22:20:00.000Z"
+    },
+    {
+      "id": "ST161",
+      "taskId": "T017",
+      "title": "Shared checkbox and per-person admin task status",
+      "description": "Let admins mark each task shared or individual on create, edit, and View Details, and show per-person completion on unshared tasks.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST160"],
+      "acceptanceCriteria": [
+        "Create and edit task rows persist a Shared checkbox",
+        "View Details can toggle Shared without opening Edit",
+        "Unshared tasks show per-person status with Complete remaining"
+      ],
+      "files": [
+        "app/components/tasklists/TaskListForm.tsx",
+        "app/components/tasklists/parseTaskListForm.ts",
+        "app/components/tasklists/parseTaskListForm.test.ts",
+        "app/routes/app.tasklists.new.tsx",
+        "app/routes/app.tasklists.$listId_.edit.tsx",
+        "app/routes/app.tasklists.$listId.tsx"
+      ],
+      "lastUpdated": "2026-09-17T22:20:00.000Z"
+    },
+    {
+      "id": "ST162",
+      "taskId": "T017",
+      "title": "POS and portal individual task completion",
+      "description": "Staff completing an unshared task only marks their own row; shared tasks still complete for the whole team.",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": ["ST160", "ST079", "ST137"],
+      "acceptanceCriteria": [
+        "POS and portal completed flag is true for unshared tasks only when that employee completed it",
+        "Uncompleting an unshared task deletes only that employee's row",
+        "Unit tests cover shared vs individual visibility and admin status rows"
+      ],
+      "files": [
+        "app/services/tasklists.server.ts",
+        "app/services/tasklists-completion.test.ts",
+        "extensions/view-tasklists/src/session.ts"
+      ],
+      "lastUpdated": "2026-09-17T22:20:00.000Z"
     }
   ]
 }

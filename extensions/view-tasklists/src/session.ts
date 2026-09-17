@@ -10,6 +10,7 @@ export type PosTaskListTab = "all" | "daily" | "weekly" | "monthly";
 export type PosTaskItemRow = {
   id: string;
   title: string;
+  shared?: boolean;
   completed: boolean;
   performedBy: string | null;
 };

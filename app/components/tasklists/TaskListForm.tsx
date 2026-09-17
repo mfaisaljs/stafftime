@@ -9,6 +9,7 @@ type TaskDraft = {
   id: string;
   title: string;
   active: boolean;
+  shared: boolean;
   persisted?: boolean;
 };
 
@@ -35,7 +36,7 @@ export type TaskListFormInitial = {
   locationAccess: "ALL" | "SPECIFIC";
   locationIds: string[];
   timeline: string;
-  tasks: Array<{ id: string; title: string; active: boolean }>;
+  tasks: Array<{ id: string; title: string; active: boolean; shared?: boolean }>;
 };
 
 type TaskListFormProps = {
@@ -96,7 +97,11 @@ export default function TaskListForm({
   );
   const [timeline, setTimeline] = useState(initialList?.timeline ?? "");
   const [tasks, setTasks] = useState<TaskDraft[]>(() =>
-    (initialList?.tasks ?? []).map((task) => ({ ...task, persisted: true })),
+    (initialList?.tasks ?? []).map((task) => ({
+      ...task,
+      shared: task.shared ?? true,
+      persisted: true,
+    })),
   );
   const [addingTask, setAddingTask] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
@@ -152,7 +157,13 @@ export default function TaskListForm({
     if (!title) return;
     setTasks((current) => [
       ...current,
-      { id: `task-${Date.now()}-${current.length}`, title, active: true, persisted: false },
+      {
+        id: `task-${Date.now()}-${current.length}`,
+        title,
+        active: true,
+        shared: true,
+        persisted: false,
+      },
     ]);
     setDraftTitle("");
     setAddingTask(false);
@@ -195,6 +206,11 @@ export default function TaskListForm({
               type="hidden"
               name="taskItemIds"
               value={task.persisted ? task.id : ""}
+            />
+            <input
+              type="hidden"
+              name="taskShared"
+              value={task.shared ? "true" : "false"}
             />
           </span>
         ))}
@@ -513,6 +529,25 @@ export default function TaskListForm({
                     size={16}
                   />
                   <span className="task-title">{task.title}</span>
+                  <label className="shared-check">
+                    <s-checkbox
+                      label="Shared"
+                      checked={task.shared}
+                      onChange={(event) => {
+                        const checked = Boolean(
+                          (event.currentTarget as unknown as { checked: boolean })
+                            .checked,
+                        );
+                        setTasks((current) =>
+                          current.map((row) =>
+                            row.id === task.id
+                              ? { ...row, shared: checked }
+                              : row,
+                          ),
+                        );
+                      }}
+                    ></s-checkbox>
+                  </label>
                   <span className="active-badge">Active</span>
                   <button
                     type="button"
@@ -736,7 +771,7 @@ const CREATE_TASKLIST_STYLES = `
     border-radius: 10px;
     display: grid;
     gap: 10px;
-    grid-template-columns: 20px 1fr auto auto;
+    grid-template-columns: 20px 1fr auto auto auto;
     padding: 10px 12px;
   }
 
@@ -749,6 +784,14 @@ const CREATE_TASKLIST_STYLES = `
     color: #202223;
     font-size: 13px;
     font-weight: 600;
+  }
+
+  .shared-check {
+    align-items: center;
+    color: #303030;
+    display: inline-flex;
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .active-badge {

@@ -11,7 +11,7 @@ export type ParsedTaskListForm =
       locationAccess: "ALL" | "SPECIFIC";
       locationIds: string[];
       timelines: string[];
-      tasks: Array<{ id: string | null; title: string }>;
+      tasks: Array<{ id: string | null; title: string; shared: boolean }>;
     }
   | { error: string };
 
@@ -54,11 +54,15 @@ export function parseTaskListForm(formData: FormData): ParsedTaskListForm {
   const taskItemIds = formData
     .getAll("taskItemIds")
     .map((value) => String(value).trim());
+  const taskSharedFlags = formData
+    .getAll("taskShared")
+    .map((value) => String(value));
 
   const tasks = taskTitles
     .map((title, index) => ({
       id: taskItemIds[index] || null,
       title,
+      shared: taskSharedFlags[index] !== "false",
     }))
     .filter((task) => task.title.length > 0);
 

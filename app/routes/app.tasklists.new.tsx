@@ -61,6 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         create: parsed.tasks.map((task, index) => ({
           title: task.title,
           active: true,
+          shared: task.shared,
           sortOrder: index,
         })),
       },

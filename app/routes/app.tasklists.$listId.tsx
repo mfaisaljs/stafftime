@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   useFetcher,
   useLoaderData,
@@ -13,6 +13,7 @@ import { useAppNavigate } from "../hooks/useAppNavigate";
 import { AppPage } from "../components/AppPage";
 import {
   Check,
+  ChevronDown,
   Clock3,
   Info,
   MapPin,
@@ -33,9 +34,13 @@ import {
 } from "../components/DateRangeSelector";
 import prisma from "../db.server";
 import {
+  buildAdminTaskStatusRows,
+  listAssignedEmployees,
   normalizeTimelines,
   periodKeyForTimeline,
   periodLabelForTimeline,
+  setAdminTaskItemCompletion,
+  setAdminTaskShared,
 } from "../services/tasklists.server";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -57,7 +62,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const completeDateKey = resolveCompleteDateKey(dateRange, timelineCode);
   const referenceDate = dateFromKey(completeDateKey);
 
-  const [locations, completions] = await Promise.all([
+  const [locations, completions, assignedEmployees] = await Promise.all([
     getEmployeeLocations(session),
     prisma.taskListCompletion.findMany({
       where: {
@@ -70,40 +75,29 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       },
       orderBy: { performedAt: "desc" },
     }),
+    listAssignedEmployees(list),
   ]);
 
   const locationNameById = new Map(
     locations.map((location) => [location.id, location.name]),
   );
   const locationIds = parseJsonArray(list.locationIds);
-  const completionByItemId = new Map<string, (typeof completions)[number]>();
-  for (const completion of completions) {
-    const matchesPeriod =
-      timelineCode === "DAILY"
-        ? completion.dateKey >= dateRange.start &&
-          completion.dateKey <= dateRange.end
-        : completion.dateKey === completeDateKey;
-    if (!matchesPeriod) continue;
-    if (!completionByItemId.has(completion.taskItemId)) {
-      completionByItemId.set(completion.taskItemId, completion);
-    }
-  }
+  const periodCompletions = completions.filter((completion) =>
+    timelineCode === "DAILY"
+      ? completion.dateKey >= dateRange.start &&
+        completion.dateKey <= dateRange.end
+      : completion.dateKey === completeDateKey,
+  );
 
   const assignedTo: string[] = [];
   if (list.assignStaff) assignedTo.push("Staff");
   if (list.assignManagers) assignedTo.push("Managers");
 
   const timeline = timelineLabel(timelineCode);
-  const tasks = list.items.map((item) => {
-    const completion = completionByItemId.get(item.id);
-    return {
-      id: item.id,
-      title: item.title,
-      status: completion ? ("completed" as const) : ("pending" as const),
-      performedBy: completion?.performedBy ?? null,
-      performedAt: completion?.performedAt?.toISOString() ?? null,
-      notes: completion?.notes ?? null,
-    };
+  const tasks = buildAdminTaskStatusRows({
+    items: list.items,
+    assignedEmployees,
+    completions: periodCompletions,
   });
 
   const completedCount = tasks.filter((task) => task.status === "completed").length;
@@ -147,43 +141,47 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
   const taskItemId = String(formData.get("taskItemId") ?? "");
-  if (intent !== "completeTask" || !taskItemId) {
+  if (!taskItemId) {
     return { error: "Invalid action" };
   }
 
-  const list = await prisma.taskList.findFirst({
-    where: { id: listId, shopId: shop.id },
-    include: { items: { where: { id: taskItemId }, select: { id: true } } },
-  });
-  if (!list || list.items.length === 0) {
-    return { error: "Task not found" };
-  }
+  try {
+    if (intent === "setTaskShared") {
+      await setAdminTaskShared({
+        shopId: shop.id,
+        taskListId: listId,
+        taskItemId,
+        shared: String(formData.get("shared") ?? "") === "true",
+      });
+      return { ok: true };
+    }
 
-  const timelineCode = normalizeTimelines(list.timelines)[0] ?? "DAILY";
-  const submittedKey =
-    normalizeDateKey(String(formData.get("dateKey") ?? "")) ?? toDateKey(new Date());
-  const dateKey = periodKeyForTimeline(timelineCode, dateFromKey(submittedKey));
+    if (
+      intent !== "completeTask" &&
+      intent !== "completeTaskForEmployee" &&
+      intent !== "completeTaskForAll"
+    ) {
+      return { error: "Invalid action" };
+    }
 
-  await prisma.taskListCompletion.upsert({
-    where: {
-      taskItemId_dateKey: { taskItemId, dateKey },
-    },
-    create: {
+    const submittedKey =
+      normalizeDateKey(String(formData.get("dateKey") ?? "")) ??
+      toDateKey(new Date());
+
+    await setAdminTaskItemCompletion({
       shopId: shop.id,
       taskListId: listId,
       taskItemId,
-      dateKey,
-      performedBy: "Admin",
-      performedAt: new Date(),
-      notes: null,
-    },
-    update: {
-      performedBy: "Admin",
-      performedAt: new Date(),
-    },
-  });
-
-  return { ok: true };
+      dateKey: submittedKey,
+      employeeId: String(formData.get("employeeId") ?? "") || null,
+      completeAllRemaining: intent === "completeTaskForAll",
+    });
+    return { ok: true };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not update task",
+    };
+  }
 };
 
 export default function TaskListDetailPage() {
@@ -202,6 +200,9 @@ export default function TaskListDetailPage() {
   const navigate = useAppNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [range, setRange] = useState<DateRangeValue>(dateRange);
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
     setRange(dateRange);
@@ -368,64 +369,254 @@ export default function TaskListDetailPage() {
                   </tr>
                 ) : (
                   tasks.map((task) => {
-                    const pending =
-                      fetcher.state !== "idle" &&
-                      String(fetcher.formData?.get("taskItemId") || "") ===
-                        task.id;
+                    const pendingIntent = String(
+                      fetcher.formData?.get("intent") || "",
+                    );
+                    const pendingTaskId = String(
+                      fetcher.formData?.get("taskItemId") || "",
+                    );
+                    const pendingEmployeeId = String(
+                      fetcher.formData?.get("employeeId") || "",
+                    );
+                    const busy =
+                      fetcher.state !== "idle" && pendingTaskId === task.id;
+                    const expanded = expandedTaskIds.has(task.id);
 
                     return (
-                      <tr key={task.id}>
-                        <td>
-                          <strong>{task.title}</strong>
-                        </td>
-                        <td>
-                          <span
-                            className={`pill task-status ${task.status}`}
-                          >
-                            {task.status === "completed" ? "Completed" : "Pending"}
-                          </span>
-                        </td>
-                        <td>{task.performedBy || "—"}</td>
-                        <td>
-                          {task.performedAt
-                            ? formatPerformedAt(task.performedAt)
-                            : "—"}
-                        </td>
-                        <td>{task.notes || "—"}</td>
-                        <td>
-                          {task.status === "completed" ? (
-                            <span className="done-label">Completed</span>
-                          ) : (
-                            <fetcher.Form method="post">
-                              <input
-                                type="hidden"
-                                name="intent"
-                                value="completeTask"
-                              />
-                              <input
-                                type="hidden"
-                                name="taskItemId"
-                                value={task.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="dateKey"
-                                value={completeDateKey}
-                              />
-                              <s-button
-                                type="submit"
-                                variant="primary"
-                                {...(pending ? { loading: true } : {})}
-                              >
-                                <span className="button-content">
-                                  <Check aria-hidden="true" size={14} />
-                                  Complete Task
-                                </span>
-                              </s-button>
-                            </fetcher.Form>
-                          )}
-                        </td>
-                      </tr>
+                      <Fragment key={task.id}>
+                        <tr>
+                          <td>
+                            <div className="task-name-cell">
+                              <strong>{task.title}</strong>
+                              <s-checkbox
+                                label="Shared"
+                                checked={task.shared}
+                                onChange={(event) => {
+                                  const checked = Boolean(
+                                    (
+                                      event.currentTarget as unknown as {
+                                        checked: boolean;
+                                      }
+                                    ).checked,
+                                  );
+                                  const data = new FormData();
+                                  data.set("intent", "setTaskShared");
+                                  data.set("taskItemId", task.id);
+                                  data.set("shared", checked ? "true" : "false");
+                                  fetcher.submit(data, { method: "post" });
+                                }}
+                              ></s-checkbox>
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              className={`pill task-status ${task.status}`}
+                            >
+                              {task.shared
+                                ? task.status === "completed"
+                                  ? "Completed"
+                                  : "Pending"
+                                : `${task.completedCount} of ${task.assigneeCount}`}
+                            </span>
+                          </td>
+                          <td>
+                            {task.shared
+                              ? task.performedBy || "—"
+                              : task.assigneeCount > 0
+                                ? `${task.completedCount} of ${task.assigneeCount}`
+                                : "—"}
+                          </td>
+                          <td>
+                            {task.performedAt
+                              ? formatPerformedAt(task.performedAt)
+                              : "—"}
+                          </td>
+                          <td>{task.notes || "—"}</td>
+                          <td>
+                            <div className="task-actions">
+                              {task.shared ? (
+                                task.status === "completed" ? (
+                                  <span className="done-label">Completed</span>
+                                ) : (
+                                  <fetcher.Form method="post">
+                                    <input
+                                      type="hidden"
+                                      name="intent"
+                                      value="completeTask"
+                                    />
+                                    <input
+                                      type="hidden"
+                                      name="taskItemId"
+                                      value={task.id}
+                                    />
+                                    <input
+                                      type="hidden"
+                                      name="dateKey"
+                                      value={completeDateKey}
+                                    />
+                                    <s-button
+                                      type="submit"
+                                      variant="primary"
+                                      {...(busy &&
+                                      pendingIntent === "completeTask"
+                                        ? { loading: true }
+                                        : {})}
+                                    >
+                                      <span className="button-content">
+                                        <Check aria-hidden="true" size={14} />
+                                        Complete Task
+                                      </span>
+                                    </s-button>
+                                  </fetcher.Form>
+                                )
+                              ) : (
+                                <>
+                                  {task.status === "completed" ? (
+                                    <span className="done-label">Completed</span>
+                                  ) : (
+                                    <fetcher.Form method="post">
+                                      <input
+                                        type="hidden"
+                                        name="intent"
+                                        value="completeTaskForAll"
+                                      />
+                                      <input
+                                        type="hidden"
+                                        name="taskItemId"
+                                        value={task.id}
+                                      />
+                                      <input
+                                        type="hidden"
+                                        name="dateKey"
+                                        value={completeDateKey}
+                                      />
+                                      <s-button
+                                        type="submit"
+                                        variant="secondary"
+                                        {...(busy &&
+                                        pendingIntent === "completeTaskForAll"
+                                          ? { loading: true }
+                                          : {})}
+                                      >
+                                        Complete remaining
+                                      </s-button>
+                                    </fetcher.Form>
+                                  )}
+                                  {task.assigneeCount > 0 ? (
+                                    <s-button
+                                      type="button"
+                                      variant="tertiary"
+                                      onClick={() => {
+                                        setExpandedTaskIds((current) => {
+                                          const next = new Set(current);
+                                          if (next.has(task.id)) {
+                                            next.delete(task.id);
+                                          } else {
+                                            next.add(task.id);
+                                          }
+                                          return next;
+                                        });
+                                      }}
+                                    >
+                                      <span className="button-content">
+                                        <ChevronDown
+                                          aria-hidden="true"
+                                          size={14}
+                                          className={
+                                            expanded ? "chevron open" : "chevron"
+                                          }
+                                        />
+                                        {expanded ? "Hide staff" : "Show staff"}
+                                      </span>
+                                    </s-button>
+                                  ) : null}
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {!task.shared && expanded ? (
+                          <tr className="assignee-details">
+                            <td colSpan={6}>
+                              {task.assignees.length === 0 ? (
+                                <p className="assignee-empty">
+                                  No assigned staff to track.
+                                </p>
+                              ) : (
+                                <ul className="assignee-list">
+                                  {task.assignees.map((assignee) => {
+                                    const assigneeBusy =
+                                      busy &&
+                                      pendingIntent ===
+                                        "completeTaskForEmployee" &&
+                                      pendingEmployeeId === assignee.employeeId;
+                                    return (
+                                      <li key={assignee.employeeId}>
+                                        <div>
+                                          <strong>{assignee.name}</strong>
+                                          <span
+                                            className={`pill task-status ${assignee.status}`}
+                                          >
+                                            {assignee.status === "completed"
+                                              ? "Completed"
+                                              : "Pending"}
+                                          </span>
+                                          <span className="assignee-meta">
+                                            {assignee.performedBy
+                                              ? `${assignee.performedBy}${
+                                                  assignee.performedAt
+                                                    ? ` · ${formatPerformedAt(assignee.performedAt)}`
+                                                    : ""
+                                                }`
+                                              : "Not completed"}
+                                          </span>
+                                        </div>
+                                        {assignee.status === "completed" ? (
+                                          <span className="done-label">
+                                            Completed
+                                          </span>
+                                        ) : (
+                                          <fetcher.Form method="post">
+                                            <input
+                                              type="hidden"
+                                              name="intent"
+                                              value="completeTaskForEmployee"
+                                            />
+                                            <input
+                                              type="hidden"
+                                              name="taskItemId"
+                                              value={task.id}
+                                            />
+                                            <input
+                                              type="hidden"
+                                              name="employeeId"
+                                              value={assignee.employeeId}
+                                            />
+                                            <input
+                                              type="hidden"
+                                              name="dateKey"
+                                              value={completeDateKey}
+                                            />
+                                            <s-button
+                                              type="submit"
+                                              variant="primary"
+                                              {...(assigneeBusy
+                                                ? { loading: true }
+                                                : {})}
+                                            >
+                                              Complete
+                                            </s-button>
+                                          </fetcher.Form>
+                                        )}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              )}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
                     );
                   })
                 )}
@@ -796,6 +987,60 @@ const DETAIL_STYLES = `
     color: #008060;
     font-size: 12px;
     font-weight: 650;
+  }
+
+  .task-name-cell {
+    align-items: flex-start;
+    display: grid;
+    gap: 6px;
+  }
+
+  .task-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chevron {
+    transition: transform 160ms ease;
+  }
+
+  .chevron.open {
+    transform: rotate(180deg);
+  }
+
+  .assignee-details td {
+    background: #f6f6f7;
+  }
+
+  .assignee-empty,
+  .assignee-meta {
+    color: #616161;
+    font-size: 12px;
+    margin: 0;
+  }
+
+  .assignee-list {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .assignee-list li {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .assignee-list li > div {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   @media (max-width: 760px) {

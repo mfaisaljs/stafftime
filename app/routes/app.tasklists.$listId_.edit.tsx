@@ -80,6 +80,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
         id: item.id,
         title: item.title,
         active: item.active,
+        shared: item.shared,
       })),
     },
   };
@@ -103,7 +104,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const existingItemIds = new Set(existing.items.map((item) => item.id));
   const keepIds = parsed.tasks
     .map((task) => task.id)
-    .filter((id): id is string => Boolean(id) && existingItemIds.has(id));
+    .filter((id): id is string => id !== null && existingItemIds.has(id));
 
   await prisma.$transaction(async (tx) => {
     await tx.taskList.update({
@@ -136,6 +137,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
           where: { id: task.id },
           data: {
             title: task.title,
+            shared: task.shared,
             sortOrder: index,
             active: true,
           },
@@ -145,6 +147,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
           data: {
             taskListId: listId,
             title: task.title,
+            shared: task.shared,
             sortOrder: index,
             active: true,
           },

@@ -176,6 +176,7 @@ model Employee {
   timeEntries     TimeEntry[]
   missedPunches   MissedPunchRequest[]
   payrollPayments PayrollPayment[]
+  taskListCompletions TaskListCompletion[]
 
   @@index([shopId, status])
 }
@@ -463,6 +464,7 @@ model TaskListItem {
   taskListId String
   title      String
   active     Boolean  @default(true)
+  shared     Boolean  @default(true)
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -479,6 +481,8 @@ model TaskListCompletion {
   taskListId  String
   taskItemId  String
   dateKey     String
+  assigneeKey String   @default("")
+  employeeId  String?
   performedBy String?
   performedAt DateTime @default(now())
   notes       String?
@@ -488,10 +492,12 @@ model TaskListCompletion {
   shop     Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
   taskList TaskList     @relation(fields: [taskListId], references: [id], onDelete: Cascade)
   taskItem TaskListItem @relation(fields: [taskItemId], references: [id], onDelete: Cascade)
+  employee Employee?    @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
-  @@unique([taskItemId, dateKey])
+  @@unique([taskItemId, dateKey, assigneeKey])
   @@index([taskListId, dateKey])
   @@index([shopId, dateKey])
+  @@index([employeeId])
 }
 
 model TimeOffPolicy {
