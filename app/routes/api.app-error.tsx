@@ -112,7 +112,7 @@ export async function action({ request }: ActionFunctionArgs) {
     route: route.length > 4000 ? `${route.slice(0, 4000)}…` : route,
     fullUrl:
       pageUrl && pageUrl.length <= 4000
-        ? pageUrl
+        ? pageUrl 
         : pageUrl
           ? `${pageUrl.slice(0, 4000)}…`
           : undefined,
