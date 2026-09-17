@@ -1280,9 +1280,6 @@ export async function updateManualTimeEntry(params: {
   if (!entry) {
     throw new Error("Time entry not found.");
   }
-  if (entry.source !== "MANUAL") {
-    throw new Error("Only manual time entries can be edited here.");
-  }
 
   const location = await assertManualTimeEntryLocation(
     params.shopId,

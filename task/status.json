@@ -8,7 +8,8 @@
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
   "lastUpdated": "2026-09-17T07:30:00.000Z",
   "notes": [
-    "ST159 complete: staff detail Add Manual Entry opens modal; MANUAL rows editable with date, times, location, and notes.",
+    "ST159 update: Edit shown on all attendance rows; admin can adjust any time entry, not only source MANUAL.",
+    "ST159 complete: staff detail Add Manual Entry opens modal; rows editable with date, times, location, and notes.",
     "ST158 complete: client crash emails serialize thrown objects, suppress 3xx/4xx auth bounces, and capture shop without hardcoding POST.",
     "ST157 complete: reserve admin layout in head so s-app-nav and setup-guide no longer drive CLS 0.47.",
     "ST155 complete: ResourceHub-style dark page header (uppercase title + nested Back) on every AppPage admin route.",

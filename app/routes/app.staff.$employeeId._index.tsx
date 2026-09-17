@@ -827,7 +827,6 @@ function OverviewTab({
             <tbody>
               {attendanceRows.map((row) => {
                 const hasPhotos = row.hasClockInPhoto || row.hasClockOutPhoto;
-                const isManualEntry = row.source === "MANUAL";
                 return (
                   <tr key={row.id}>
                     <td>{formatTableDate(row.date)}</td>
@@ -884,21 +883,17 @@ function OverviewTab({
                       )}
                     </td>
                     <td>
-                      {isManualEntry ? (
-                        <s-button
-                          variant="tertiary"
-                          onClick={() =>
-                            openManualEntryModal({ mode: "edit", row })
-                          }
-                        >
-                          <span className="button-with-icon">
-                            <Pencil aria-hidden="true" size={14} />
-                            Edit
-                          </span>
-                        </s-button>
-                      ) : (
-                        <span className="muted-cell">—</span>
-                      )}
+                      <s-button
+                        variant="tertiary"
+                        onClick={() =>
+                          openManualEntryModal({ mode: "edit", row })
+                        }
+                      >
+                        <span className="button-with-icon">
+                          <Pencil aria-hidden="true" size={14} />
+                          Edit
+                        </span>
+                      </s-button>
                     </td>
                   </tr>
                 );
@@ -915,7 +910,7 @@ function OverviewTab({
 
       <s-modal
         id="manual-time-entry-modal"
-        heading={isEditingManualEntry ? "Edit Manual Entry" : "Add Manual Entry"}
+        heading={isEditingManualEntry ? "Edit Time Entry" : "Add Manual Entry"}
         size="base"
       >
         <fetcher.Form
@@ -978,7 +973,7 @@ function OverviewTab({
               <input
                 name="clockOutTime"
                 type="time"
-                defaultValue={editingRow?.clockOutTime ?? "17:00"}
+                defaultValue={editingRow?.clockOutTime || "17:00"}
                 required
               />
             </label>
