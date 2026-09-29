@@ -15,11 +15,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { employeeId, start, end, days } = body as {
+  const { employeeId, start, end, days, displayTimeZone } = body as {
     employeeId?: string;
     start?: string;
     end?: string;
     days?: number;
+    displayTimeZone?: string;
   };
 
   if (!employeeId) {
@@ -33,6 +34,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       start,
       end,
       days,
+      displayTimeZone,
     });
     return cors(jsonResponse(payload));
   } catch (error) {

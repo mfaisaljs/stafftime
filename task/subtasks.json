@@ -3164,6 +3164,46 @@
         "app/services/tasklists.server.ts"
       ],
       "lastUpdated": "2026-09-29T20:33:00.000Z"
+    },
+    {
+      "id": "ST166",
+      "taskId": "T004",
+      "title": "POS device timezone display",
+      "description": "Send browser/device timezone from POS extensions and format POS-facing labels in that timezone while preserving store/location timezone for records and rules.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST163", "ST165"],
+      "acceptanceCriteria": [
+        "POS extensions send Intl resolved timezone to StaffTime APIs",
+        "Clock status, View Shifts, Manager View, Staff Profile, Time Off, and Task Lists format POS labels in the device timezone",
+        "Clock-in/out storage, schedule persistence, and business day rules remain store/location timezone based",
+        "Focused timezone tests and lint on changed files pass"
+      ],
+      "files": [
+        "app/routes/api.pos.verify.tsx",
+        "app/routes/api.pos.shifts.tsx",
+        "app/routes/api.pos.profile.tsx",
+        "app/routes/api.pos.manager-view.tsx",
+        "app/routes/api.pos.time-off.tsx",
+        "app/routes/api.pos.tasklists.tsx",
+        "app/routes/api.pos.tasklists.complete.tsx",
+        "app/utils/pos-api.server.ts",
+        "app/services/workforce.server.ts",
+        "app/services/staff-profile.server.ts",
+        "app/services/manager-view.server.ts",
+        "app/services/time-off-pos.server.ts",
+        "app/services/time-off-shifts.server.ts",
+        "app/services/tasklists.server.ts",
+        "extensions/workforce-clock/src/posApi.ts",
+        "extensions/view-shifts/src/posApi.ts",
+        "extensions/manager-view/src/posApi.ts",
+        "extensions/staff-profile/src/posApi.ts",
+        "extensions/time-off/src/posApi.ts",
+        "extensions/view-tasklists/src/posApi.ts",
+        "extensions/commission/src/posApi.ts",
+        "extensions/sales-target/src/posApi.ts"
+      ],
+      "lastUpdated": "2026-09-29T21:01:00.000Z"
     }
   ]
 }

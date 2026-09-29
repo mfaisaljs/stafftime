@@ -15,12 +15,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { employeeId, taskListId, taskItemId, completed } = body as {
-    employeeId?: string;
-    taskListId?: string;
-    taskItemId?: string;
-    completed?: boolean;
-  };
+  const { employeeId, taskListId, taskItemId, completed, displayTimeZone } =
+    body as {
+      employeeId?: string;
+      taskListId?: string;
+      taskItemId?: string;
+      completed?: boolean;
+      displayTimeZone?: string;
+    };
 
   if (!employeeId || !taskListId || !taskItemId) {
     return cors(
@@ -38,6 +40,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       taskListId,
       taskItemId,
       completed,
+      displayTimeZone,
     });
     return cors(jsonResponse(payload));
   } catch (error) {

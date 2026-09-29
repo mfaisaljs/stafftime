@@ -20,9 +20,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { employeeId, tab } = body as {
+  const { employeeId, tab, displayTimeZone } = body as {
     employeeId?: string;
     tab?: string;
+    displayTimeZone?: string;
   };
 
   if (!employeeId) {
@@ -37,6 +38,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       shopDomain: sessionToken.dest,
       employeeId,
       tab: tab as PosTaskListTab,
+      displayTimeZone,
     });
     return cors(jsonResponse(payload));
   } catch (error) {

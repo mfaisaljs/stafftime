@@ -21,6 +21,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
   const intent = String((body as { intent?: string }).intent ?? "load");
+  const displayTimeZone = (body as { displayTimeZone?: string }).displayTimeZone;
   const employeeId = String(
     (body as { employeeId?: string }).employeeId ?? "",
   ).trim();
@@ -35,6 +36,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const payload = await getTimeOffBootstrapForPos({
           shopDomain: sessionToken.dest,
           employeeId,
+          displayTimeZone,
         });
         return cors(jsonResponse(payload));
       }

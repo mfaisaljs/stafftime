@@ -40,6 +40,7 @@ import {
   endOfMonthInTimeZone,
   endOfWeekInTimeZone,
   formatClockTimeInTimeZone,
+  normalizeTimeZone,
   parseZonedDateTime,
   resolveTimeZone,
   startOfDayInTimeZone,
@@ -539,6 +540,7 @@ export async function listEmployeeShiftsForPos(params: {
   shopDomain: string;
   employeeId: string;
   range: PosShiftRange;
+  displayTimeZone?: string;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const employee = await prisma.employee.findFirst({
@@ -553,12 +555,15 @@ export async function listEmployeeShiftsForPos(params: {
   const timeFormat = settings.timeFormat as TimeFormat;
   const now = new Date();
   const timeZone = resolveTimeZone(employee.location, shop);
-  const bounds = rangeBounds(params.range, now, timeZone);
+  const displayTimeZone = params.displayTimeZone
+    ? normalizeTimeZone(params.displayTimeZone)
+    : timeZone;
+  const bounds = rangeBounds(params.range, now, displayTimeZone);
 
   await syncApprovedLeaveShiftCancellations(shop.id);
 
-  const rangeStartKey = toDateKeyInTimeZone(bounds.gte, timeZone);
-  const rangeEndKey = rangeEndKeyForLeave(params.range, now, timeZone);
+  const rangeStartKey = toDateKeyInTimeZone(bounds.gte, displayTimeZone);
+  const rangeEndKey = rangeEndKeyForLeave(params.range, now, displayTimeZone);
   const leaveRequests = await getApprovedTimeOffForRange(
     shop.id,
     rangeStartKey,
@@ -572,11 +577,14 @@ export async function listEmployeeShiftsForPos(params: {
   ).map((leave) => ({
     ...leave,
     dateLabel: formatShiftDateLabel(
-      startOfDayInTimeZone(leave.dateKey, timeZone),
+      startOfDayInTimeZone(leave.dateKey, displayTimeZone),
       now,
-      timeZone,
+      displayTimeZone,
     ),
-    dayLabel: formatShiftDayLabel(startOfDayInTimeZone(leave.dateKey, timeZone), timeZone),
+    dayLabel: formatShiftDayLabel(
+      startOfDayInTimeZone(leave.dateKey, displayTimeZone),
+      displayTimeZone,
+    ),
   }));
 
   const shifts = await prisma.shift.findMany({
@@ -594,7 +602,7 @@ export async function listEmployeeShiftsForPos(params: {
     orderBy: { startsAt: "asc" },
   });
 
-  const todayKey = toDateKeyInTimeZone(now, timeZone);
+  const todayKey = toDateKeyInTimeZone(now, displayTimeZone);
   const onLeaveToday = isEmployeeOnApprovedLeave(
     leaveRequests,
     employee.id,
@@ -613,9 +621,9 @@ export async function listEmployeeShiftsForPos(params: {
     if (cancelled) {
       return {
         id: shift.id,
-        dateLabel: formatShiftDateLabel(shift.startsAt, now, shiftTimeZone),
-        dayLabel: formatShiftDayLabel(shift.startsAt, shiftTimeZone),
-        timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, shiftTimeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, shiftTimeZone)}`,
+        dateLabel: formatShiftDateLabel(shift.startsAt, now, displayTimeZone),
+        dayLabel: formatShiftDayLabel(shift.startsAt, displayTimeZone),
+        timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, displayTimeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, displayTimeZone)}`,
         status: "ON_LEAVE",
         statusLabel: "On leave",
         tone: "critical",
@@ -628,9 +636,9 @@ export async function listEmployeeShiftsForPos(params: {
     const status = classifyShiftStatus(shift.startsAt, shift.endsAt, now);
     return {
       id: shift.id,
-      dateLabel: formatShiftDateLabel(shift.startsAt, now, shiftTimeZone),
-      dayLabel: formatShiftDayLabel(shift.startsAt, shiftTimeZone),
-      timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, shiftTimeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, shiftTimeZone)}`,
+      dateLabel: formatShiftDateLabel(shift.startsAt, now, displayTimeZone),
+      dayLabel: formatShiftDayLabel(shift.startsAt, displayTimeZone),
+      timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, displayTimeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, displayTimeZone)}`,
       ...status,
       startsAt: shift.startsAt.toISOString(),
       endsAt: shift.endsAt.toISOString(),
@@ -747,7 +755,10 @@ function buildTodayHistory(
   );
 }
 
-export async function buildEmployeeStatus(employeeId: string) {
+export async function buildEmployeeStatus(
+  employeeId: string,
+  displayTimeZone?: string,
+) {
   const employee = await prisma.employee.findUniqueOrThrow({
     where: { id: employeeId },
     include: { location: true, shop: true },
@@ -755,6 +766,9 @@ export async function buildEmployeeStatus(employeeId: string) {
   const settings = await getShopSettings(employee.shopId);
   const now = new Date();
   const timeZone = resolveTimeZone(employee.location, employee.shop);
+  const labelTimeZone = displayTimeZone
+    ? normalizeTimeZone(displayTimeZone)
+    : timeZone;
   const dayStart = startOfDayInTimeZone(now, timeZone);
   const weekStart = startOfWeekInTimeZone(now, timeZone);
 
@@ -841,7 +855,7 @@ export async function buildEmployeeStatus(employeeId: string) {
     hourFormat: settings.hourFormat as HourFormat,
     locationName,
     dateLabel: now.toLocaleString(undefined, {
-      timeZone,
+      timeZone: labelTimeZone,
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -851,11 +865,11 @@ export async function buildEmployeeStatus(employeeId: string) {
     }),
     firstClockInAt: firstClockIn?.toISOString(),
     firstClockInLabel: firstClockIn
-      ? formatPosClockLabel(firstClockIn, settings.timeFormat as TimeFormat, timeZone)
+      ? formatPosClockLabel(firstClockIn, settings.timeFormat as TimeFormat, labelTimeZone)
       : "—",
     currentClockInAt: currentClockIn?.toISOString(),
     currentClockInLabel: currentClockIn
-      ? formatPosClockLabel(currentClockIn, settings.timeFormat as TimeFormat, timeZone)
+      ? formatPosClockLabel(currentClockIn, settings.timeFormat as TimeFormat, labelTimeZone)
       : "—",
     dayTotalSeconds,
     dayTotalLabel: formatTimerHms(dayTotalSeconds),
@@ -867,7 +881,7 @@ export async function buildEmployeeStatus(employeeId: string) {
     history: buildTodayHistory(
       dayEntries,
       settings.timeFormat as TimeFormat,
-      timeZone,
+      labelTimeZone,
     ),
     payrollStats: payrollStats
       ? {
@@ -915,6 +929,7 @@ export async function clockIn(params: {
   deviceId?: string;
   photo?: string | null;
   photoType?: string | null;
+  displayTimeZone?: string;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const location =
@@ -981,7 +996,7 @@ export async function clockIn(params: {
     hasPhoto: Boolean(photoUrl),
   });
 
-  return buildEmployeeStatus(params.employeeId);
+  return buildEmployeeStatus(params.employeeId, params.displayTimeZone);
 }
 
 export async function clockOut(params: {
@@ -990,6 +1005,7 @@ export async function clockOut(params: {
   notes?: string;
   photo?: string | null;
   photoType?: string | null;
+  displayTimeZone?: string;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const entry = await getOpenTimeEntry(params.employeeId);
@@ -1028,13 +1044,14 @@ export async function clockOut(params: {
     hasPhoto: Boolean(clockOutPhotoUrl),
   });
 
-  return buildEmployeeStatus(params.employeeId);
+  return buildEmployeeStatus(params.employeeId, params.displayTimeZone);
 }
 
 export async function startBreak(params: {
   shopDomain: string;
   employeeId: string;
   type?: BreakType;
+  displayTimeZone?: string;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const entry = await getOpenTimeEntry(params.employeeId);
@@ -1067,12 +1084,13 @@ export async function startBreak(params: {
     startedAt: breakEntry.startedAt,
   });
 
-  return buildEmployeeStatus(params.employeeId);
+  return buildEmployeeStatus(params.employeeId, params.displayTimeZone);
 }
 
 export async function endBreak(params: {
   shopDomain: string;
   employeeId: string;
+  displayTimeZone?: string;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const entry = await getOpenTimeEntry(params.employeeId);
@@ -1092,7 +1110,7 @@ export async function endBreak(params: {
     endedAt: updated.endedAt,
   });
 
-  return buildEmployeeStatus(params.employeeId);
+  return buildEmployeeStatus(params.employeeId, params.displayTimeZone);
 }
 
 export async function createMissedPunchRequest(params: {
@@ -1453,18 +1471,21 @@ const LATE_GRACE_MS = 5 * 60 * 1000;
 /** Attendance board for a date range (reports-style metrics + staff rows). */
 export async function getAttendanceBoard(
   shopDomain: string,
-  range: { start: string; end: string },
+  range: { start: string; end: string; displayTimeZone?: string },
 ) {
   const shop = await ensureShop(shopDomain);
   const settings = await getShopSettings(shop.id);
   const timeZone = resolveTimeZone(shop);
-  const rangeStart = startOfDayInTimeZone(range.start, timeZone);
-  const rangeEnd = endOfDayInTimeZone(range.end, timeZone);
-  const todayKey = toDateKeyInTimeZone(new Date(), timeZone);
+  const displayTimeZone = range.displayTimeZone
+    ? normalizeTimeZone(range.displayTimeZone)
+    : timeZone;
+  const rangeStart = startOfDayInTimeZone(range.start, displayTimeZone);
+  const rangeEnd = endOfDayInTimeZone(range.end, displayTimeZone);
+  const todayKey = toDateKeyInTimeZone(new Date(), displayTimeZone);
   const refKey =
     todayKey >= range.start && todayKey <= range.end ? todayKey : range.end;
-  const refStart = startOfDayInTimeZone(refKey, timeZone);
-  const refEnd = endOfDayInTimeZone(refKey, timeZone);
+  const refStart = startOfDayInTimeZone(refKey, displayTimeZone);
+  const refEnd = endOfDayInTimeZone(refKey, displayTimeZone);
   const isLive = refKey === todayKey;
 
   const [employees, timeEntries, shifts, pendingApprovals, timeOffRequests] =
@@ -1638,6 +1659,7 @@ export async function getAttendanceBoard(
       employee.location,
       shop,
     );
+    const labelTimeZone = range.displayTimeZone ? displayTimeZone : rowTimeZone;
     const shiftStart = (refShifts[0] ?? shiftForLate)?.startsAt ?? null;
 
     return {
@@ -1653,15 +1675,15 @@ export async function getAttendanceBoard(
       isLate: Boolean(isLate && status !== "absent" && status !== "on_leave"),
       clockInAt: primaryEntry?.clockInAt?.toISOString() ?? null,
       clockInLabel: primaryEntry
-        ? formatClockTime(primaryEntry.clockInAt, settings.timeFormat as TimeFormat, rowTimeZone)
+        ? formatClockTime(primaryEntry.clockInAt, settings.timeFormat as TimeFormat, labelTimeZone)
         : null,
       clockOutAt,
       clockOutLabel: latestClosed?.clockOutAt
-        ? formatClockTime(latestClosed.clockOutAt, settings.timeFormat as TimeFormat, rowTimeZone)
+        ? formatClockTime(latestClosed.clockOutAt, settings.timeFormat as TimeFormat, labelTimeZone)
         : null,
       shiftStartsAt: shiftStart?.toISOString() ?? null,
       shiftStartLabel: shiftStart
-        ? formatClockTime(shiftStart, settings.timeFormat as TimeFormat, rowTimeZone)
+        ? formatClockTime(shiftStart, settings.timeFormat as TimeFormat, labelTimeZone)
         : null,
       entryStatus: primaryEntry?.status ?? null,
     };
@@ -1681,7 +1703,7 @@ export async function getAttendanceBoard(
   return {
     refDate: refKey,
     live: isLive,
-    timeZone,
+    timeZone: displayTimeZone,
     timeFormat: settings.timeFormat as TimeFormat,
     metrics: {
       working: workingCount,

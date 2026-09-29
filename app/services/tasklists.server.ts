@@ -6,6 +6,7 @@ import {
   addDaysToDateKey,
   dayOfWeekInTimeZone,
   formatDateTimeInTimeZone,
+  normalizeTimeZone,
   resolveTimeZone,
   startOfDayInTimeZone,
   startOfMonthInTimeZone,
@@ -448,10 +449,13 @@ export async function listEmployeeTaskListsForPos(params: {
   shopDomain: string;
   employeeId: string;
   tab: PosTaskListTab;
+  displayTimeZone?: string;
 }) {
   const { shop, employee } = await getAssignedEmployee(params);
   const now = new Date();
-  const timeZone = resolveTimeZone(employee.location, shop);
+  const timeZone = params.displayTimeZone
+    ? normalizeTimeZone(params.displayTimeZone)
+    : resolveTimeZone(employee.location, shop);
   const periodKeys = currentPeriodKeysInTimeZone(now, timeZone);
   const periodKeyList = [
     periodKeys.DAILY,
@@ -565,6 +569,7 @@ export async function setPosTaskItemCompletion(params: {
   taskListId: string;
   taskItemId: string;
   completed: boolean;
+  displayTimeZone?: string;
 }) {
   const { shop, employee } = await getAssignedEmployee(params);
   const list = await prisma.taskList.findFirst({
@@ -595,7 +600,10 @@ export async function setPosTaskItemCompletion(params: {
 
   const item = list.items[0];
   const timeline = primaryTimeline(normalizeTimelines(list.timelines));
-  const dateKey = periodKeyForTimeline(timeline);
+  const timeZone = params.displayTimeZone
+    ? normalizeTimeZone(params.displayTimeZone)
+    : resolveTimeZone(employee.location, shop);
+  const dateKey = currentPeriodKeysInTimeZone(new Date(), timeZone)[timeline];
   const performedBy = performerLabel(employee);
   const assigneeKey = assigneeKeyFor(item.shared, employee.id);
 

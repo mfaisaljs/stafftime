@@ -22,7 +22,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { pin, qrCode } = body as { pin?: string; qrCode?: string };
+  const { pin, qrCode, displayTimeZone } = body as {
+    pin?: string;
+    qrCode?: string;
+    displayTimeZone?: string;
+  };
   const shop = await ensureShop(sessionToken.dest);
 
   try {
@@ -38,7 +42,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const activatedEmployee = await activateEmployeeOnFirstLogin(employee.id);
     const [status, settings] = await Promise.all([
-      buildEmployeeStatus(activatedEmployee.id),
+      buildEmployeeStatus(activatedEmployee.id, displayTimeZone),
       getShopSettings(shop.id),
     ]);
     status.employeeName = `${activatedEmployee.firstName} ${activatedEmployee.lastName}`;

@@ -6,8 +6,9 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-09-29T20:33:00.000Z",
+  "lastUpdated": "2026-09-29T21:01:00.000Z",
   "notes": [
+    "ST166 complete: POS APIs display times in the device/browser timezone while records stay store-local.",
     "ST165 complete: POS View Shifts and related POS shift/task/time-off paths use store-local timezone.",
     "ST164 update: corrected setup guide copy from Add Titles to Add Tiles.",
     "ST164 complete: removed Help Guide action from the View Web Portal setup guide card.",

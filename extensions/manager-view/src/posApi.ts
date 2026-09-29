@@ -15,15 +15,16 @@ export async function apiFetch(
     throw new Error("POS session token unavailable. Check app permissions.");
   }
 
+  const payload = body ? { ...body, displayTimeZone: deviceTimeZone() } : undefined;
   let response: Response;
   try {
     response = await fetch(resolveAppUrl(path), {
-      method: body ? "POST" : "GET",
+      method: payload ? "POST" : "GET",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: payload ? JSON.stringify(payload) : undefined,
     });
   } catch (err) {
     throw new Error(messageFromError(err, "Could not reach StaffTime server"));
@@ -34,6 +35,14 @@ export async function apiFetch(
     throw new Error(errorMessageFromResponse(data) ?? "Request failed");
   }
   return data;
+}
+
+function deviceTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function verifyPin(pin: string): Promise<VerifyResponse> {
@@ -104,7 +113,7 @@ export function messageFromError(error: unknown, fallback: string): string {
     : fallback;
 }
 
-export function showToast(content: string, _durationMs = 3000): void {
+export function showToast(content: string): void {
   try {
     if (shopify.toast && typeof shopify.toast.show === "function") {
       shopify.toast.show(content);

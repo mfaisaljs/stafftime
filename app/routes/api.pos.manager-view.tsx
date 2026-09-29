@@ -20,6 +20,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
   const intent = String((body as { intent?: string }).intent ?? "bootstrap");
+  const displayTimeZone = (body as { displayTimeZone?: string }).displayTimeZone;
   const managerId = String(
     (body as { managerId?: string }).managerId ?? "",
   ).trim();
@@ -34,6 +35,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const payload = await bootstrapManagerViewForPos({
           shopDomain: sessionToken.dest,
           managerId,
+          displayTimeZone,
         });
         return cors(jsonResponse(payload));
       }
@@ -56,6 +58,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           start,
           end,
           days,
+          displayTimeZone,
         });
         return cors(jsonResponse(payload));
       }
@@ -88,6 +91,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           notes,
           photo,
           photoType,
+          displayTimeZone,
         });
         return cors(jsonResponse(payload));
       }

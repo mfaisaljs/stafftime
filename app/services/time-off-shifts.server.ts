@@ -115,9 +115,12 @@ export function summarizeOverlappingShifts(
   shifts: Array<
     Shift & { location: { name: string; timezone?: string | null } }
   >,
+  displayTimeZone?: string,
 ): OverlappingShiftSummary[] {
   return shifts.map((shift) => {
-    const timeZone = resolveTimeZone(shift.location.timezone ?? undefined);
+    const timeZone = displayTimeZone
+      ? resolveTimeZone(displayTimeZone)
+      : resolveTimeZone(shift.location.timezone ?? undefined);
     return {
       id: shift.id,
       dateKey: toDateKeyInTimeZone(shift.startsAt, timeZone),

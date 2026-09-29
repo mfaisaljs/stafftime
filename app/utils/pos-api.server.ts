@@ -18,11 +18,12 @@ export async function handlePosPreflight({ request }: LoaderFunctionArgs) {
 export async function handlePosClockAction(request: Request, action: PosAction) {
   const { sessionToken, cors } = await authenticate.pos(request);
   const body = await request.json();
-  const { employeeId, notes, photo, photoType } = body as {
+  const { employeeId, notes, photo, photoType, displayTimeZone } = body as {
     employeeId?: string;
     notes?: string;
     photo?: string;
     photoType?: string;
+    displayTimeZone?: string;
   };
 
   if (!employeeId) {
@@ -38,6 +39,7 @@ export async function handlePosClockAction(request: Request, action: PosAction) 
           employeeId,
           photo,
           photoType,
+          displayTimeZone,
         });
         break;
       case "clock-out":
@@ -47,13 +49,22 @@ export async function handlePosClockAction(request: Request, action: PosAction) 
           notes,
           photo,
           photoType,
+          displayTimeZone,
         });
         break;
       case "break-start":
-        status = await startBreak({ shopDomain: sessionToken.dest, employeeId });
+        status = await startBreak({
+          shopDomain: sessionToken.dest,
+          employeeId,
+          displayTimeZone,
+        });
         break;
       case "break-end":
-        status = await endBreak({ shopDomain: sessionToken.dest, employeeId });
+        status = await endBreak({
+          shopDomain: sessionToken.dest,
+          employeeId,
+          displayTimeZone,
+        });
         break;
     }
     return cors(jsonResponse({ status, serverTime: Date.now() }));

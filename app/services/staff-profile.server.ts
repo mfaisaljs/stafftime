@@ -26,6 +26,7 @@ import {
   addDaysToDateKey,
   endOfDayInTimeZone,
   formatDateTimeInTimeZone,
+  normalizeTimeZone,
   resolveTimeZone,
   startOfDayInTimeZone,
   toDateKeyInTimeZone,
@@ -133,6 +134,7 @@ export async function getStaffProfileForPos(params: {
   start?: string;
   end?: string;
   days?: number;
+  displayTimeZone?: string;
 }) {
   const shop = await ensureShop(params.shopDomain);
   const employee = await prisma.employee.findFirst({
@@ -147,22 +149,30 @@ export async function getStaffProfileForPos(params: {
   const hourFormat = settings.hourFormat as HourFormat;
   const timeFormat = settings.timeFormat as TimeFormat;
   const timeZone = resolveTimeZone(employee.location, shop);
-  const range = resolveRange(timeZone, params.start, params.end, params.days);
+  const displayTimeZone = params.displayTimeZone
+    ? normalizeTimeZone(params.displayTimeZone)
+    : timeZone;
+  const range = resolveRange(
+    displayTimeZone,
+    params.start,
+    params.end,
+    params.days,
+  );
 
-  let startDate = startOfDayInTimeZone(range.start, timeZone);
-  const endDate = endOfDayInTimeZone(range.end, timeZone);
+  let startDate = startOfDayInTimeZone(range.start, displayTimeZone);
+  const endDate = endOfDayInTimeZone(range.end, displayTimeZone);
   startDate = await clampRangeStartForSalary(
     shop.id,
     employee.id,
     startDate,
     settings,
   );
-  const effectiveStartKey = toDateKeyInTimeZone(startDate, timeZone);
+  const effectiveStartKey = toDateKeyInTimeZone(startDate, displayTimeZone);
 
   // Include upcoming shifts beyond the payroll overview end date (default range ends today).
   const shiftsEnd = new Date();
   shiftsEnd.setDate(shiftsEnd.getDate() + 90);
-  const shiftsEndKey = toDateKeyInTimeZone(shiftsEnd, timeZone);
+  const shiftsEndKey = toDateKeyInTimeZone(shiftsEnd, displayTimeZone);
 
   await syncApprovedLeaveShiftCancellations(shop.id);
 
@@ -226,10 +236,12 @@ export async function getStaffProfileForPos(params: {
   const dateKeys = enumerateDateKeys(effectiveStartKey, range.end);
   const shiftsByDate = new Map<string, boolean>();
   for (const shift of shifts) {
-    shiftsByDate.set(toDateKeyInTimeZone(shift.startsAt, timeZone), true);
+    shiftsByDate.set(toDateKeyInTimeZone(shift.startsAt, displayTimeZone), true);
   }
   const clockedDates = new Set(
-    timeEntries.map((entry) => toDateKeyInTimeZone(entry.clockInAt, timeZone)),
+    timeEntries.map((entry) =>
+      toDateKeyInTimeZone(entry.clockInAt, displayTimeZone),
+    ),
   );
   const employeeTimeOff = filterRequestsForEmployee(timeOffRequests, employee.id);
   const totalAbsents = countAbsentDays(
@@ -305,7 +317,7 @@ export async function getStaffProfileForPos(params: {
   const upcomingShifts: ProfileShift[] = [];
   const pastShifts: ProfileShift[] = [];
   for (const shift of shifts) {
-    const shiftTimeZone = resolveTimeZone(shift.location, employee.location, shop);
+    const shiftTimeZone = displayTimeZone;
     const isToday =
       toDateKeyInTimeZone(shift.startsAt, shiftTimeZone) ===
       toDateKeyInTimeZone(now, shiftTimeZone);

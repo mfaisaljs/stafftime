@@ -124,6 +124,7 @@ async function getActor(shopDomain: string, employeeId: string) {
 export async function getTimeOffBootstrapForPos(params: {
   shopDomain: string;
   employeeId: string;
+  displayTimeZone?: string;
 }) {
   const { shop, employee } = await getActor(
     params.shopDomain,
@@ -202,7 +203,10 @@ export async function getTimeOffBootstrapForPos(params: {
           return {
             request,
             overlappingShiftCount: overlapping.length,
-            overlappingShifts: summarizeOverlappingShifts(overlapping),
+            overlappingShifts: summarizeOverlappingShifts(
+              overlapping,
+              params.displayTimeZone,
+            ),
           };
         }),
       )

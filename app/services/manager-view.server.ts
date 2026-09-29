@@ -12,7 +12,11 @@ import {
   startBreak,
   type AttendanceStatus,
 } from "./workforce.server";
-import { resolveTimeZone, toDateKeyInTimeZone } from "../utils/timezone.server";
+import {
+  normalizeTimeZone,
+  resolveTimeZone,
+  toDateKeyInTimeZone,
+} from "../utils/timezone.server";
 
 function roleBadgeLabel(
   role: EmployeeRole,
@@ -120,14 +124,18 @@ function punchTone(
 export async function bootstrapManagerViewForPos(params: {
   shopDomain: string;
   managerId: string;
+  displayTimeZone?: string;
 }) {
   const { manager, settings } = await requireManager(params);
   const shop = await ensureShop(params.shopDomain);
-  const timeZone = resolveTimeZone(shop);
+  const timeZone = params.displayTimeZone
+    ? normalizeTimeZone(params.displayTimeZone)
+    : resolveTimeZone(shop);
   const today = toDateKeyInTimeZone(new Date(), timeZone);
   const board = await getAttendanceBoard(params.shopDomain, {
     start: today,
     end: today,
+    displayTimeZone: timeZone,
   });
 
   const staff = board.rows.map((row) => {
@@ -185,6 +193,7 @@ export async function getManagerViewStaffDetailForPos(params: {
   start?: string;
   end?: string;
   days?: number;
+  displayTimeZone?: string;
 }) {
   await requireManager(params);
 
@@ -204,8 +213,9 @@ export async function getManagerViewStaffDetailForPos(params: {
       start: params.start,
       end: params.end,
       days: params.days,
+      displayTimeZone: params.displayTimeZone,
     }),
-    buildEmployeeStatus(params.staffId),
+    buildEmployeeStatus(params.staffId, params.displayTimeZone),
   ]);
 
   const currency = staff.currency || "USD";
@@ -244,6 +254,7 @@ export async function managerClockActionForPos(params: {
   notes?: string;
   photo?: string | null;
   photoType?: string | null;
+  displayTimeZone?: string;
 }) {
   await requireManager(params);
 
@@ -263,6 +274,7 @@ export async function managerClockActionForPos(params: {
         employeeId: params.staffId,
         photo: params.photo,
         photoType: params.photoType,
+        displayTimeZone: params.displayTimeZone,
       });
       break;
     case "clock-out":
@@ -272,18 +284,21 @@ export async function managerClockActionForPos(params: {
         notes: params.notes,
         photo: params.photo,
         photoType: params.photoType,
+        displayTimeZone: params.displayTimeZone,
       });
       break;
     case "break-start":
       clockStatus = await startBreak({
         shopDomain: params.shopDomain,
         employeeId: params.staffId,
+        displayTimeZone: params.displayTimeZone,
       });
       break;
     case "break-end":
       clockStatus = await endBreak({
         shopDomain: params.shopDomain,
         employeeId: params.staffId,
+        displayTimeZone: params.displayTimeZone,
       });
       break;
   }
