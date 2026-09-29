@@ -248,15 +248,21 @@ export async function getPortalTimesheet(params: {
 
   const shiftsByDate = new Map<string, PortalTimesheetShift[]>();
   for (const shift of shifts) {
-    const key = toDateKeyInTimeZone(shift.startsAt, timeZone);
-    const cancelled = shiftIsCancelledForLeave(shift, leaveRequests, employee.id);
+    const shiftTimeZone = resolveTimeZone(shift.location, shop);
+    const key = toDateKeyInTimeZone(shift.startsAt, shiftTimeZone);
+    const cancelled = shiftIsCancelledForLeave(
+      shift,
+      leaveRequests,
+      employee.id,
+      shiftTimeZone,
+    );
     const color =
       staffColors[employee.id] ||
       locationColors[shift.locationId] ||
       "#2563eb";
     const row: PortalTimesheetShift = {
       id: shift.id,
-      timeRangeLabel: `${formatClockTime(shift.startsAt, timeFormat, timeZone)} - ${formatClockTime(shift.endsAt, timeFormat, timeZone)}`,
+      timeRangeLabel: `${formatClockTime(shift.startsAt, timeFormat, shiftTimeZone)} - ${formatClockTime(shift.endsAt, timeFormat, shiftTimeZone)}`,
       locationName: shift.location.name,
       cancelled,
       color,

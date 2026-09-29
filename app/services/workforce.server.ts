@@ -603,17 +603,19 @@ export async function listEmployeeShiftsForPos(params: {
   const onLeaveInRange = leaveDays.length > 0;
 
   const rows: PosShiftRow[] = shifts.map((shift) => {
+    const shiftTimeZone = resolveTimeZone(shift.location, employee.location, shop);
     const cancelled = shiftIsCancelledForLeave(
       shift,
       leaveRequests,
       employee.id,
+      shiftTimeZone,
     );
     if (cancelled) {
       return {
         id: shift.id,
-        dateLabel: formatShiftDateLabel(shift.startsAt, now, timeZone),
-        dayLabel: formatShiftDayLabel(shift.startsAt, timeZone),
-        timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, timeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, timeZone)}`,
+        dateLabel: formatShiftDateLabel(shift.startsAt, now, shiftTimeZone),
+        dayLabel: formatShiftDayLabel(shift.startsAt, shiftTimeZone),
+        timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, shiftTimeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, shiftTimeZone)}`,
         status: "ON_LEAVE",
         statusLabel: "On leave",
         tone: "critical",
@@ -626,9 +628,9 @@ export async function listEmployeeShiftsForPos(params: {
     const status = classifyShiftStatus(shift.startsAt, shift.endsAt, now);
     return {
       id: shift.id,
-      dateLabel: formatShiftDateLabel(shift.startsAt, now, timeZone),
-      dayLabel: formatShiftDayLabel(shift.startsAt, timeZone),
-      timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, timeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, timeZone)}`,
+      dateLabel: formatShiftDateLabel(shift.startsAt, now, shiftTimeZone),
+      dayLabel: formatShiftDayLabel(shift.startsAt, shiftTimeZone),
+      timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, shiftTimeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, shiftTimeZone)}`,
       ...status,
       startsAt: shift.startsAt.toISOString(),
       endsAt: shift.endsAt.toISOString(),

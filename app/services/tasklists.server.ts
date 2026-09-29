@@ -2,6 +2,15 @@ import type { Employee, EmployeeRole } from "@prisma/client";
 import prisma from "../db.server";
 import { ensureShop } from "./workforce.server";
 import { isManagerRole } from "./settings.server";
+import {
+  addDaysToDateKey,
+  dayOfWeekInTimeZone,
+  formatDateTimeInTimeZone,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  startOfMonthInTimeZone,
+  toDateKeyInTimeZone,
+} from "../utils/timezone.server";
 
 export type PosTaskListTab = "all" | "daily" | "weekly" | "monthly";
 export type TaskTimeline = "DAILY" | "WEEKLY" | "MONTHLY";
@@ -141,6 +150,17 @@ export function currentPeriodKeys(at = new Date()) {
   } as const;
 }
 
+function currentPeriodKeysInTimeZone(at: Date, timeZone: string) {
+  const daily = toDateKeyInTimeZone(at, timeZone);
+  const weekly = addDaysToDateKey(daily, -dayOfWeekInTimeZone(at, timeZone));
+  const monthly = `${daily.slice(0, 7)}-01`;
+  return {
+    DAILY: daily,
+    WEEKLY: weekly,
+    MONTHLY: monthly,
+  } as const;
+}
+
 export function periodLabelForTimeline(
   timeline: string | null | undefined,
   at = new Date(),
@@ -164,6 +184,37 @@ export function periodLabelForTimeline(
     });
   }
   return at.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function periodLabelForTimelineInTimeZone(
+  timeline: string | null | undefined,
+  at: Date,
+  timeZone: string,
+): string {
+  const kind = String(timeline ?? "DAILY").toUpperCase();
+  if (kind === "WEEKLY") {
+    const keys = currentPeriodKeysInTimeZone(at, timeZone);
+    const start = startOfDayInTimeZone(keys.WEEKLY, timeZone);
+    const end = startOfDayInTimeZone(addDaysToDateKey(keys.WEEKLY, 6), timeZone);
+    return `Week of ${formatDateTimeInTimeZone(start, timeZone, {
+      month: "short",
+      day: "numeric",
+    })} – ${formatDateTimeInTimeZone(end, timeZone, {
+      month: "short",
+      day: "numeric",
+    })}`;
+  }
+  if (kind === "MONTHLY") {
+    return formatDateTimeInTimeZone(startOfMonthInTimeZone(at, timeZone), timeZone, {
+      month: "long",
+      year: "numeric",
+    });
+  }
+  return formatDateTimeInTimeZone(at, timeZone, {
     weekday: "long",
     month: "short",
     day: "numeric",
@@ -381,6 +432,7 @@ async function getAssignedEmployee(params: {
   const shop = await ensureShop(params.shopDomain);
   const employee = await prisma.employee.findFirst({
     where: { id: params.employeeId, shopId: shop.id },
+    include: { location: true },
   });
   if (!employee) {
     throw new Error("Employee not found");
@@ -399,7 +451,8 @@ export async function listEmployeeTaskListsForPos(params: {
 }) {
   const { shop, employee } = await getAssignedEmployee(params);
   const now = new Date();
-  const periodKeys = currentPeriodKeys(now);
+  const timeZone = resolveTimeZone(employee.location, shop);
+  const periodKeys = currentPeriodKeysInTimeZone(now, timeZone);
   const periodKeyList = [
     periodKeys.DAILY,
     periodKeys.WEEKLY,
@@ -437,7 +490,11 @@ export async function listEmployeeTaskListsForPos(params: {
 
     const timeline = primaryTimeline(timelines);
     const periodKey = periodKeys[timeline];
-    const periodLabel = periodLabelForTimeline(timeline, now);
+    const periodLabel = periodLabelForTimelineInTimeZone(
+      timeline,
+      now,
+      timeZone,
+    );
 
     const periodCompletions = list.completions.filter(
       (completion) => completion.dateKey === periodKey,

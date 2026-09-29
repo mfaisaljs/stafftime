@@ -29,6 +29,15 @@ import {
   syncApprovedLeaveShiftCancellations,
 } from "../services/time-off-shifts.server";
 import prisma from "../db.server";
+import {
+  addDaysToDateKey,
+  endOfDayInTimeZone,
+  parseZonedDateTime,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  toDateKeyInTimeZone,
+  toTimeInputValueInTimeZone,
+} from "../utils/timezone.server";
 
 type ScheduleActionResult = { success?: string; error?: string };
 type SchedulePeriod = "weekly" | "monthly" | "yearly";
@@ -160,23 +169,26 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         employee.weeklyAvailability ??
         "MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY",
     })),
-    shifts: shifts.map((shift) => ({
-      id: shift.id,
-      employeeId: shift.employeeId,
-      locationId: shift.locationId,
-      locationName: shift.location.name,
-      employeeName: `${shift.employee.firstName} ${shift.employee.lastName}`,
-      dateKey: toDateKey(shift.startsAt),
-      startsAt: shift.startsAt.toISOString(),
-      endsAt: shift.endsAt.toISOString(),
-      startTime: timeValue(shift.startsAt),
-      endTime: timeValue(shift.endsAt),
-      notes: shift.notes ?? "",
-      status: (shift as { status?: string }).status ?? SHIFT_STATUS.SCHEDULED,
-      cancelledForLeave:
-        ((shift as { status?: string }).status ?? SHIFT_STATUS.SCHEDULED) ===
-        SHIFT_STATUS.CANCELLED_LEAVE,
-    })),
+    shifts: shifts.map((shift) => {
+      const shiftTimeZone = resolveTimeZone(shift.location, shop);
+      return {
+        id: shift.id,
+        employeeId: shift.employeeId,
+        locationId: shift.locationId,
+        locationName: shift.location.name,
+        employeeName: `${shift.employee.firstName} ${shift.employee.lastName}`,
+        dateKey: toDateKeyInTimeZone(shift.startsAt, shiftTimeZone),
+        startsAt: shift.startsAt.toISOString(),
+        endsAt: shift.endsAt.toISOString(),
+        startTime: toTimeInputValueInTimeZone(shift.startsAt, shiftTimeZone),
+        endTime: toTimeInputValueInTimeZone(shift.endsAt, shiftTimeZone),
+        notes: shift.notes ?? "",
+        status: (shift as { status?: string }).status ?? SHIFT_STATUS.SCHEDULED,
+        cancelledForLeave:
+          ((shift as { status?: string }).status ?? SHIFT_STATUS.SCHEDULED) ===
+          SHIFT_STATUS.CANCELLED_LEAVE,
+      };
+    }),
     locations: locations.map((location) => ({
       id: location.id,
       name: location.name,
@@ -281,14 +293,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return { error: "Choose a valid target week." };
       }
 
-      const sourceWeekStart = startOfWeek(dateTimeFromInputs(sourceDate, "00:00"));
-      const sourceWeekEnd = endOfDay(addDays(sourceWeekStart, 6));
-      const targetWeekStart = startOfWeek(dateTimeFromInputs(targetDate, "00:00"));
-      const targetWeekEnd = endOfDay(addDays(targetWeekStart, 6));
-      if (toDateKey(sourceWeekStart) === toDateKey(targetWeekStart)) {
+      const shopTimeZone = resolveTimeZone(shop);
+      const sourceWeekStartKey = startOfIsoWeekKey(sourceDate);
+      const sourceWeekEndKey = addDaysToDateKey(sourceWeekStartKey, 6);
+      const targetWeekStartKey = startOfIsoWeekKey(targetDate);
+      const targetWeekEndKey = addDaysToDateKey(targetWeekStartKey, 6);
+      const sourceWeekStart = startOfDayInTimeZone(sourceWeekStartKey, shopTimeZone);
+      const sourceWeekEnd = endOfDayInTimeZone(sourceWeekEndKey, shopTimeZone);
+      const targetWeekStart = startOfDayInTimeZone(targetWeekStartKey, shopTimeZone);
+      const targetWeekEnd = endOfDayInTimeZone(targetWeekEndKey, shopTimeZone);
+      if (sourceWeekStartKey === targetWeekStartKey) {
         return { error: "Choose a different target week." };
       }
-      if (isPastDateKey(toDateKey(targetWeekStart))) {
+      if (isPastDateKey(targetWeekStartKey)) {
         return { error: "You cannot copy shifts to a past week." };
       }
 
@@ -298,6 +315,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           status: SHIFT_STATUS.SCHEDULED,
           startsAt: { gte: sourceWeekStart, lte: sourceWeekEnd },
         },
+        include: { location: true },
       });
       if (sourceShifts.length === 0) {
         return { error: "There are no shifts to copy from this week." };
@@ -305,8 +323,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       const approvedLeaveForCopy = await getApprovedTimeOffForRange(
         shop.id,
-        toDateKey(targetWeekStart),
-        toDateKey(targetWeekEnd),
+        targetWeekStartKey,
+        targetWeekEndKey,
       );
 
       await prisma.$transaction(async (tx) => {
@@ -320,9 +338,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }
 
         const copied = sourceShifts.flatMap((shift) => {
-          const dayOffset = daysBetween(sourceWeekStart, shift.startsAt);
-          const targetDay = addDays(targetWeekStart, dayOffset);
-          const targetDateKey = toDateKey(targetDay);
+          const shiftTimeZone = resolveTimeZone(shift.location, shop);
+          const sourceDateKey = toDateKeyInTimeZone(
+            shift.startsAt,
+            shiftTimeZone,
+          );
+          const dayOffset = daysBetweenKeys(sourceWeekStartKey, sourceDateKey);
+          const targetDateKey = addDaysToDateKey(targetWeekStartKey, dayOffset);
           const leave = employeeOnApprovedLeave(
             approvedLeaveForCopy,
             shift.employeeId,
@@ -332,7 +354,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
           const targetStartsAt = dateTimeFromInputs(
             targetDateKey,
-            timeValue(shift.startsAt),
+            toTimeInputValueInTimeZone(shift.startsAt, shiftTimeZone),
+            shiftTimeZone,
           );
           const durationMs = shift.endsAt.getTime() - shift.startsAt.getTime();
           return [
@@ -377,14 +400,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const repeatWeek = formData.get("repeatWeek") === "on";
 
     await assertEmployee(shop.id, employeeId);
-    await assertLocation(shop.id, locationId);
+    const location = await assertLocation(shop.id, locationId);
 
     if (!isDateKey(date) || !startTime || !endTime) {
       return { error: "Choose a valid date and shift time." };
     }
 
-    const startsAt = dateTimeFromInputs(date, startTime);
-    const endsAt = dateTimeFromInputs(date, endTime);
+    const timeZone = resolveTimeZone(location, shop);
+    const startsAt = dateTimeFromInputs(date, startTime, timeZone);
+    const endsAt = dateTimeFromInputs(date, endTime, timeZone);
     if (isPastDateKey(date)) {
       return { error: "You cannot add or edit shifts for past dates." };
     }
@@ -406,11 +430,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return { success: "Shift updated." };
     }
 
-    const weekStart = startOfWeek(dateTimeFromInputs(date, "00:00"));
+    const weekStartKey = startOfIsoWeekKey(date);
     const createDates = repeatWeek
-      ? WEEKDAY_VALUES.map((_, index) => toDateKey(addDays(weekStart, index))).filter(
-          (value) => value >= date,
-        )
+      ? WEEKDAY_VALUES.map((_, index) =>
+          addDaysToDateKey(weekStartKey, index),
+        ).filter((value) => value >= date)
       : [date];
 
     await assertEmployeeNotOnApprovedLeave({
@@ -421,13 +445,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     await prisma.$transaction(async (tx) => {
       for (const dateKey of createDates) {
-        const dayStart = dateTimeFromInputs(dateKey, "00:00");
-        const dayEnd = endOfDay(dayStart);
+        const dayStart = startOfDayInTimeZone(dateKey, timeZone);
+        const dayEnd = endOfDayInTimeZone(dateKey, timeZone);
         const shiftData = {
           locationId,
           employeeId,
-          startsAt: dateTimeFromInputs(dateKey, startTime),
-          endsAt: dateTimeFromInputs(dateKey, endTime),
+          startsAt: dateTimeFromInputs(dateKey, startTime, timeZone),
+          endsAt: dateTimeFromInputs(dateKey, endTime, timeZone),
           notes: notes || null,
         };
         const existingShift = await tx.shift.findFirst({
@@ -1644,6 +1668,7 @@ async function assertLocation(shopId: string, locationId: string) {
     where: { id: locationId, shopId },
   });
   if (!location) throw new Error("Choose a valid location.");
+  return location;
 }
 
 function showShopifyModal(id: string) {
@@ -1703,12 +1728,6 @@ function readableTextColor(backgroundColor: string) {
   return luminance > 0.62 ? "#111111" : "#ffffff";
 }
 
-function daysBetween(start: Date, end: Date) {
-  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  return Math.round((endDay.getTime() - startDay.getTime()) / 86400000);
-}
-
 function formatUsDate(dateKey: string) {
   const date = dateFromKey(dateKey);
   return new Intl.DateTimeFormat("en-US", {
@@ -1756,8 +1775,24 @@ function isAvailable(weeklyAvailability: string, day: (typeof WEEKDAY_VALUES)[nu
   return weeklyAvailability.split(",").filter(Boolean).includes(day);
 }
 
-function dateTimeFromInputs(date: string, time: string) {
-  return new Date(`${date}T${time}:00`);
+function dateTimeFromInputs(date: string, time: string, timeZone: string) {
+  return parseZonedDateTime(date, time, timeZone);
+}
+
+function startOfIsoWeekKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = date.getUTCDay();
+  const offset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  return addDaysToDateKey(dateKey, offset);
+}
+
+function daysBetweenKeys(startKey: string, endKey: string) {
+  const [startYear, startMonth, startDay] = startKey.split("-").map(Number);
+  const [endYear, endMonth, endDay] = endKey.split("-").map(Number);
+  const start = Date.UTC(startYear, startMonth - 1, startDay);
+  const end = Date.UTC(endYear, endMonth - 1, endDay);
+  return Math.round((end - start) / 86400000);
 }
 
 function normalizePeriod(value: string | null): SchedulePeriod {
@@ -1901,12 +1936,6 @@ function addDays(value: Date, days: number) {
   const next = new Date(value);
   next.setDate(next.getDate() + days);
   return next;
-}
-
-function timeValue(value: Date) {
-  return `${String(value.getHours()).padStart(2, "0")}:${String(
-    value.getMinutes(),
-  ).padStart(2, "0")}`;
 }
 
 function formatDateRange(start: string, end: string) {

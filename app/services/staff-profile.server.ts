@@ -305,22 +305,24 @@ export async function getStaffProfileForPos(params: {
   const upcomingShifts: ProfileShift[] = [];
   const pastShifts: ProfileShift[] = [];
   for (const shift of shifts) {
+    const shiftTimeZone = resolveTimeZone(shift.location, employee.location, shop);
     const isToday =
-      toDateKeyInTimeZone(shift.startsAt, timeZone) ===
-      toDateKeyInTimeZone(now, timeZone);
+      toDateKeyInTimeZone(shift.startsAt, shiftTimeZone) ===
+      toDateKeyInTimeZone(now, shiftTimeZone);
     const cancelledForLeave = shiftIsCancelledForLeave(
       shift,
       employeeTimeOff,
       employee.id,
+      shiftTimeZone,
     );
     const row = {
       id: shift.id,
-      dateLabel: formatShiftDateLabel(shift.startsAt, now, timeZone),
+      dateLabel: formatShiftDateLabel(shift.startsAt, now, shiftTimeZone),
       timeRangeLabel: formatTimeRange(
         shift.startsAt,
         shift.endsAt,
         timeFormat,
-        timeZone,
+        shiftTimeZone,
       ),
       locationName: shift.location.name,
       isToday,

@@ -3140,6 +3140,30 @@
       ],
       "files": ["app/routes/app._index.tsx"],
       "lastUpdated": "2026-09-29T16:14:00.000Z"
+    },
+    {
+      "id": "ST165",
+      "taskId": "T004",
+      "title": "Complete POS timezone coverage",
+      "description": "Apply store-local timezone handling to POS shift, staff profile, task list, and time-off shift displays and schedule persistence.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST163"],
+      "acceptanceCriteria": [
+        "View Shifts POS tile shows shift times in each shift location timezone",
+        "Schedule create, edit, and copy store wall-clock shift times as correct UTC instants",
+        "POS staff profile, portal shift blocks, task list periods, and time-off shift conflicts use store-local timezone",
+        "Focused timezone, tasklist, and time-off tests pass"
+      ],
+      "files": [
+        "app/routes/app.schedules.tsx",
+        "app/services/workforce.server.ts",
+        "app/services/staff-profile.server.ts",
+        "app/services/portal.server.ts",
+        "app/services/time-off-shifts.server.ts",
+        "app/services/tasklists.server.ts"
+      ],
+      "lastUpdated": "2026-09-29T20:33:00.000Z"
     }
   ]
 }

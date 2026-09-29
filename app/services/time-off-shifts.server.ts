@@ -6,6 +6,13 @@ import {
   requestCoversDateKey,
   type TimeOffRequestWithPolicy,
 } from "./settings.server";
+import {
+  endOfDayInTimeZone,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  toDateKeyInTimeZone,
+  toTimeInputValueInTimeZone,
+} from "../utils/timezone.server";
 
 export const SHIFT_STATUS = {
   SCHEDULED: "SCHEDULED",
@@ -22,21 +29,19 @@ export type OverlappingShiftSummary = {
   locationName: string;
 };
 
-function startOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-}
-
-function endOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 23, 59, 59, 999);
-}
-
 function toDateKeyLocal(value: Date) {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+async function getShopTimeZone(
+  client: Pick<Prisma.TransactionClient, "shop">,
+  shopId: string,
+) {
+  const shop = await client.shop.findUnique({ where: { id: shopId } });
+  return resolveTimeZone(shop);
 }
 
 /** True when leave has not started yet (start date is today or later). */
@@ -57,12 +62,6 @@ export function assertTimeOffCanBeReviewed(startDate: string, endDate: string) {
   if (endDate < startDate) {
     throw new Error("Time off end date is before the start date.");
   }
-}
-
-function timeValue(value: Date) {
-  const hours = String(value.getHours()).padStart(2, "0");
-  const minutes = String(value.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
 }
 
 export function employeeOnApprovedLeave(
@@ -96,8 +95,10 @@ export async function findOverlappingScheduledShifts(params: {
   startDate: string;
   endDate: string;
 }) {
-  const rangeStart = startOfDayFromKey(params.startDate);
-  const rangeEnd = endOfDayFromKey(params.endDate);
+  const shop = await prisma.shop.findUnique({ where: { id: params.shopId } });
+  const timeZone = resolveTimeZone(shop);
+  const rangeStart = startOfDayInTimeZone(params.startDate, timeZone);
+  const rangeEnd = endOfDayInTimeZone(params.endDate, timeZone);
   return prisma.shift.findMany({
     where: {
       shopId: params.shopId,
@@ -112,16 +113,19 @@ export async function findOverlappingScheduledShifts(params: {
 
 export function summarizeOverlappingShifts(
   shifts: Array<
-    Shift & { location: { name: string } }
+    Shift & { location: { name: string; timezone?: string | null } }
   >,
 ): OverlappingShiftSummary[] {
-  return shifts.map((shift) => ({
-    id: shift.id,
-    dateKey: toDateKeyLocal(shift.startsAt),
-    startTime: timeValue(shift.startsAt),
-    endTime: timeValue(shift.endsAt),
-    locationName: shift.location.name,
-  }));
+  return shifts.map((shift) => {
+    const timeZone = resolveTimeZone(shift.location.timezone ?? undefined);
+    return {
+      id: shift.id,
+      dateKey: toDateKeyInTimeZone(shift.startsAt, timeZone),
+      startTime: toTimeInputValueInTimeZone(shift.startsAt, timeZone),
+      endTime: toTimeInputValueInTimeZone(shift.endsAt, timeZone),
+      locationName: shift.location.name,
+    };
+  });
 }
 
 export async function cancelShiftsForApprovedLeave(
@@ -133,8 +137,9 @@ export async function cancelShiftsForApprovedLeave(
     endDate: string;
   },
 ) {
-  const rangeStart = startOfDayFromKey(params.startDate);
-  const rangeEnd = endOfDayFromKey(params.endDate);
+  const timeZone = await getShopTimeZone(tx, params.shopId);
+  const rangeStart = startOfDayInTimeZone(params.startDate, timeZone);
+  const rangeEnd = endOfDayInTimeZone(params.endDate, timeZone);
   const result = await tx.shift.updateMany({
     where: {
       shopId: params.shopId,
@@ -156,8 +161,9 @@ export async function restoreShiftsCancelledForLeave(
     endDate: string;
   },
 ) {
-  const rangeStart = startOfDayFromKey(params.startDate);
-  const rangeEnd = endOfDayFromKey(params.endDate);
+  const timeZone = await getShopTimeZone(tx, params.shopId);
+  const rangeStart = startOfDayInTimeZone(params.startDate, timeZone);
+  const rangeEnd = endOfDayInTimeZone(params.endDate, timeZone);
   const result = await tx.shift.updateMany({
     where: {
       shopId: params.shopId,
@@ -395,8 +401,11 @@ export function shiftIsCancelledForLeave(
   shift: { status?: string | null; startsAt: Date },
   requests: TimeOffRequestWithPolicy[],
   employeeId: string,
+  timeZone?: string,
 ) {
   if (shift.status === SHIFT_STATUS.CANCELLED_LEAVE) return true;
-  const dateKey = toDateKeyLocal(shift.startsAt);
+  const dateKey = timeZone
+    ? toDateKeyInTimeZone(shift.startsAt, timeZone)
+    : toDateKeyLocal(shift.startsAt);
   return employeeOnApprovedLeave(requests, employeeId, dateKey) !== null;
 }
