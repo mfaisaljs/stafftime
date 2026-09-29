@@ -167,7 +167,8 @@
       "priority": "critical",
       "phase": "mvp",
       "progressPercent": 100,
-      "dependencies": ["T004", "T007"]
+      "dependencies": ["T004", "T007"],
+      "lastUpdated": "2026-09-29T16:14:00.000Z"
     },
     {
       "id": "T017",

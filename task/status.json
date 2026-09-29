@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-09-29T16:05:00.000Z",
+  "lastUpdated": "2026-09-29T16:14:00.000Z",
   "notes": [
+    "ST164 update: corrected setup guide copy from Add Titles to Add Tiles.",
+    "ST164 complete: removed Help Guide action from the View Web Portal setup guide card.",
     "ST163 complete: clock labels, local-day ranges, and manual entries use store location timezone with shop fallback.",
     "ST161 update: View Details no longer has an editable Shared checkbox; it shows a read-only Shared/Individual badge.",
     "ST159 update: Edit shown on all attendance rows; admin can adjust any time entry, not only source MANUAL.",

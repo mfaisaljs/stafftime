@@ -250,7 +250,7 @@ function SetupGuide({
       return {
         ...step,
         actions: step.actions.map((action) =>
-          action.label === "Add Titles"
+          action.label === "Add Tiles"
             ? { ...action, href: posEditorUrl, external: true }
             : action,
         ),
@@ -393,11 +393,6 @@ const SETUP_STEPS: Array<{
     description: "Access the staff web portal to manage your team.",
     actions: [
       { label: "View Portal", href: "/portal", external: true },
-      {
-        label: "Help Guide",
-        href: "https://shopify.dev/docs/apps",
-        external: true,
-      },
     ],
   },
   {
@@ -414,11 +409,11 @@ const SETUP_STEPS: Array<{
   },
   {
     id: "titles",
-    title: "Add Titles",
+    title: "Add Tiles",
     description: "Add StaffTime tiles to your POS smart grid.",
     actions: [
       {
-        label: "Add Titles",
+        label: "Add Tiles",
         href: "/app/settings",
         external: true,
       },

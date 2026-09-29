@@ -3124,6 +3124,22 @@
         "app/components/attendance/AttendanceBoard.tsx"
       ],
       "lastUpdated": "2026-09-29T16:05:00.000Z"
+    },
+    {
+      "id": "ST164",
+      "taskId": "T016",
+      "title": "Setup guide card cleanup",
+      "description": "Remove the Help Guide button from the View Web Portal setup guide card and correct Add Tiles wording.",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": ["ST145"],
+      "acceptanceCriteria": [
+        "View Web Portal setup step only shows the View Portal action",
+        "No Help Guide action appears on that setup card",
+        "POS smart grid setup step says Add Tiles, not Add Titles"
+      ],
+      "files": ["app/routes/app._index.tsx"],
+      "lastUpdated": "2026-09-29T16:14:00.000Z"
     }
   ]
 }
