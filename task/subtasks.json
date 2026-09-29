@@ -3176,6 +3176,8 @@
       "acceptanceCriteria": [
         "POS extensions send Intl resolved timezone to StaffTime APIs",
         "Clock status, View Shifts, Manager View, Staff Profile, Time Off, and Task Lists format POS labels in the device timezone",
+        "View Shifts formats shift start/end ISO timestamps on the POS device as a fallback for device-local display",
+        "Staff Profile and Manager View shift cards format shift start/end ISO timestamps on the POS device",
         "Clock-in/out storage, schedule persistence, and business day rules remain store/location timezone based",
         "Focused timezone tests and lint on changed files pass"
       ],
@@ -3195,15 +3197,21 @@
         "app/services/time-off-shifts.server.ts",
         "app/services/tasklists.server.ts",
         "extensions/workforce-clock/src/posApi.ts",
+        "extensions/view-shifts/src/Modal.tsx",
+        "extensions/view-shifts/src/session.ts",
         "extensions/view-shifts/src/posApi.ts",
+        "extensions/manager-view/src/Modal.tsx",
+        "extensions/manager-view/src/session.ts",
         "extensions/manager-view/src/posApi.ts",
+        "extensions/staff-profile/src/Modal.tsx",
+        "extensions/staff-profile/src/session.ts",
         "extensions/staff-profile/src/posApi.ts",
         "extensions/time-off/src/posApi.ts",
         "extensions/view-tasklists/src/posApi.ts",
         "extensions/commission/src/posApi.ts",
         "extensions/sales-target/src/posApi.ts"
       ],
-      "lastUpdated": "2026-09-29T21:01:00.000Z"
+      "lastUpdated": "2026-09-29T21:15:58.000Z"
     }
   ]
 }

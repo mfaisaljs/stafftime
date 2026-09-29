@@ -34,6 +34,7 @@ function ViewShiftsModal() {
   const [leaveDays, setLeaveDays] = useState<PosLeaveDayRow[]>([]);
   const [onLeaveInRange, setOnLeaveInRange] = useState(false);
   const [onLeaveToday, setOnLeaveToday] = useState(false);
+  const [timeFormat, setTimeFormat] = useState<"24H" | "12H">("24H");
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
   const pinPadOpenRef = useRef(false);
@@ -57,6 +58,7 @@ function ViewShiftsModal() {
         setLeaveDays(data.leaveDays ?? []);
         setOnLeaveToday(Boolean(data.onLeaveToday));
         setOnLeaveInRange(Boolean(data.onLeaveInRange));
+        setTimeFormat(data.timeFormat ?? "24H");
       } catch (err) {
         showToast(messageFromError(err, "Could not load shifts"));
         setShifts([]);
@@ -196,7 +198,9 @@ function ViewShiftsModal() {
   const cancelledShifts = shifts.filter((shift) => shift.cancelledForLeave);
   const leaveOnlyDays = leaveDays.filter(
     (leave) =>
-      !cancelledShifts.some((shift) => shift.startsAt.startsWith(leave.dateKey)),
+      !cancelledShifts.some(
+        (shift) => formatLocalDateKey(shift.startsAt) === leave.dateKey,
+      ),
   );
 
   const shiftList =
@@ -212,10 +216,10 @@ function ViewShiftsModal() {
           <LeaveDayRow key={leave.dateKey} leave={leave} />
         ))}
         {cancelledShifts.map((shift) => (
-          <ShiftRow key={shift.id} shift={shift} />
+          <ShiftRow key={shift.id} shift={shift} timeFormat={timeFormat} />
         ))}
         {activeShifts.map((shift) => (
-          <ShiftRow key={shift.id} shift={shift} />
+          <ShiftRow key={shift.id} shift={shift} timeFormat={timeFormat} />
         ))}
       </s-stack>
     );
@@ -297,15 +301,23 @@ function LeaveDayRow(props: { leave: PosLeaveDayRow }) {
   );
 }
 
-function ShiftRow(props: { shift: PosShiftRow }) {
-  const { shift } = props;
+function ShiftRow(props: {
+  shift: PosShiftRow;
+  timeFormat: "24H" | "12H";
+}) {
+  const { shift, timeFormat } = props;
   const cancelled = Boolean(shift.cancelledForLeave);
   const dateLabel = cancelled
     ? strikeThroughText(shift.dateLabel)
     : shift.dateLabel;
+  const localTimeRangeLabel = formatLocalTimeRange(
+    shift.startsAt,
+    shift.endsAt,
+    timeFormat,
+  );
   const timeRangeLabel = cancelled
-    ? strikeThroughText(shift.timeRangeLabel)
-    : shift.timeRangeLabel;
+    ? strikeThroughText(localTimeRangeLabel)
+    : localTimeRangeLabel;
   const locationName = cancelled
     ? strikeThroughText(shift.locationName)
     : shift.locationName;
@@ -358,4 +370,40 @@ function ShiftRow(props: { shift: PosShiftRow }) {
       </s-stack>
     </s-box>
   );
+}
+
+function formatLocalTimeRange(
+  startsAt: string,
+  endsAt: string,
+  timeFormat: "24H" | "12H",
+) {
+  return `${formatLocalTime(startsAt, timeFormat)} - ${formatLocalTime(
+    endsAt,
+    timeFormat,
+  )}`;
+}
+
+function formatLocalTime(value: string, timeFormat: "24H" | "12H") {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  if (timeFormat === "24H") {
+    return date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatLocalDateKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

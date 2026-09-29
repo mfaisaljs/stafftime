@@ -654,6 +654,7 @@ export async function listEmployeeShiftsForPos(params: {
       lastName: employee.lastName,
     },
     range: params.range,
+    timeFormat,
     shifts: rows,
     leaveDays,
     onLeaveToday,

@@ -40,6 +40,7 @@ export type VerifyResponse = {
 export type ShiftsResponse = {
   employee: ShiftEmployee;
   range: PosShiftRange;
+  timeFormat?: "24H" | "12H";
   shifts: PosShiftRow[];
   leaveDays?: PosLeaveDayRow[];
   onLeaveToday?: boolean;

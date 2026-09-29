@@ -55,6 +55,7 @@ export type StaffProfileResponse = {
     upcoming: ProfileShiftRow[];
     past: ProfileShiftRow[];
   };
+  timeFormat?: "24H" | "12H";
   serverTime?: number;
 };
 

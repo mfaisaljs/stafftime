@@ -481,7 +481,10 @@ function ManagerViewModal() {
                     </s-tab-panel>
                     <s-tab-panel id="shifts">
                       <s-box padding="base none">
-                        <ShiftsTab shifts={detail.profile.shifts} />
+                        <ShiftsTab
+                          shifts={detail.profile.shifts}
+                          timeFormat={detail.profile.timeFormat ?? "24H"}
+                        />
                       </s-box>
                     </s-tab-panel>
                     <s-tab-panel id="payroll">
@@ -878,7 +881,10 @@ function PayrollTab(props: { payroll: StaffProfilePayload["payroll"] }) {
   );
 }
 
-function ShiftsTab(props: { shifts: StaffProfilePayload["shifts"] }) {
+function ShiftsTab(props: {
+  shifts: StaffProfilePayload["shifts"];
+  timeFormat: "24H" | "12H";
+}) {
   return (
     <s-stack direction="block" gap="large">
       <s-section heading="Upcoming shifts">
@@ -888,7 +894,11 @@ function ShiftsTab(props: { shifts: StaffProfilePayload["shifts"] }) {
           ) : (
             <s-stack direction="block" gap="base">
               {props.shifts.upcoming.map((shift) => (
-                <ShiftCard key={shift.id} shift={shift} />
+                <ShiftCard
+                  key={shift.id}
+                  shift={shift}
+                  timeFormat={props.timeFormat}
+                />
               ))}
             </s-stack>
           )}
@@ -901,7 +911,11 @@ function ShiftsTab(props: { shifts: StaffProfilePayload["shifts"] }) {
           ) : (
             <s-stack direction="block" gap="base">
               {props.shifts.past.map((shift) => (
-                <ShiftCard key={shift.id} shift={shift} />
+                <ShiftCard
+                  key={shift.id}
+                  shift={shift}
+                  timeFormat={props.timeFormat}
+                />
               ))}
             </s-stack>
           )}
@@ -917,9 +931,15 @@ function strikeThroughText(value: string) {
 
 function ShiftCard(props: {
   shift: StaffProfilePayload["shifts"]["upcoming"][number];
+  timeFormat: "24H" | "12H";
 }) {
-  const { shift } = props;
+  const { shift, timeFormat } = props;
   const cancelled = Boolean(shift.cancelledForLeave);
+  const localTimeRangeLabel = formatLocalTimeRange(
+    shift.startsAt,
+    shift.endsAt,
+    timeFormat,
+  );
   return (
     <s-box padding="small none">
       <s-stack direction="block" gap="small">
@@ -939,8 +959,8 @@ function ShiftCard(props: {
         </s-stack>
         <s-text tone={cancelled ? "critical" : "auto"}>
           {cancelled
-            ? strikeThroughText(shift.timeRangeLabel)
-            : shift.timeRangeLabel}
+            ? strikeThroughText(localTimeRangeLabel)
+            : localTimeRangeLabel}
         </s-text>
         <s-text tone={cancelled ? "critical" : "auto"}>
           📍{" "}
@@ -951,4 +971,31 @@ function ShiftCard(props: {
       </s-stack>
     </s-box>
   );
+}
+
+function formatLocalTimeRange(
+  startsAt: string,
+  endsAt: string,
+  timeFormat: "24H" | "12H",
+) {
+  return `${formatLocalTime(startsAt, timeFormat)} - ${formatLocalTime(
+    endsAt,
+    timeFormat,
+  )}`;
+}
+
+function formatLocalTime(value: string, timeFormat: "24H" | "12H") {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  if (timeFormat === "24H") {
+    return date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

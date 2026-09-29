@@ -402,6 +402,7 @@ export async function getStaffProfileForPos(params: {
       upcoming: upcomingShifts,
       past: pastShifts,
     },
+    timeFormat,
     serverTime: Date.now(),
   };
 }

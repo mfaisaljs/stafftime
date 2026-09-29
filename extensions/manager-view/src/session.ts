@@ -116,6 +116,7 @@ export type StaffProfilePayload = {
     upcoming: ProfileShiftRow[];
     past: ProfileShiftRow[];
   };
+  timeFormat?: "24H" | "12H";
 };
 
 export type ClockStatus = "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";

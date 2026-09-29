@@ -6,8 +6,10 @@
   "activeTaskIds": ["T009", "T015", "T017"],
   "blockedTaskIds": [],
   "completedTaskIds": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T010", "T016", "T018", "T019"],
-  "lastUpdated": "2026-09-29T21:01:00.000Z",
+  "lastUpdated": "2026-09-29T21:15:58.000Z",
   "notes": [
+    "ST166 update: POS Staff Profile and Manager View shift cards now format shift times on the POS device timezone.",
+    "ST166 update: POS View Shifts now formats shift start/end times on the device so Central POS shows 3 PM for a 4 PM Eastern shift.",
     "ST166 complete: POS APIs display times in the device/browser timezone while records stay store-local.",
     "ST165 complete: POS View Shifts and related POS shift/task/time-off paths use store-local timezone.",
     "ST164 update: corrected setup guide copy from Add Titles to Add Tiles.",
