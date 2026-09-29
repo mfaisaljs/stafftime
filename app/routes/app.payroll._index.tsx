@@ -25,17 +25,22 @@ import {
 } from "../services/settings.server";
 import { SHIFT_STATUS } from "../services/time-off-shifts.server";
 import prisma from "../db.server";
+import {
+  addDaysToDateKey,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  toDateKeyInTimeZone,
+} from "../utils/timezone.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await getAdminShop(session);
   const settings = await getShopSettings(shop.id);
-  const periodStart = new Date();
-  periodStart.setDate(periodStart.getDate() - 30);
-  periodStart.setHours(0, 0, 0, 0);
+  const timeZone = resolveTimeZone(shop);
+  const rangeEndKey = toDateKeyInTimeZone(new Date(), timeZone);
+  const rangeStartKey = addDaysToDateKey(rangeEndKey, -30);
+  const periodStart = startOfDayInTimeZone(rangeStartKey, timeZone);
   const periodEnd = new Date();
-  const rangeStartKey = toDateKeyLocal(periodStart);
-  const rangeEndKey = toDateKeyLocal(periodEnd);
 
   const [employees, entries, payments, shifts, timeOffRequests] = await Promise.all([
     getEmployees(session),
@@ -93,15 +98,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
 
     const dateKeys = enumerateDateKeys(
-      toDateKeyLocal(effectiveStart),
+      toDateKeyInTimeZone(effectiveStart, timeZone),
       rangeEndKey,
     );
     const shiftsByDate = new Map<string, boolean>();
     for (const shift of shifts.filter((item) => item.employeeId === employee.id)) {
-      shiftsByDate.set(toDateKeyLocal(shift.startsAt), true);
+      shiftsByDate.set(toDateKeyInTimeZone(shift.startsAt, timeZone), true);
     }
     const clockedDates = new Set(
-      employeeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
+      employeeEntries.map((entry) => toDateKeyInTimeZone(entry.clockInAt, timeZone)),
     );
     earnings += computeSalaryAdjustments({
       employee,
@@ -272,13 +277,6 @@ function formatRate(employee: {
 
 function formatMoney(amount: number) {
   return `$${amount.toFixed(2)}`;
-}
-
-function toDateKeyLocal(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {

@@ -13,12 +13,14 @@ import { persistClientShopDomain } from "../utils/client-shop-domain";
 import { chatraIdentityForShop } from "../utils/chatra-identity.server";
 import { shopFromDest } from "../utils/http.server";
 import { mergeAppSearchParams } from "../utils/app-path";
+import prisma from "../db.server";
 
 const SHOP_NAME_QUERY = `#graphql
   query ChatraShopName {
     shop {
       name
       myshopifyDomain
+      ianaTimezone
     }
   }
 `;
@@ -55,7 +57,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     const shopResponse = await admin.graphql(SHOP_NAME_QUERY);
     const shopPayload = (await shopResponse.json()) as {
-      data?: { shop?: { name?: string; myshopifyDomain?: string } };
+      data?: {
+        shop?: {
+          name?: string;
+          myshopifyDomain?: string;
+          ianaTimezone?: string;
+        };
+      };
     };
     const liveName = shopPayload.data?.shop?.name?.trim();
     if (liveName) {
@@ -63,6 +71,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
     const liveDomain = shopPayload.data?.shop?.myshopifyDomain?.trim();
     if (liveDomain) {
+      const timezone = shopPayload.data?.shop?.ianaTimezone?.trim() || "UTC";
+      await ensureShop(liveDomain);
+      const syncedShop = await prisma.shop.update({
+        where: { domain: liveDomain.toLowerCase() },
+        data: { name: shopName, timezone },
+      });
+      await prisma.storeLocation.updateMany({
+        where: {
+          shopId: syncedShop.id,
+          shopifyLocationId: "default",
+          timezone: "UTC",
+        },
+        data: { timezone },
+      });
       return {
         apiKey: process.env.SHOPIFY_API_KEY || "",
         shopDomain: liveDomain.toLowerCase(),

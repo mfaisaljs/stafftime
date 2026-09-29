@@ -31,8 +31,11 @@ export type AttendanceBoardRow = {
   workedToday?: boolean;
   isLate: boolean;
   clockInAt: string | null;
+  clockInLabel?: string | null;
   clockOutAt?: string | null;
+  clockOutLabel?: string | null;
   shiftStartsAt: string | null;
+  shiftStartLabel?: string | null;
   entryStatus: string | null;
 };
 
@@ -275,8 +278,8 @@ export function AttendanceBoard({
                       )}
                     </span>
                   </td>
-                  <td>{formatTime(row.shiftStartsAt, timeFormat)}</td>
-                  <td>{formatTime(row.clockInAt, timeFormat)}</td>
+                  <td>{row.shiftStartLabel ?? formatTime(row.shiftStartsAt, timeFormat)}</td>
+                  <td>{row.clockInLabel ?? formatTime(row.clockInAt, timeFormat)}</td>
                 </tr>
               ))}
               {filteredRows.length === 0 && (

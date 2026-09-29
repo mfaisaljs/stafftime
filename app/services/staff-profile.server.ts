@@ -22,25 +22,16 @@ import {
   type HourFormat,
   type TimeFormat,
 } from "./time-tracking.server";
+import {
+  addDaysToDateKey,
+  endOfDayInTimeZone,
+  formatDateTimeInTimeZone,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  toDateKeyInTimeZone,
+} from "../utils/timezone.server";
 
 export type StaffProfileTab = "overview" | "shifts" | "payroll";
-
-function toDateKeyLocal(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function startOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-}
-
-function endOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 23, 59, 59, 999);
-}
 
 function normalizeDateKey(value: string | null | undefined) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -79,13 +70,14 @@ function roleBadgeLabel(
   }
 }
 
-function formatShiftDateLabel(startsAt: Date, now: Date) {
-  const startDay = new Date(startsAt);
-  startDay.setHours(0, 0, 0, 0);
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  if (startDay.getTime() === today.getTime()) return "Today";
-  return startsAt.toLocaleDateString(undefined, {
+function formatShiftDateLabel(startsAt: Date, now: Date, timeZone: string) {
+  if (
+    toDateKeyInTimeZone(startsAt, timeZone) ===
+    toDateKeyInTimeZone(now, timeZone)
+  ) {
+    return "Today";
+  }
+  return formatDateTimeInTimeZone(startsAt, timeZone, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -93,21 +85,26 @@ function formatShiftDateLabel(startsAt: Date, now: Date) {
   });
 }
 
-function formatTimeRange(startsAt: Date, endsAt: Date, timeFormat: TimeFormat) {
+function formatTimeRange(
+  startsAt: Date,
+  endsAt: Date,
+  timeFormat: TimeFormat,
+  timeZone: string,
+) {
   if (timeFormat === "24H") {
-    const fmt = (value: Date) => {
-      const hours = String(value.getHours()).padStart(2, "0");
-      const minutes = String(value.getMinutes()).padStart(2, "0");
-      const seconds = String(value.getSeconds()).padStart(2, "0");
-      return `${hours}:${minutes}:${seconds}`;
-    };
+    const fmt = (value: Date) => formatClockTime(value, timeFormat, timeZone);
     return `${fmt(startsAt)} - ${fmt(endsAt)}`;
   }
-  return `${formatClockTime(startsAt, timeFormat)} - ${formatClockTime(endsAt, timeFormat)}`;
+  return `${formatClockTime(startsAt, timeFormat, timeZone)} - ${formatClockTime(endsAt, timeFormat, timeZone)}`;
 }
 
-function resolveRange(start?: string, end?: string, days?: number) {
-  const today = toDateKeyLocal(new Date());
+function resolveRange(
+  timeZone: string,
+  start?: string,
+  end?: string,
+  days?: number,
+) {
+  const today = toDateKeyInTimeZone(new Date(), timeZone);
   const normalizedStart = normalizeDateKey(start);
   const normalizedEnd = normalizeDateKey(end);
   const presetDays = [7, 30, 90].includes(Number(days)) ? Number(days) : null;
@@ -122,11 +119,9 @@ function resolveRange(start?: string, end?: string, days?: number) {
   }
 
   const preset = presetDays ?? 7;
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - (preset - 1));
+  const startDateKey = addDaysToDateKey(today, -(preset - 1));
   return {
-    start: toDateKeyLocal(startDate),
+    start: startDateKey,
     end: today,
     days: preset,
   };
@@ -151,22 +146,23 @@ export async function getStaffProfileForPos(params: {
   const settings = await getShopSettings(shop.id);
   const hourFormat = settings.hourFormat as HourFormat;
   const timeFormat = settings.timeFormat as TimeFormat;
-  const range = resolveRange(params.start, params.end, params.days);
+  const timeZone = resolveTimeZone(employee.location, shop);
+  const range = resolveRange(timeZone, params.start, params.end, params.days);
 
-  let startDate = startOfDayFromKey(range.start);
-  const endDate = endOfDayFromKey(range.end);
+  let startDate = startOfDayInTimeZone(range.start, timeZone);
+  const endDate = endOfDayInTimeZone(range.end, timeZone);
   startDate = await clampRangeStartForSalary(
     shop.id,
     employee.id,
     startDate,
     settings,
   );
-  const effectiveStartKey = toDateKeyLocal(startDate);
+  const effectiveStartKey = toDateKeyInTimeZone(startDate, timeZone);
 
   // Include upcoming shifts beyond the payroll overview end date (default range ends today).
   const shiftsEnd = new Date();
   shiftsEnd.setDate(shiftsEnd.getDate() + 90);
-  const shiftsEndKey = toDateKeyLocal(shiftsEnd);
+  const shiftsEndKey = toDateKeyInTimeZone(shiftsEnd, timeZone);
 
   await syncApprovedLeaveShiftCancellations(shop.id);
 
@@ -230,10 +226,10 @@ export async function getStaffProfileForPos(params: {
   const dateKeys = enumerateDateKeys(effectiveStartKey, range.end);
   const shiftsByDate = new Map<string, boolean>();
   for (const shift of shifts) {
-    shiftsByDate.set(toDateKeyLocal(shift.startsAt), true);
+    shiftsByDate.set(toDateKeyInTimeZone(shift.startsAt, timeZone), true);
   }
   const clockedDates = new Set(
-    timeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
+    timeEntries.map((entry) => toDateKeyInTimeZone(entry.clockInAt, timeZone)),
   );
   const employeeTimeOff = filterRequestsForEmployee(timeOffRequests, employee.id);
   const totalAbsents = countAbsentDays(
@@ -310,7 +306,8 @@ export async function getStaffProfileForPos(params: {
   const pastShifts: ProfileShift[] = [];
   for (const shift of shifts) {
     const isToday =
-      toDateKeyLocal(shift.startsAt) === toDateKeyLocal(now);
+      toDateKeyInTimeZone(shift.startsAt, timeZone) ===
+      toDateKeyInTimeZone(now, timeZone);
     const cancelledForLeave = shiftIsCancelledForLeave(
       shift,
       employeeTimeOff,
@@ -318,8 +315,13 @@ export async function getStaffProfileForPos(params: {
     );
     const row = {
       id: shift.id,
-      dateLabel: formatShiftDateLabel(shift.startsAt, now),
-      timeRangeLabel: formatTimeRange(shift.startsAt, shift.endsAt, timeFormat),
+      dateLabel: formatShiftDateLabel(shift.startsAt, now, timeZone),
+      timeRangeLabel: formatTimeRange(
+        shift.startsAt,
+        shift.endsAt,
+        timeFormat,
+        timeZone,
+      ),
       locationName: shift.location.name,
       isToday,
       startsAt: shift.startsAt.toISOString(),

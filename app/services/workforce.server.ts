@@ -34,6 +34,19 @@ import {
   type TimeFormat,
 } from "./time-tracking.server";
 import { assertStaffSeatAvailable } from "./billing.server";
+import {
+  addDaysToDateKey,
+  endOfDayInTimeZone,
+  endOfMonthInTimeZone,
+  endOfWeekInTimeZone,
+  formatClockTimeInTimeZone,
+  parseZonedDateTime,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  startOfMonthInTimeZone,
+  startOfWeekInTimeZone,
+  toDateKeyInTimeZone,
+} from "../utils/timezone.server";
 
 export type WorkforceStatus = "CLOCKED_OUT" | "CLOCKED_IN" | "ON_BREAK";
 type EmployeeWithFirstLogin = Employee & { firstLoginAt: Date | null };
@@ -55,12 +68,14 @@ export async function ensureShop(destOrDomain: string) {
 export async function ensureDefaultLocation(shopId: string) {
   const existing = await prisma.storeLocation.findFirst({ where: { shopId } });
   if (existing) return existing;
+  const shop = await prisma.shop.findUnique({ where: { id: shopId } });
 
   return prisma.storeLocation.create({
     data: {
       shopId,
       shopifyLocationId: "default",
       name: "Main Store",
+      timezone: shop?.timezone ?? "UTC",
     },
   });
 }
@@ -404,11 +419,15 @@ export async function activateEmployeeOnFirstLogin(employeeId: string) {
   });
 }
 
-export async function getEmployeeShiftToday(employeeId: string) {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
+export async function getEmployeeShiftToday(
+  employeeId: string,
+  referenceDate = new Date(),
+  timeZone?: string,
+) {
+  const resolvedTimeZone =
+    timeZone ?? (await getEmployeeTimeZone(employeeId));
+  const start = startOfDayInTimeZone(referenceDate, resolvedTimeZone);
+  const end = endOfDayInTimeZone(referenceDate, resolvedTimeZone);
 
   return prisma.shift.findFirst({
     where: {
@@ -443,46 +462,29 @@ export type PosLeaveDayRow = {
   policyName: string;
 };
 
-function rangeEndKeyForLeave(range: PosShiftRange, now: Date) {
-  const bounds = rangeBounds(range, now);
-  if (bounds.lte) return toDateKeyLocal(bounds.lte);
-  const end = new Date(now);
-  end.setDate(end.getDate() + 90);
-  return toDateKeyLocal(end);
+async function getEmployeeTimeZone(employeeId: string) {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    include: { location: true, shop: true },
+  });
+  return resolveTimeZone(employee?.location, employee?.shop);
 }
 
-function endOfLocalDay(value = new Date()) {
-  const date = startOfLocalDay(value);
-  date.setHours(23, 59, 59, 999);
-  return date;
+function rangeEndKeyForLeave(range: PosShiftRange, now: Date, timeZone: string) {
+  const bounds = rangeBounds(range, now, timeZone);
+  if (bounds.lte) return toDateKeyInTimeZone(bounds.lte, timeZone);
+  return addDaysToDateKey(toDateKeyInTimeZone(now, timeZone), 90);
 }
 
-function endOfLocalWeek(value = new Date()) {
-  const start = startOfLocalWeek(value);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return end;
-}
-
-function startOfLocalMonth(value = new Date()) {
-  const date = startOfLocalDay(value);
-  date.setDate(1);
-  return date;
-}
-
-function endOfLocalMonth(value = new Date()) {
-  const date = startOfLocalMonth(value);
-  date.setMonth(date.getMonth() + 1);
-  date.setMilliseconds(-1);
-  return date;
-}
-
-function formatShiftDateLabel(startsAt: Date, now: Date) {
-  if (startOfLocalDay(startsAt).getTime() === startOfLocalDay(now).getTime()) {
+function formatShiftDateLabel(startsAt: Date, now: Date, timeZone: string) {
+  if (
+    toDateKeyInTimeZone(startsAt, timeZone) ===
+    toDateKeyInTimeZone(now, timeZone)
+  ) {
     return "Today";
   }
   return startsAt.toLocaleDateString(undefined, {
+    timeZone,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -490,8 +492,8 @@ function formatShiftDateLabel(startsAt: Date, now: Date) {
   });
 }
 
-function formatShiftDayLabel(startsAt: Date) {
-  return startsAt.toLocaleDateString(undefined, { weekday: "long" });
+function formatShiftDayLabel(startsAt: Date, timeZone: string) {
+  return startsAt.toLocaleDateString(undefined, { timeZone, weekday: "long" });
 }
 
 function classifyShiftStatus(
@@ -508,16 +510,28 @@ function classifyShiftStatus(
   return { status: "IN_PROGRESS", statusLabel: "In Progress", tone: "warning" };
 }
 
-function rangeBounds(range: PosShiftRange, now: Date) {
+function rangeBounds(range: PosShiftRange, now: Date, timeZone: string) {
   switch (range) {
     case "today":
-      return { gte: startOfLocalDay(now), lte: endOfLocalDay(now) };
+      return {
+        gte: startOfDayInTimeZone(now, timeZone),
+        lte: endOfDayInTimeZone(now, timeZone),
+      };
     case "week":
-      return { gte: startOfLocalWeek(now), lte: endOfLocalWeek(now) };
+      return {
+        gte: startOfWeekInTimeZone(now, timeZone),
+        lte: endOfWeekInTimeZone(now, timeZone),
+      };
     case "month":
-      return { gte: startOfLocalMonth(now), lte: endOfLocalMonth(now) };
+      return {
+        gte: startOfMonthInTimeZone(now, timeZone),
+        lte: endOfMonthInTimeZone(now, timeZone),
+      };
     case "upcoming":
-      return { gte: startOfLocalDay(now), lte: undefined as Date | undefined };
+      return {
+        gte: startOfDayInTimeZone(now, timeZone),
+        lte: undefined as Date | undefined,
+      };
   }
 }
 
@@ -529,6 +543,7 @@ export async function listEmployeeShiftsForPos(params: {
   const shop = await ensureShop(params.shopDomain);
   const employee = await prisma.employee.findFirst({
     where: { id: params.employeeId, shopId: shop.id },
+    include: { location: true },
   });
   if (!employee) {
     throw new Error("Employee not found");
@@ -537,12 +552,13 @@ export async function listEmployeeShiftsForPos(params: {
   const settings = await getShopSettings(shop.id);
   const timeFormat = settings.timeFormat as TimeFormat;
   const now = new Date();
-  const bounds = rangeBounds(params.range, now);
+  const timeZone = resolveTimeZone(employee.location, shop);
+  const bounds = rangeBounds(params.range, now, timeZone);
 
   await syncApprovedLeaveShiftCancellations(shop.id);
 
-  const rangeStartKey = toDateKeyLocal(bounds.gte);
-  const rangeEndKey = rangeEndKeyForLeave(params.range, now);
+  const rangeStartKey = toDateKeyInTimeZone(bounds.gte, timeZone);
+  const rangeEndKey = rangeEndKeyForLeave(params.range, now, timeZone);
   const leaveRequests = await getApprovedTimeOffForRange(
     shop.id,
     rangeStartKey,
@@ -556,10 +572,11 @@ export async function listEmployeeShiftsForPos(params: {
   ).map((leave) => ({
     ...leave,
     dateLabel: formatShiftDateLabel(
-      startOfDayFromKey(leave.dateKey),
+      startOfDayInTimeZone(leave.dateKey, timeZone),
       now,
+      timeZone,
     ),
-    dayLabel: formatShiftDayLabel(startOfDayFromKey(leave.dateKey)),
+    dayLabel: formatShiftDayLabel(startOfDayInTimeZone(leave.dateKey, timeZone), timeZone),
   }));
 
   const shifts = await prisma.shift.findMany({
@@ -577,7 +594,7 @@ export async function listEmployeeShiftsForPos(params: {
     orderBy: { startsAt: "asc" },
   });
 
-  const todayKey = toDateKeyLocal(now);
+  const todayKey = toDateKeyInTimeZone(now, timeZone);
   const onLeaveToday = isEmployeeOnApprovedLeave(
     leaveRequests,
     employee.id,
@@ -594,9 +611,9 @@ export async function listEmployeeShiftsForPos(params: {
     if (cancelled) {
       return {
         id: shift.id,
-        dateLabel: formatShiftDateLabel(shift.startsAt, now),
-        dayLabel: formatShiftDayLabel(shift.startsAt),
-        timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat)} - ${formatPosClockLabel(shift.endsAt, timeFormat)}`,
+        dateLabel: formatShiftDateLabel(shift.startsAt, now, timeZone),
+        dayLabel: formatShiftDayLabel(shift.startsAt, timeZone),
+        timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, timeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, timeZone)}`,
         status: "ON_LEAVE",
         statusLabel: "On leave",
         tone: "critical",
@@ -609,9 +626,9 @@ export async function listEmployeeShiftsForPos(params: {
     const status = classifyShiftStatus(shift.startsAt, shift.endsAt, now);
     return {
       id: shift.id,
-      dateLabel: formatShiftDateLabel(shift.startsAt, now),
-      dayLabel: formatShiftDayLabel(shift.startsAt),
-      timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat)} - ${formatPosClockLabel(shift.endsAt, timeFormat)}`,
+      dateLabel: formatShiftDateLabel(shift.startsAt, now, timeZone),
+      dayLabel: formatShiftDayLabel(shift.startsAt, timeZone),
+      timeRangeLabel: `${formatPosClockLabel(shift.startsAt, timeFormat, timeZone)} - ${formatPosClockLabel(shift.endsAt, timeFormat, timeZone)}`,
       ...status,
       startsAt: shift.startsAt.toISOString(),
       endsAt: shift.endsAt.toISOString(),
@@ -660,30 +677,12 @@ export type PosHistoryEvent = {
   tone: "success" | "critical" | "warning" | "neutral";
 };
 
-function startOfLocalDay(value = new Date()) {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function startOfLocalWeek(value = new Date()) {
-  const date = startOfLocalDay(value);
-  date.setDate(date.getDate() - date.getDay());
-  return date;
-}
-
-function formatPosClockLabel(value: Date, timeFormat: TimeFormat) {
-  if (timeFormat === "24H") {
-    const hours = String(value.getHours()).padStart(2, "0");
-    const minutes = String(value.getMinutes()).padStart(2, "0");
-    const seconds = String(value.getSeconds()).padStart(2, "0");
-    return `${hours}:${minutes}:${seconds}`;
-  }
-  return value.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+function formatPosClockLabel(
+  value: Date,
+  timeFormat: TimeFormat,
+  timeZone: string,
+) {
+  return formatClockTimeInTimeZone(value, timeFormat, timeZone, true);
 }
 
 function buildTodayHistory(
@@ -694,6 +693,7 @@ function buildTodayHistory(
     breaks: Array<{ id: string; startedAt: Date; endedAt: Date | null }>;
   }>,
   timeFormat: TimeFormat,
+  timeZone: string,
 ): PosHistoryEvent[] {
   const events: PosHistoryEvent[] = [];
   for (const entry of entries) {
@@ -702,7 +702,7 @@ function buildTodayHistory(
       type: "CLOCK_IN",
       label: "Clock In",
       at: entry.clockInAt.toISOString(),
-      atLabel: formatPosClockLabel(entry.clockInAt, timeFormat),
+      atLabel: formatPosClockLabel(entry.clockInAt, timeFormat, timeZone),
       badge: "IN",
       tone: "success",
     });
@@ -712,7 +712,7 @@ function buildTodayHistory(
         type: "BREAK_START",
         label: "Start Break",
         at: breakEntry.startedAt.toISOString(),
-        atLabel: formatPosClockLabel(breakEntry.startedAt, timeFormat),
+        atLabel: formatPosClockLabel(breakEntry.startedAt, timeFormat, timeZone),
         badge: "BRK",
         tone: "warning",
       });
@@ -722,7 +722,7 @@ function buildTodayHistory(
           type: "BREAK_END",
           label: "End Break",
           at: breakEntry.endedAt.toISOString(),
-          atLabel: formatPosClockLabel(breakEntry.endedAt, timeFormat),
+          atLabel: formatPosClockLabel(breakEntry.endedAt, timeFormat, timeZone),
           badge: "END",
           tone: "neutral",
         });
@@ -734,7 +734,7 @@ function buildTodayHistory(
         type: "CLOCK_OUT",
         label: "Clock Out",
         at: entry.clockOutAt.toISOString(),
-        atLabel: formatPosClockLabel(entry.clockOutAt, timeFormat),
+        atLabel: formatPosClockLabel(entry.clockOutAt, timeFormat, timeZone),
         badge: "OUT",
         tone: "critical",
       });
@@ -748,17 +748,18 @@ function buildTodayHistory(
 export async function buildEmployeeStatus(employeeId: string) {
   const employee = await prisma.employee.findUniqueOrThrow({
     where: { id: employeeId },
-    include: { location: true },
+    include: { location: true, shop: true },
   });
   const settings = await getShopSettings(employee.shopId);
   const now = new Date();
-  const dayStart = startOfLocalDay(now);
-  const weekStart = startOfLocalWeek(now);
+  const timeZone = resolveTimeZone(employee.location, employee.shop);
+  const dayStart = startOfDayInTimeZone(now, timeZone);
+  const weekStart = startOfWeekInTimeZone(now, timeZone);
 
   const [entry, shift, payrollStats, dayEntries, weekEntries] =
     await Promise.all([
       getOpenTimeEntry(employeeId),
-      getEmployeeShiftToday(employeeId),
+      getEmployeeShiftToday(employeeId, now, timeZone),
       getManagerPayrollStatsForToday(employee.shopId, employeeId, settings),
       prisma.timeEntry.findMany({
         where: {
@@ -838,6 +839,7 @@ export async function buildEmployeeStatus(employeeId: string) {
     hourFormat: settings.hourFormat as HourFormat,
     locationName,
     dateLabel: now.toLocaleString(undefined, {
+      timeZone,
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -847,11 +849,11 @@ export async function buildEmployeeStatus(employeeId: string) {
     }),
     firstClockInAt: firstClockIn?.toISOString(),
     firstClockInLabel: firstClockIn
-      ? formatPosClockLabel(firstClockIn, settings.timeFormat as TimeFormat)
+      ? formatPosClockLabel(firstClockIn, settings.timeFormat as TimeFormat, timeZone)
       : "—",
     currentClockInAt: currentClockIn?.toISOString(),
     currentClockInLabel: currentClockIn
-      ? formatPosClockLabel(currentClockIn, settings.timeFormat as TimeFormat)
+      ? formatPosClockLabel(currentClockIn, settings.timeFormat as TimeFormat, timeZone)
       : "—",
     dayTotalSeconds,
     dayTotalLabel: formatTimerHms(dayTotalSeconds),
@@ -863,6 +865,7 @@ export async function buildEmployeeStatus(employeeId: string) {
     history: buildTodayHistory(
       dayEntries,
       settings.timeFormat as TimeFormat,
+      timeZone,
     ),
     payrollStats: payrollStats
       ? {
@@ -933,14 +936,15 @@ export async function clockIn(params: {
   const settings = await getShopSettings(shop.id);
   const photoUrl = normalizeClockPhoto(params.photo, params.photoType);
   requireClockPhoto(settings.requirePhoto, photoUrl, "clock in");
+  const timeZone = resolveTimeZone(location, shop);
 
-  const shift = await getEmployeeShiftToday(params.employeeId);
+  const shift = await getEmployeeShiftToday(params.employeeId, new Date(), timeZone);
   if (shift) {
     const now = Date.now();
     const shiftStartMs = shift.startsAt.getTime();
     if (!settings.allowEarlyClockIn && now < shiftStartMs) {
       throw new Error(
-        `Clock-in is not allowed until shift starts at ${formatClockTime(shift.startsAt, settings.timeFormat as TimeFormat)}`,
+        `Clock-in is not allowed until shift starts at ${formatClockTime(shift.startsAt, settings.timeFormat as TimeFormat, timeZone)}`,
       );
     }
     if (settings.allowEarlyClockIn && settings.earlyClockInMinutes > 0) {
@@ -1041,7 +1045,8 @@ export async function startBreak(params: {
 
   const settings = await getShopSettings(shop.id);
   if (settings.blockBreakAfterEndTime) {
-    const shift = await getEmployeeShiftToday(params.employeeId);
+    const timeZone = resolveTimeZone(entry.location, shop);
+    const shift = await getEmployeeShiftToday(params.employeeId, new Date(), timeZone);
     if (shift && Date.now() > shift.endsAt.getTime()) {
       throw new Error("Breaks are not allowed after scheduled shift end time");
     }
@@ -1180,18 +1185,8 @@ export async function reviewMissedPunch(params: {
   return updated;
 }
 
-function parseManualEntryDateTime(date: string, time: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new Error("Choose a valid date.");
-  }
-  if (!/^\d{2}:\d{2}$/.test(time)) {
-    throw new Error("Choose a valid time.");
-  }
-  const value = new Date(`${date}T${time}:00`);
-  if (Number.isNaN(value.getTime())) {
-    throw new Error("Choose a valid date and time.");
-  }
-  return value;
+function parseManualEntryDateTime(date: string, time: string, timeZone: string) {
+  return parseZonedDateTime(date, time, timeZone);
 }
 
 async function assertManualTimeEntryLocation(shopId: string, locationId: string) {
@@ -1224,8 +1219,18 @@ export async function createManualTimeEntry(params: {
     params.shopId,
     params.locationId,
   );
-  const clockInAt = parseManualEntryDateTime(params.date, params.clockInTime);
-  const clockOutAt = parseManualEntryDateTime(params.date, params.clockOutTime);
+  const shop = await prisma.shop.findUnique({ where: { id: params.shopId } });
+  const timeZone = resolveTimeZone(location, shop);
+  const clockInAt = parseManualEntryDateTime(
+    params.date,
+    params.clockInTime,
+    timeZone,
+  );
+  const clockOutAt = parseManualEntryDateTime(
+    params.date,
+    params.clockOutTime,
+    timeZone,
+  );
   if (clockOutAt <= clockInAt) {
     throw new Error("Clock out must be after clock in.");
   }
@@ -1285,8 +1290,18 @@ export async function updateManualTimeEntry(params: {
     params.shopId,
     params.locationId,
   );
-  const clockInAt = parseManualEntryDateTime(params.date, params.clockInTime);
-  const clockOutAt = parseManualEntryDateTime(params.date, params.clockOutTime);
+  const shop = await prisma.shop.findUnique({ where: { id: params.shopId } });
+  const timeZone = resolveTimeZone(location, shop);
+  const clockInAt = parseManualEntryDateTime(
+    params.date,
+    params.clockInTime,
+    timeZone,
+  );
+  const clockOutAt = parseManualEntryDateTime(
+    params.date,
+    params.clockOutTime,
+    timeZone,
+  );
   if (clockOutAt <= clockInAt) {
     throw new Error("Clock out must be after clock in.");
   }
@@ -1325,9 +1340,9 @@ export async function updateManualTimeEntry(params: {
 export async function getAttendanceSummary(shopDomain: string) {
   const shop = await ensureShop(shopDomain);
   const settings = await getShopSettings(shop.id);
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const todayKey = toDateKeyLocal(new Date());
+  const timeZone = resolveTimeZone(shop);
+  const start = startOfDayInTimeZone(new Date(), timeZone);
+  const todayKey = toDateKeyInTimeZone(new Date(), timeZone);
 
   const [employees, openEntries, dayEntries, shifts, pendingRequests, timeOffRequests] =
     await Promise.all([
@@ -1389,7 +1404,7 @@ export async function getAttendanceSummary(shopDomain: string) {
     ) {
       return false;
     }
-    const todayEndMs = endOfDayFromKey(todayKey).getTime();
+    const todayEndMs = endOfDayInTimeZone(todayKey, timeZone).getTime();
     const employeeShifts = shifts.filter(
       (shift) =>
         shift.employeeId === employee.id &&
@@ -1440,13 +1455,14 @@ export async function getAttendanceBoard(
 ) {
   const shop = await ensureShop(shopDomain);
   const settings = await getShopSettings(shop.id);
-  const rangeStart = startOfDayFromKey(range.start);
-  const rangeEnd = endOfDayFromKey(range.end);
-  const todayKey = toDateKeyLocal(new Date());
+  const timeZone = resolveTimeZone(shop);
+  const rangeStart = startOfDayInTimeZone(range.start, timeZone);
+  const rangeEnd = endOfDayInTimeZone(range.end, timeZone);
+  const todayKey = toDateKeyInTimeZone(new Date(), timeZone);
   const refKey =
     todayKey >= range.start && todayKey <= range.end ? todayKey : range.end;
-  const refStart = startOfDayFromKey(refKey);
-  const refEnd = endOfDayFromKey(refKey);
+  const refStart = startOfDayInTimeZone(refKey, timeZone);
+  const refEnd = endOfDayInTimeZone(refKey, timeZone);
   const isLive = refKey === todayKey;
 
   const [employees, timeEntries, shifts, pendingApprovals, timeOffRequests] =
@@ -1614,6 +1630,13 @@ export async function getAttendanceBoard(
       punchStatus === "CLOCKED_OUT"
         ? (latestClosed?.clockOutAt?.toISOString() ?? null)
         : null;
+    const rowTimeZone = resolveTimeZone(
+      primaryEntry?.location,
+      refShifts[0]?.location,
+      employee.location,
+      shop,
+    );
+    const shiftStart = (refShifts[0] ?? shiftForLate)?.startsAt ?? null;
 
     return {
       id: employee.id,
@@ -1627,8 +1650,17 @@ export async function getAttendanceBoard(
       workedToday,
       isLate: Boolean(isLate && status !== "absent" && status !== "on_leave"),
       clockInAt: primaryEntry?.clockInAt?.toISOString() ?? null,
+      clockInLabel: primaryEntry
+        ? formatClockTime(primaryEntry.clockInAt, settings.timeFormat as TimeFormat, rowTimeZone)
+        : null,
       clockOutAt,
-      shiftStartsAt: (refShifts[0] ?? shiftForLate)?.startsAt?.toISOString() ?? null,
+      clockOutLabel: latestClosed?.clockOutAt
+        ? formatClockTime(latestClosed.clockOutAt, settings.timeFormat as TimeFormat, rowTimeZone)
+        : null,
+      shiftStartsAt: shiftStart?.toISOString() ?? null,
+      shiftStartLabel: shiftStart
+        ? formatClockTime(shiftStart, settings.timeFormat as TimeFormat, rowTimeZone)
+        : null,
       entryStatus: primaryEntry?.status ?? null,
     };
   });
@@ -1647,6 +1679,7 @@ export async function getAttendanceBoard(
   return {
     refDate: refKey,
     live: isLive,
+    timeZone,
     timeFormat: settings.timeFormat as TimeFormat,
     metrics: {
       working: workingCount,
@@ -1659,23 +1692,6 @@ export async function getAttendanceBoard(
     },
     rows,
   };
-}
-
-function toDateKeyLocal(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function startOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-}
-
-function endOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 23, 59, 59, 999);
 }
 
 function initials(firstName: string, lastName: string) {

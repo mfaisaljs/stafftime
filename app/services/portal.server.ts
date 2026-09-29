@@ -18,6 +18,14 @@ import {
   shiftIsCancelledForLeave,
   syncApprovedLeaveShiftCancellations,
 } from "./time-off-shifts.server";
+import {
+  addDaysToDateKey,
+  endOfDayInTimeZone,
+  formatDateTimeInTimeZone,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  toDateKeyInTimeZone,
+} from "../utils/timezone.server";
 
 export type PortalFeatureFlag = {
   key: PortalFeatureKey;
@@ -136,6 +144,7 @@ export async function loadPortalEmployee(params: {
       shopId: shop.id,
       status: { not: "ARCHIVED" },
     },
+    include: { location: true },
   });
   if (!employee) {
     throw new Error("Staff session expired. Enter your PIN again.");
@@ -186,16 +195,20 @@ export async function getPortalTimesheet(params: {
   month?: string;
 }) {
   const { shop, settings, employee } = await loadPortalEmployee(params);
-  const month = resolveMonth(params.month);
-  const monthStart = new Date(month.year, month.monthIndex, 1, 0, 0, 0, 0);
-  const monthEnd = new Date(month.year, month.monthIndex + 1, 0, 23, 59, 59, 999);
-  const gridStart = startOfMondayWeek(monthStart);
-  const gridEnd = endOfSundayWeek(monthEnd);
+  const timeZone = resolveTimeZone(employee.location, shop);
+  const month = resolveMonth(params.month, timeZone);
+  const monthStartKey = `${month.key}-01`;
+  const monthEndKey = addDaysToDateKey(shiftMonth(month.key, 1) + "-01", -1);
+  const monthStart = startOfDayInTimeZone(monthStartKey, timeZone);
+  const gridStartKey = startOfMondayWeekKey(monthStartKey);
+  const gridEndKey = endOfSundayWeekKey(monthEndKey);
+  const gridStart = startOfDayInTimeZone(gridStartKey, timeZone);
+  const gridEnd = endOfDayInTimeZone(gridEndKey, timeZone);
 
   const hourFormat = settings.hourFormat as HourFormat;
   const timeFormat = settings.timeFormat as TimeFormat;
   const now = new Date();
-  const todayKey = toDateKey(now);
+  const todayKey = toDateKeyInTimeZone(now, timeZone);
   const staffColors = parseColorMap(settings.scheduleStaffColors);
   const locationColors = parseColorMap(settings.scheduleLocationColors);
 
@@ -222,12 +235,12 @@ export async function getPortalTimesheet(params: {
       include: { location: true },
       orderBy: { startsAt: "asc" },
     }),
-    getApprovedTimeOffForRange(shop.id, toDateKey(gridStart), toDateKey(gridEnd)),
+    getApprovedTimeOffForRange(shop.id, gridStartKey, gridEndKey),
   ]);
 
   const byDate = new Map<string, typeof entries>();
   for (const entry of entries) {
-    const key = toDateKey(entry.clockInAt);
+    const key = toDateKeyInTimeZone(entry.clockInAt, timeZone);
     const list = byDate.get(key) ?? [];
     list.push(entry);
     byDate.set(key, list);
@@ -235,7 +248,7 @@ export async function getPortalTimesheet(params: {
 
   const shiftsByDate = new Map<string, PortalTimesheetShift[]>();
   for (const shift of shifts) {
-    const key = toDateKey(shift.startsAt);
+    const key = toDateKeyInTimeZone(shift.startsAt, timeZone);
     const cancelled = shiftIsCancelledForLeave(shift, leaveRequests, employee.id);
     const color =
       staffColors[employee.id] ||
@@ -243,7 +256,7 @@ export async function getPortalTimesheet(params: {
       "#2563eb";
     const row: PortalTimesheetShift = {
       id: shift.id,
-      timeRangeLabel: `${formatClockTime(shift.startsAt, timeFormat)} - ${formatClockTime(shift.endsAt, timeFormat)}`,
+      timeRangeLabel: `${formatClockTime(shift.startsAt, timeFormat, timeZone)} - ${formatClockTime(shift.endsAt, timeFormat, timeZone)}`,
       locationName: shift.location.name,
       cancelled,
       color,
@@ -256,14 +269,14 @@ export async function getPortalTimesheet(params: {
   const weeks: PortalTimesheetWeek[] = [];
   const days: PortalTimesheetDay[] = [];
   let monthPaidSeconds = 0;
-  const cursor = new Date(gridStart);
+  let cursorKey = gridStartKey;
 
-  while (cursor.getTime() <= gridEnd.getTime()) {
+  while (cursorKey <= gridEndKey) {
     const weekDays: PortalTimesheetDay[] = [];
     let weekSeconds = 0;
     for (let i = 0; i < 7; i += 1) {
-      const dateKey = toDateKey(cursor);
-      const inMonth = cursor.getMonth() === month.monthIndex;
+      const dateKey = cursorKey;
+      const inMonth = dateKey.startsWith(month.key);
       const dayEntries = byDate.get(dateKey) ?? [];
       const paidSeconds = dayEntries.reduce(
         (sum, entry) =>
@@ -277,7 +290,7 @@ export async function getPortalTimesheet(params: {
       const dayShifts = shiftsByDate.get(dateKey) ?? [];
       const cell: PortalTimesheetDay = {
         dateKey,
-        day: cursor.getDate(),
+        day: Number(dateKey.slice(-2)),
         inMonth,
         isToday: dateKey === todayKey,
         hoursLabel:
@@ -292,7 +305,7 @@ export async function getPortalTimesheet(params: {
         monthPaidSeconds += paidSeconds;
       }
       weekSeconds += inMonth ? paidSeconds : 0;
-      cursor.setDate(cursor.getDate() + 1);
+      cursorKey = addDaysToDateKey(cursorKey, 1);
     }
     weeks.push({
       days: weekDays,
@@ -303,7 +316,7 @@ export async function getPortalTimesheet(params: {
 
   return {
     employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
-    monthLabel: monthStart.toLocaleDateString("en-US", {
+    monthLabel: formatDateTimeInTimeZone(monthStart, timeZone, {
       month: "long",
       year: "numeric",
     }),
@@ -328,22 +341,18 @@ function formatTimesheetHours(totalSeconds: number, hourFormat: HourFormat) {
   return `${hours}h ${mins}m`;
 }
 
-function mondayOffset(value: Date) {
-  return (value.getDay() + 6) % 7;
+function mondayOffsetFromKey(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return (dayOfWeek + 6) % 7;
 }
 
-function startOfMondayWeek(value: Date) {
-  const start = new Date(value);
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - mondayOffset(start));
-  return start;
+function startOfMondayWeekKey(value: string) {
+  return addDaysToDateKey(value, -mondayOffsetFromKey(value));
 }
 
-function endOfSundayWeek(value: Date) {
-  const end = new Date(value);
-  end.setHours(23, 59, 59, 999);
-  end.setDate(end.getDate() + (6 - mondayOffset(end)));
-  return end;
+function endOfSundayWeekKey(value: string) {
+  return addDaysToDateKey(value, 6 - mondayOffsetFromKey(value));
 }
 
 function parseColorMap(raw: string): Record<string, string> {
@@ -360,28 +369,21 @@ function parseColorMap(raw: string): Record<string, string> {
   }
 }
 
-function toDateKey(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function resolveMonth(raw?: string) {
+function resolveMonth(raw: string | undefined, timeZone: string) {
   const match = raw?.match(/^(\d{4})-(\d{2})$/);
-  const now = new Date();
-  const year = match ? Number(match[1]) : now.getFullYear();
-  const monthIndex = match ? Number(match[2]) - 1 : now.getMonth();
-  const safe = new Date(year, monthIndex, 1);
+  const todayKey = toDateKeyInTimeZone(new Date(), timeZone);
+  const year = match ? Number(match[1]) : Number(todayKey.slice(0, 4));
+  const monthIndex = match ? Number(match[2]) - 1 : Number(todayKey.slice(5, 7)) - 1;
+  const safe = new Date(Date.UTC(year, monthIndex, 1));
   return {
-    year: safe.getFullYear(),
-    monthIndex: safe.getMonth(),
-    key: `${safe.getFullYear()}-${String(safe.getMonth() + 1).padStart(2, "0")}`,
+    year: safe.getUTCFullYear(),
+    monthIndex: safe.getUTCMonth(),
+    key: `${safe.getUTCFullYear()}-${String(safe.getUTCMonth() + 1).padStart(2, "0")}`,
   };
 }
 
 function shiftMonth(monthKey: string, delta: number) {
   const [year, month] = monthKey.split("-").map(Number);
-  const next = new Date(year, month - 1 + delta, 1);
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+  const next = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
 }

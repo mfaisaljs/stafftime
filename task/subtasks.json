@@ -3093,6 +3093,37 @@
         "extensions/view-tasklists/src/session.ts"
       ],
       "lastUpdated": "2026-09-17T22:20:00.000Z"
+    },
+    {
+      "id": "ST163",
+      "taskId": "T004",
+      "title": "Store-local clock timezone handling",
+      "description": "Use store location timezone with shop fallback for clock labels, local-day ranges, and manual time entry parsing.",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": ["ST008", "ST009"],
+      "acceptanceCriteria": [
+        "Clock in/out labels render in the store location timezone instead of server UTC",
+        "Today, week, and month clock ranges use store-local day boundaries",
+        "Manual time entries parse wall-clock input in the selected location timezone",
+        "Shop timezone is populated from Shopify and default locations inherit it"
+      ],
+      "files": [
+        "app/utils/timezone.server.ts",
+        "app/utils/timezone.server.test.ts",
+        "app/services/workforce.server.ts",
+        "app/services/time-tracking.server.ts",
+        "app/services/admin.server.ts",
+        "app/services/manager-view.server.ts",
+        "app/services/portal.server.ts",
+        "app/services/staff-profile.server.ts",
+        "app/services/shop-info.server.ts",
+        "app/routes/app.tsx",
+        "app/routes/app.staff.$employeeId._index.tsx",
+        "app/routes/app.payroll._index.tsx",
+        "app/components/attendance/AttendanceBoard.tsx"
+      ],
+      "lastUpdated": "2026-09-29T16:05:00.000Z"
     }
   ]
 }

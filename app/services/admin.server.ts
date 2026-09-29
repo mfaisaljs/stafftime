@@ -6,6 +6,12 @@ import {
   ensureShop,
   getAttendanceSummary,
 } from "./workforce.server";
+import {
+  addDaysToDateKey,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  toDateKeyInTimeZone,
+} from "../utils/timezone.server";
 
 export async function getAdminShop(session: Session) {
   const shop = await ensureShop(session.shop);
@@ -96,9 +102,9 @@ export async function getSchedules(session: Session) {
 
 export async function getPayrollEntries(session: Session, days = 7) {
   const shop = await getAdminShop(session);
-  const start = new Date();
-  start.setDate(start.getDate() - days);
-  start.setHours(0, 0, 0, 0);
+  const timeZone = resolveTimeZone(shop);
+  const startKey = addDaysToDateKey(toDateKeyInTimeZone(new Date(), timeZone), -days);
+  const start = startOfDayInTimeZone(startKey, timeZone);
 
   return prisma.timeEntry.findMany({
     where: {

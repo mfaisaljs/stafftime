@@ -1,4 +1,5 @@
 import type { BreakEntry, Setting, TimeEntry } from "@prisma/client";
+import { formatClockTimeInTimeZone } from "../utils/timezone.server";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -116,7 +117,11 @@ export function formatTimerHms(totalSeconds: number): string {
 export function formatClockTime(
   value: Date | string,
   timeFormat: TimeFormat = "24H",
+  timeZone?: string,
 ): string {
+  if (timeZone) {
+    return formatClockTimeInTimeZone(value, timeFormat, timeZone);
+  }
   const date = typeof value === "string" ? new Date(value) : value;
   if (timeFormat === "24H") {
     const hours = String(date.getHours()).padStart(2, "0");

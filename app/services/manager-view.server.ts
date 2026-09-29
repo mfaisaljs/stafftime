@@ -12,13 +12,7 @@ import {
   startBreak,
   type AttendanceStatus,
 } from "./workforce.server";
-
-function toDateKeyLocal(value = new Date()) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+import { resolveTimeZone, toDateKeyInTimeZone } from "../utils/timezone.server";
 
 function roleBadgeLabel(
   role: EmployeeRole,
@@ -128,25 +122,17 @@ export async function bootstrapManagerViewForPos(params: {
   managerId: string;
 }) {
   const { manager, settings } = await requireManager(params);
-  const today = toDateKeyLocal();
+  const shop = await ensureShop(params.shopDomain);
+  const timeZone = resolveTimeZone(shop);
+  const today = toDateKeyInTimeZone(new Date(), timeZone);
   const board = await getAttendanceBoard(params.shopDomain, {
     start: today,
     end: today,
   });
 
   const staff = board.rows.map((row) => {
-    const clockInLabel = row.clockInAt
-      ? new Date(row.clockInAt).toLocaleTimeString(undefined, {
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      : null;
-    const clockOutLabel = row.clockOutAt
-      ? new Date(row.clockOutAt).toLocaleTimeString(undefined, {
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      : null;
+    const clockInLabel = row.clockInLabel ?? null;
+    const clockOutLabel = row.clockOutLabel ?? null;
 
     return {
       id: row.id,

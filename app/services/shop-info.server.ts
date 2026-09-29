@@ -3,6 +3,7 @@ const SHOP_INFO_QUERY = `#graphql
     shop {
       name
       myshopifyDomain
+      ianaTimezone
     }
   }
 `;
@@ -13,7 +14,13 @@ export async function getShopInfo(admin: {
   try {
     const response = await admin.graphql(SHOP_INFO_QUERY);
     const payload = (await response.json()) as {
-      data?: { shop?: { name?: string; myshopifyDomain?: string } };
+      data?: {
+        shop?: {
+          name?: string;
+          myshopifyDomain?: string;
+          ianaTimezone?: string;
+        };
+      };
     };
     const shop = payload.data?.shop;
     if (!shop?.myshopifyDomain) {
@@ -22,6 +29,7 @@ export async function getShopInfo(admin: {
     return {
       name: shop.name?.trim() || shop.myshopifyDomain,
       domain: shop.myshopifyDomain,
+      timezone: shop.ianaTimezone?.trim() || "UTC",
     };
   } catch (error) {
     console.error("Failed to fetch shop info:", error);

@@ -68,6 +68,13 @@ import {
   filterRequestsForEmployee,
   SHIFT_STATUS,
 } from "../services/time-off-shifts.server";
+import {
+  endOfDayInTimeZone,
+  resolveTimeZone,
+  startOfDayInTimeZone,
+  toDateKeyInTimeZone,
+  toTimeInputValueInTimeZone,
+} from "../utils/timezone.server";
 
 type StaffTab = "overview" | "commission" | "payroll";
 type ManualEntryActionResult = { success?: string; error?: string };
@@ -104,10 +111,11 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 
   const shop = await getAdminShop(session);
   const settings = await getShopSettings(shop.id);
+  const timeZone = resolveTimeZone(employee.location, shop);
   const url = new URL(request.url);
   const dateRange = resolveDateRange(url.searchParams);
-  let startDate = startOfDayFromKey(dateRange.start);
-  const endDate = endOfDayFromKey(dateRange.end);
+  let startDate = startOfDayInTimeZone(dateRange.start, timeZone);
+  const endDate = endOfDayInTimeZone(dateRange.end, timeZone);
   startDate = await clampRangeStartForSalary(
     shop.id,
     employeeId,
@@ -153,10 +161,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const dateKeys = enumerateDateKeys(dateRange.start, dateRange.end);
   const shiftsByDate = new Map<string, boolean>();
   for (const shift of shifts) {
-    shiftsByDate.set(toDateKeyLocal(shift.startsAt), true);
+    shiftsByDate.set(toDateKeyInTimeZone(shift.startsAt, timeZone), true);
   }
   const clockedDates = new Set(
-    timeEntries.map((entry) => toDateKeyLocal(entry.clockInAt)),
+    timeEntries.map((entry) =>
+      toDateKeyInTimeZone(entry.clockInAt, resolveTimeZone(entry.location, shop)),
+    ),
   );
   const employeeTimeOff = filterRequestsForEmployee(timeOffRequests, employeeId);
   const totalAbsents = countAbsentDays(
@@ -346,14 +356,15 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const attendanceRows: AttendanceRow[] = timeEntries.map((entry, index) => {
     const summary = summaries[index];
     const breakTotal = summary.paidBreakSeconds + summary.unpaidBreakSeconds;
+    const entryTimeZone = resolveTimeZone(entry.location, shop);
 
     return {
       id: entry.id,
       date: entry.clockInAt.toISOString(),
-      entryDate: toDateKeyLocal(entry.clockInAt),
-      clockInTime: toTimeInputValue(entry.clockInAt),
+      entryDate: toDateKeyInTimeZone(entry.clockInAt, entryTimeZone),
+      clockInTime: toTimeInputValueInTimeZone(entry.clockInAt, entryTimeZone),
       clockOutTime: entry.clockOutAt
-        ? toTimeInputValue(entry.clockOutAt)
+        ? toTimeInputValueInTimeZone(entry.clockOutAt, entryTimeZone)
         : "",
       status: entry.status,
       source: entry.source,
@@ -361,8 +372,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       locationId: entry.locationId,
       notes: entry.notes ?? "",
       breakTime: formatDurationHms(breakTotal, hourFormat),
-      firstIn: formatClockTime(entry.clockInAt, timeFormat),
-      lastOut: entry.clockOutAt ? formatClockTime(entry.clockOutAt, timeFormat) : "—",
+      firstIn: formatClockTime(entry.clockInAt, timeFormat, entryTimeZone),
+      lastOut: entry.clockOutAt
+        ? formatClockTime(entry.clockOutAt, timeFormat, entryTimeZone)
+        : "—",
       totalHours: formatDurationHms(summary.totalWorkedSeconds, hourFormat),
       hasClockInPhoto: Boolean(entry.photoUrl),
       hasClockOutPhoto: Boolean(entry.clockOutPhotoUrl),
@@ -1430,11 +1443,6 @@ function formatShortDate(dateKey: string) {
   });
 }
 
-function startOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-}
-
 function toDateKeyLocal(value: Date) {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, "0");
@@ -1442,30 +1450,11 @@ function toDateKeyLocal(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function toTimeInputValue(value: Date) {
-  const hours = String(value.getHours()).padStart(2, "0");
-  const minutes = String(value.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
-}
-
-function endOfDayFromKey(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  return new Date(year, month - 1, day, 23, 59, 59, 999);
-}
-
 function formatCurrency(amount: number, whole = false): string {
   if (whole && Number.isInteger(amount)) {
     return `$${amount}`;
   }
   return `$${amount.toFixed(2)}`;
-}
-
-function formatTime(date: Date | string): string {
-  const value = typeof date === "string" ? new Date(date) : date;
-  return value.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function formatTableDate(value: string): string {
